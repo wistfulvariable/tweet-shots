@@ -11,12 +11,12 @@
 
 | Metric | Value |
 |---|---|
-| Files modified | 5 |
-| Lines removed (net) | 8 |
-| Lines added | 28 |
-| Lines deleted | 36 |
+| Files modified | 6 |
+| Lines removed (net) | 20 |
+| Lines added | 64 |
+| Lines deleted | 84 |
 | Unused dependencies removed | 0 |
-| Commits made | 4 |
+| Commits made | 6 |
 | Tests affected | 0 (all 390 pass before and after) |
 
 ---
@@ -73,15 +73,16 @@
 | `getHighResProfileUrl(user)` | 4 → 1 definition | ~4 lines | Consolidates `user?.profile_image_url_https?.replace('_normal', '_400x400')` pattern used in HTML generation (×2) and pre-fetch (×2) |
 | `verifiedBadgeSvg(color, size)` | 2 → 1 definition | ~10 lines | Consolidates identical SVG path data for verified badge (18px main tweet, 14px quote tweet) |
 | `getFirstMediaUrl(tweet)` | 2 → 1 definition | ~2 lines | Consolidates `tweet.mediaDetails?.[0]?.media_url_https \|\| tweet.photos?.[0]?.url` fallback |
+| `preFetchProfileImage(user)` | 2 → 1 definition | ~6 lines | Consolidates profile image pre-fetch for main tweet and quote tweet |
+| `preFetchMediaImages(tweet, opts)` | 6 loops → 1 function | ~13 lines | Consolidates mediaDetails + photos iteration with `onlyFirst` option for quote tweets |
 
 ### Documented But Not Implemented (Higher Risk)
 
 | Duplication | Files | Risk | Reasoning |
 |---|---|---|---|
-| **Media pre-fetch loops** (mediaDetails + photos iteration) | core.mjs:729-746, 758-769 | Medium-High | 6 similar loops for pre-fetching media URLs. Extracting would change the rendering pipeline flow; each loop has slightly different error handling and nested property access. Risk of subtle behavioral changes. |
 | **Entity link replacement** (URLs, mentions, hashtags) | core.mjs:422-450, 541-548 | Medium | 4 similar regex replacement patterns for different entity types. Each has unique property access (`url.url`, `@${mention.screen_name}`, `#${hashtag.text}`). Abstracting would require a generic interface that may reduce readability. |
 | **HTML escape / unescape** | core.mjs:414-419 (escape), 526-531 (decode) | Medium | Opposite operations for main tweet (escape raw text) vs quote tweet (decode pre-encoded text). Could extract paired utilities, but only 2 call sites each. Marginal benefit. |
-| **Integration test setup** (~30 lines × 4 files) | tests/integration/*.test.mjs | Medium | Firestore mock + Express server + listen + teardown pattern repeated across 4 integration test files. Extracting requires a shared test infrastructure module and changes to all test files. |
+| **Integration test setup** (~30 lines × 4 files) | tests/integration/*.test.mjs | Medium | Firestore mock + Express server + listen + teardown pattern repeated across 4 integration test files. `vi.mock()` hoisting prevents extracting mocks into shared helpers; each file has materially different mock setups. |
 | **Rate limiter factory** (2 near-identical functions) | src/middleware/rate-limit.mjs:39-57 | Low | Only 2 instances with different parameters. Extracting adds complexity for marginal gain. |
 
 ---
@@ -161,8 +162,7 @@ No flag coupling detected. Each flag controls an independent feature:
 
 | Item | Reason |
 |---|---|
-| **Media pre-fetch duplication** in core.mjs | Higher-risk refactoring of the rendering pipeline. Each pre-fetch loop handles a slightly different data shape (mediaDetails vs photos, main tweet vs quote tweet). Extracting to a generic helper risks subtle behavioral changes. Recommend a dedicated PR with thorough render output comparison. |
-| **Integration test setup duplication** | Would require creating a shared test infrastructure module and modifying all 4 integration test files. The duplication is boilerplate (Express server + Firestore mock wiring), not business logic. Risk of breaking test isolation if shared state leaks. |
+| **Integration test setup duplication** | `vi.mock()` must stay at file top-level due to hoisting, and each of the 4 integration test files has materially different mock setups (different services, different route factories). Extracting into a shared helper would not reduce meaningful duplication. |
 | **Stripe service function signatures** | The Stripe service uses direct params instead of options destructuring (the only consistency deviation). This is an intentional trade-off — functions like `getOrCreateCustomer(stripe, email, name)` have 3+ required params where direct args are clearer. Converting to options objects would reduce readability. |
 | **`console.warn`/`console.error` in core.mjs** | Used in CLI context (translateText, fetchImageAsBase64, loadFonts). Since core.mjs is shared between CLI and API, and the CLI has no structured logger, console output is appropriate. In API context, these run inside worker threads where console output goes to process stderr (acceptable). |
 
@@ -170,9 +170,9 @@ No flag coupling detected. Each flag controls an independent feature:
 
 ## 7. Recommendations
 
-| # | Recommendation | Impact | Risk if Ignored | Worth Doing? | Details |
-|---|---|---|---|---|---|
-| 1 | Extract media pre-fetch into shared helper | Reduces 6 similar loops to 1 reusable function in core.mjs | Low | Only if time allows | The `mediaDetails` / `photos` dual-path pre-fetch is the largest remaining duplication. Would benefit from a dedicated PR with visual render output comparison to verify no behavioral change. |
-| 2 | Document timezone assumption for monthly usage reset | Prevents silent month-boundary drift if deployment moves from Cloud Run | Medium | Probably | `usage.mjs` uses `new Date()` which is process-local timezone. Cloud Run defaults to UTC but this isn't explicitly set. Add a note to CLAUDE.md or set `TZ=UTC` in Dockerfile. |
-| 3 | Extract integration test server setup helper | Reduces ~120 lines of repeated boilerplate across 4 test files | Low | Only if time allows | Create `tests/helpers/setup-integration-server.mjs` with a `createTestServer(routeFactory, deps)` function. Low risk but touches all integration tests. |
-| 4 | Make worker pool size configurable via env var | Allows operators to tune pool size in memory-constrained environments | Low | Only if time allows | Current auto-calculation `max(2, cpus-1)` is reasonable. Only worth adding `WORKER_POOL_SIZE` env var if scaling issues emerge in production. |
+| # | Recommendation | Status | Details |
+|---|---|---|---|
+| 1 | Extract media pre-fetch into shared helpers | **Done** | Extracted `preFetchProfileImage()` and `preFetchMediaImages()` — 6 loops consolidated into 2 reusable functions. All 390 tests pass. |
+| 2 | Document timezone assumption for monthly usage reset | **Done** | Added `ENV TZ=UTC` to Dockerfile. Cloud Run already defaulted to UTC, but now it's explicit and survives migration. |
+| 3 | Extract integration test server setup helper | **Rejected** | Investigated all 4 integration test files. `vi.mock()` hoisting prevents extracting mocks; each file has materially different mock setups. Not worth the complexity. |
+| 4 | Make worker pool size configurable via env var | **Deferred** | YAGNI — current auto-calculation `max(2, cpus-1)` is reasonable. Only worth adding if scaling issues emerge in production. |
