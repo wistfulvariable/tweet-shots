@@ -28,6 +28,7 @@ export function billingGuard(logger) {
           limit: result.limit,
           remaining: 0,
           tier: result.tier,
+          ...(req.id && { requestId: req.id }),
         });
       }
 

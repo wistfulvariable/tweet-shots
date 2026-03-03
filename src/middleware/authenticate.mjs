@@ -12,14 +12,14 @@ export function authenticate(logger) {
 
     if (!apiKey) {
       logger.warn({ method: req.method, path: req.path, ip: req.ip }, 'Auth failed: missing API key');
-      return res.status(401).json({ error: 'API key required. Include it in the X-API-KEY header or apiKey query parameter.', code: 'MISSING_API_KEY' });
+      return res.status(401).json({ error: 'API key required. Include it in the X-API-KEY header or apiKey query parameter.', code: 'MISSING_API_KEY', ...(req.id && { requestId: req.id }) });
     }
 
     try {
       const keyData = await validateApiKey(apiKey);
       if (!keyData) {
         logger.warn({ method: req.method, path: req.path, keyPrefix: apiKey.slice(0, 12) }, 'Auth failed: invalid or revoked key');
-        return res.status(401).json({ error: 'Invalid or revoked API key. Sign up at /billing/signup for a new key.', code: 'INVALID_API_KEY' });
+        return res.status(401).json({ error: 'Invalid or revoked API key. Sign up at /billing/signup for a new key.', code: 'INVALID_API_KEY', ...(req.id && { requestId: req.id }) });
       }
 
       req.apiKey = apiKey;
@@ -27,7 +27,7 @@ export function authenticate(logger) {
       next();
     } catch (err) {
       logger.error({ err, apiKey: apiKey.slice(0, 12) + '...' }, 'Auth lookup failed');
-      res.status(500).json({ error: 'Authentication service is temporarily unavailable. Please try again later.', code: 'AUTH_ERROR' });
+      res.status(500).json({ error: 'Authentication service is temporarily unavailable. Please try again later.', code: 'AUTH_ERROR', ...(req.id && { requestId: req.id }) });
     }
   };
 }
