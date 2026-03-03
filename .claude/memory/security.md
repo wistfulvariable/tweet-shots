@@ -19,6 +19,8 @@
 - Config object is `Object.freeze()`d — immutable after load
 - Admin key uses `crypto.timingSafeEqual` — no timing leaks
 - `escapeRegExp()` applied to Twitter entity data before `new RegExp()` — no ReDoS
+- Stripe/external API error messages never forwarded to clients — generic messages only, real error logged server-side
+- Auth failures (missing key, invalid key) logged with `logger.warn` for brute-force detection
 - CI pipeline: gitleaks (secret scanning) + npm audit + eslint-plugin-security
 
 ## CI Security Pipeline
@@ -47,7 +49,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to master:
 
 ## Security Audit History
 
-- **2026-03-03:** Full audit → `audit-reports/SECURITY_AUDIT_REPORT_01_2026-03-03.md`
+- **2026-03-03:** Full security audit → `audit-reports/SECURITY_AUDIT_REPORT_01_2026-03-03.md`
+- **2026-03-03:** Cross-cutting consistency audit → `audit-reports/CROSS_CUTTING_CONSISTENCY_REPORT_01_2026-03-03.md` (fixed Stripe error leakage, added auth failure logging, added 404 status codes)
 
 ## Previously Resolved
 

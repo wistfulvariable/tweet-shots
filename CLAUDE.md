@@ -111,6 +111,8 @@ tweet-shots/
 - Create express-rate-limit instances inside request handlers — pre-create at module load
 - Use `!==` for secret comparison — use `crypto.timingSafeEqual` to prevent timing attacks
 - Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `core.mjs`
+- Forward raw `err.message` from Stripe or external APIs to clients — use generic error messages, log the real error server-side
+- Throw `new AppError(message)` without an explicit `statusCode` when the error isn't a 400 — always specify the correct HTTP status (e.g. `404` for not-found)
 
 ---
 
