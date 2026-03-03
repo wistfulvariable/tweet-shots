@@ -98,6 +98,13 @@ export async function createPortalSession(stripe, email, returnUrl) {
   });
 }
 
+/** Map a Stripe price ID to a billing tier. Unknown prices fall back to 'free'. */
+function tierFromPriceId(config, priceId) {
+  if (priceId === config.STRIPE_PRICE_PRO) return 'pro';
+  if (priceId === config.STRIPE_PRICE_BUSINESS) return 'business';
+  return 'free';
+}
+
 /**
  * Handle subscription created/updated webhook.
  * Updates the tier on the existing API key — no key swap.
@@ -119,12 +126,8 @@ export async function handleSubscriptionUpdate(config, subscription, logger) {
   const custDoc = snapshot.docs[0];
   const customer = custDoc.data();
 
-  // Determine tier from price ID
-  let tier = 'free';
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  if (priceId === config.STRIPE_PRICE_PRO) tier = 'pro';
-  if (priceId === config.STRIPE_PRICE_BUSINESS) tier = 'business';
-
+  const tier = tierFromPriceId(config, priceId);
   const activeTier = subscription.status === 'active' ? tier : 'free';
 
   // Update the customer's tier
