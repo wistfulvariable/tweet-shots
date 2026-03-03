@@ -33,7 +33,11 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 
 ```
 tweet-shots/
-├── core.mjs                     # Rendering core (shared by CLI + API)
+├── core.mjs                     # Re-export hub (backward-compatible entry point)
+├── tweet-fetch.mjs              # Tweet ID extraction, data fetching, thread walking
+├── tweet-html.mjs               # HTML template generation, themes, gradients
+├── tweet-render.mjs             # Satori/Resvg rendering pipeline, font loading
+├── tweet-utils.mjs              # CLI-only utilities (translation, batch, PDF)
 ├── tweet-shots.mjs              # CLI entry point
 ├── landing.html                 # Marketing landing page
 ├── fonts/                       # Bundled Inter fonts (no runtime fetch)
