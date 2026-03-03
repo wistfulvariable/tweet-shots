@@ -92,6 +92,18 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Replace entity occurrences (e.g. @mention, #hashtag) with colored spans. */
+function colorizeEntities(text, entities, prefix, textKey, linkColor) {
+  let result = text;
+  for (const entity of entities) {
+    result = result.replace(
+      new RegExp(`${prefix}${escapeRegExp(entity[textKey])}`, 'gi'),
+      `<span style="color: ${linkColor}">${prefix}${entity[textKey]}</span>`
+    );
+  }
+  return result;
+}
+
 // Get high-resolution profile image URL (Twitter uses _normal for 48x48 thumbnails)
 export function getHighResProfileUrl(user) {
   return user?.profile_image_url_https?.replace('_normal', '_400x400') || '';
@@ -209,24 +221,12 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     }
   }
 
-  // Handle user mentions - make them blue
+  // Handle user mentions and hashtags — make them blue
   if (tweet.entities?.user_mentions) {
-    for (const mention of tweet.entities.user_mentions) {
-      tweetText = tweetText.replace(
-        new RegExp(`@${escapeRegExp(mention.screen_name)}`, 'gi'),
-        `<span style="color: ${finalColors.link}">@${mention.screen_name}</span>`
-      );
-    }
+    tweetText = colorizeEntities(tweetText, tweet.entities.user_mentions, '@', 'screen_name', finalColors.link);
   }
-
-  // Handle hashtags - make them blue
   if (tweet.entities?.hashtags) {
-    for (const hashtag of tweet.entities.hashtags) {
-      tweetText = tweetText.replace(
-        new RegExp(`#${escapeRegExp(hashtag.text)}`, 'gi'),
-        `<span style="color: ${finalColors.link}">#${hashtag.text}</span>`
-      );
-    }
+    tweetText = colorizeEntities(tweetText, tweet.entities.hashtags, '#', 'text', finalColors.link);
   }
 
   const verifiedBadge = isVerified ? verifiedBadgeSvg(finalColors.link, 18) : '';
