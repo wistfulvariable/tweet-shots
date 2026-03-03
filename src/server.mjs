@@ -50,9 +50,18 @@ app.use((req, res, next) => {
   if (req.path === '/webhook/stripe') {
     let rawBody = '';
     req.on('data', chunk => { rawBody += chunk; });
+    req.on('error', (err) => {
+      logger.error({ err }, 'Webhook request stream error');
+      res.status(400).json({ error: 'Request stream error', code: 'STREAM_ERROR' });
+    });
     req.on('end', () => {
       req.rawBody = rawBody;
-      try { req.body = JSON.parse(rawBody || '{}'); } catch { req.body = {}; }
+      try {
+        req.body = JSON.parse(rawBody || '{}');
+      } catch (e) {
+        logger.warn({ parseError: e.message }, 'Webhook body JSON parse failed');
+        req.body = {};
+      }
       next();
     });
   } else {

@@ -41,13 +41,15 @@ export function createRenderPool({ size, logger } = {}) {
   function spawnWorker() {
     const worker = new Worker(WORKER_PATH);
 
-    worker.on('message', ({ id, result, error }) => {
+    worker.on('message', ({ id, result, error, errorName }) => {
       const task = pending.get(id);
       if (!task) return;
       pending.delete(id);
 
       if (error) {
-        task.reject(new Error(error));
+        const err = new Error(error);
+        if (errorName) err.name = errorName;
+        task.reject(err);
       } else {
         // Re-wrap transferred ArrayBuffer into a Buffer
         if (result?.data && result.data instanceof ArrayBuffer) {

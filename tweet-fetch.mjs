@@ -9,6 +9,12 @@ import { AppError } from './src/errors.mjs';
 // TWEET ID EXTRACTION
 // ============================================================================
 
+/**
+ * Extract a numeric tweet ID from a URL or raw ID string.
+ * @param {string} input - Tweet URL (twitter.com or x.com) or numeric ID
+ * @returns {string} The numeric tweet ID
+ * @throws {AppError} If the input doesn't contain a valid tweet ID
+ */
 export function extractTweetId(input) {
   // Handle direct ID
   if (/^\d+$/.test(input)) {
@@ -30,6 +36,12 @@ export function extractTweetId(input) {
 // TWEET DATA FETCHING
 // ============================================================================
 
+/**
+ * Fetch tweet data from Twitter's syndication API.
+ * @param {string} tweetId - Numeric tweet ID
+ * @returns {Promise<object>} Tweet data object with text, user, entities, etc.
+ * @throws {AppError} 404 if not found, 429 if rate limited, 502 for other upstream errors
+ */
 export async function fetchTweet(tweetId) {
   const token = Math.floor(Math.random() * 1000000);
   const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&token=${token}`;
@@ -37,7 +49,10 @@ export async function fetchTweet(tweetId) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`, 404);
+    // Map upstream status to appropriate client-facing status:
+    // 404 → tweet not found, 429 → rate limited, anything else → bad gateway
+    const status = response.status === 404 ? 404 : response.status === 429 ? 429 : 502;
+    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`, status);
   }
 
   const data = await response.json();
@@ -53,7 +68,13 @@ export async function fetchTweet(tweetId) {
 // THREAD WALKING
 // ============================================================================
 
-// Fetch a thread (conversation) starting from a tweet
+/**
+ * Fetch a thread (conversation) starting from a tweet.
+ * Walks parent chain to find earlier tweets by the same author.
+ * @param {string} tweetId - Numeric tweet ID
+ * @returns {Promise<object[]>} Array of tweet data objects, oldest first
+ * @throws {AppError} If the initial tweet cannot be fetched
+ */
 export async function fetchThread(tweetId) {
   const tweets = [];
 

@@ -15,9 +15,16 @@ export class AppError extends Error {
 /**
  * Send a standardized error JSON response.
  * AppError → uses its statusCode + message; plain Error → generic 500.
+ * @param {object} res - Express response object
+ * @param {Error} err - The error to send
+ * @param {string} code - SCREAMING_SNAKE_CASE error code
+ * @param {object} [logger] - Optional pino logger for server-side logging of 500s
  */
-export function sendRouteError(res, err, code) {
+export function sendRouteError(res, err, code, logger) {
   const status = err instanceof AppError ? err.statusCode : 500;
+  if (status >= 500 && logger) {
+    logger.error({ err, code }, 'Internal error in route handler');
+  }
   res.status(status).json({
     error: status >= 500 ? 'Internal server error' : err.message,
     code,

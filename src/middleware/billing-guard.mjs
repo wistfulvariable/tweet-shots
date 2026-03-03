@@ -8,6 +8,7 @@
  */
 
 import { trackAndEnforce } from '../services/usage.mjs';
+import { TIERS } from '../config.mjs';
 
 export function billingGuard(logger) {
   return async (req, res, next) => {
@@ -34,6 +35,10 @@ export function billingGuard(logger) {
     } catch (err) {
       logger.error({ err, apiKey: apiKey.slice(0, 12) + '...' }, 'Usage tracking failed');
       // Fail open — render still works, usage just not tracked
+      // Still set headers so clients know tracking was unavailable
+      const tierLimit = TIERS[keyData.tier]?.monthlyCredits ?? TIERS.free.monthlyCredits;
+      res.set('X-Credits-Limit', String(tierLimit));
+      res.set('X-Credits-Remaining', 'unknown');
       next();
     }
   };

@@ -18,6 +18,10 @@ parentPort.on('message', async ({ id, tweet, options }) => {
       [buffer.buffer]
     );
   } catch (err) {
-    parentPort.postMessage({ id, error: err.message });
+    parentPort.postMessage({
+      id,
+      error: err?.message ?? String(err),
+      errorName: err?.name,
+    });
   }
 });

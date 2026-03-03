@@ -32,9 +32,19 @@ export const DIMENSIONS = {
 // IMAGE UTILITIES
 // ============================================================================
 
+/**
+ * Fetch a remote image and convert it to a base64 data URI.
+ * Returns null on any failure (non-OK response, network error).
+ * @param {string} url - Image URL to fetch
+ * @returns {Promise<string|null>} Base64 data URI or null on failure
+ */
 export async function fetchImageAsBase64(url) {
   try {
     const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Image fetch failed (${response.status}):`, url);
+      return null;
+    }
     const buffer = await response.arrayBuffer();
     const base64 = Buffer.from(buffer).toString('base64');
     const contentType = response.headers.get('content-type') || 'image/jpeg';
@@ -82,6 +92,12 @@ async function preFetchMediaImages(tweet, { onlyFirst = false } = {}) {
 // Module-level font cache — loaded once per process
 let _cachedFonts = null;
 
+/**
+ * Load Inter fonts from bundled WOFF files, falling back to network fetch.
+ * Cached after first call — subsequent calls return the same array.
+ * @returns {Promise<Array<{name: string, data: ArrayBuffer, weight: number, style: string}>>}
+ * @throws {Error} If no fonts could be loaded from any source
+ */
 export async function loadFonts() {
   if (_cachedFonts) return _cachedFonts;
 
@@ -105,7 +121,9 @@ export async function loadFonts() {
         new Uint8Array(ab).set(buf);
         fonts.push({ name: 'Inter', data: ab, weight, style: 'normal' });
       }
-    } catch { /* fall through to network fetch */ }
+    } catch (e) {
+      console.error(`Failed to read bundled font ${file}:`, e.message);
+    }
   }
 
   // Fall back to network fetch if bundled fonts not found
@@ -171,6 +189,14 @@ function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetric
 // RENDERING
 // ============================================================================
 
+/**
+ * Render a tweet to a PNG or SVG image.
+ * Pre-fetches all remote images to base64, generates HTML, runs through Satori+Resvg.
+ * Note: mutates tweet object in-place by replacing image URLs with base64 data URIs.
+ * @param {object} tweet - Tweet data from fetchTweet()
+ * @param {object} [options] - Render options (theme, format, scale, etc.)
+ * @returns {Promise<{data: Buffer, format: string, contentType: string}>}
+ */
 export async function renderTweetToImage(tweet, options = {}) {
   const {
     theme = 'dark',

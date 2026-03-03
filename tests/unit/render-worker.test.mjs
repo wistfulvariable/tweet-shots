@@ -107,7 +107,7 @@ describe('render-worker', () => {
     expect(transferList[0]).toBeInstanceOf(ArrayBuffer);
   });
 
-  it('posts error message with id and err.message on rejection', async () => {
+  it('posts error message with id, err.message, and errorName on rejection', async () => {
     renderTweetToImage.mockRejectedValue(new Error('Render exploded'));
 
     await emitMessage({ id: 'err-1', tweet: fakeTweet, options: fakeOptions });
@@ -115,6 +115,7 @@ describe('render-worker', () => {
     expect(fakeParentPort.postMessage).toHaveBeenCalledWith({
       id: 'err-1',
       error: 'Render exploded',
+      errorName: 'Error',
     });
   });
 
@@ -128,17 +129,19 @@ describe('render-worker', () => {
     expect(fakeParentPort.postMessage).toHaveBeenCalledWith({
       id: 'err-2',
       error: 'Sync kaboom',
+      errorName: 'Error',
     });
   });
 
-  it('posts undefined error message when error has no message property', async () => {
+  it('stringifies non-Error rejections and sends undefined errorName', async () => {
     renderTweetToImage.mockRejectedValue({ code: 'UNKNOWN' });
 
     await emitMessage({ id: 'err-3', tweet: fakeTweet, options: fakeOptions });
 
     expect(fakeParentPort.postMessage).toHaveBeenCalledWith({
       id: 'err-3',
-      error: undefined,
+      error: '[object Object]',
+      errorName: undefined,
     });
   });
 
