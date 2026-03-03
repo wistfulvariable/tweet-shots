@@ -63,8 +63,11 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 ## Error Handling (tweet-fetch.mjs)
 
 ```js
-if (!response.ok) throw new AppError(`Failed to fetch tweet: ${response.status}`, 404);
+// Map upstream status — never expose raw HTTP details
+if (response.status === 404) throw new AppError('Tweet not found or is no longer available', 404);
+if (response.status === 429) throw new AppError('Twitter rate limit reached...', 429);
+if (!response.ok) throw new AppError('Unable to retrieve tweet...', 502);
 if (!data.text) throw new AppError('Tweet not found or unavailable', 404);
 ```
 
-Both CLI and API use `fetchTweet()` from `tweet-fetch.mjs` (re-exported via `core.mjs`) with `!data.text` as availability check.
+Both CLI and API use `fetchTweet()` from `tweet-fetch.mjs` with `!data.text` as availability check. Routes import directly from `tweet-fetch.mjs`, not `core.mjs`.

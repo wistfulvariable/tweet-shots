@@ -250,9 +250,17 @@ gcloud run deploy tweet-shots-api \
 
 Rule: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEMORY.md. One feature only → sub-memory. Single line → inline comment.
 
-**Topic files** (load when working on that area):
+**Topic files** (in `.claude/memory/`, load when working on that area):
 
 | File | When to load |
 |---|---|
 | `testing.md` | Writing or fixing tests |
-| `debugging.md` | Font rendering bugs, diagnostic techniques |
+| `rendering-pipeline.md` | Satori, Resvg, fonts, workers, image pre-fetch |
+| `billing-stripe.md` | Stripe integration, webhooks, tier changes |
+| `data-model.md` | Firestore schemas, queries, usage tracking |
+| `api-endpoints.md` | Adding/modifying routes, request/response shapes |
+| `deployment.md` | Docker, Cloud Run, Secret Manager, CI/CD |
+| `pitfalls.md` | Active gotchas and known limitations |
+| `security.md` | Auth boundaries, input validation, accepted risks |
+| `feature-inventory.md` | CLI/API features, rendering options, unsupported |
+| `twitter-api.md` | Syndication API, tweet data shapes, limitations |

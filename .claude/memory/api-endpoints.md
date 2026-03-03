@@ -22,6 +22,7 @@
 | GET | `/admin/keys` | Admin key | admin auth → handler |
 | DELETE | `/admin/keys/:key` | Admin key | admin auth → handler |
 | GET | `/admin/usage` | Admin key | admin auth → handler |
+| GET | `/demo/screenshot/:tweetIdOrUrl` | None | demoLimiter (5/min by IP) → validate(query) → handler |
 
 ## GET /screenshot Query Params → Render Options
 
@@ -53,11 +54,12 @@ All in `src/schemas/request-schemas.mjs`:
 - `signupSchema` — email required
 - `checkoutSchema` — email + tier (pro/business only)
 - `portalSchema` — email + optional returnUrl
+- `demoQuerySchema` — subset of screenshotQuerySchema (no format, scale, or custom colors)
 
 ## Error Response Format
 
-All errors: `{ error: "message", code: "SCREAMING_SNAKE_CASE" }`.
-Validation errors add: `{ details: [{ field, message }] }`.
+All errors: `{ error: "message", code: "SCREAMING_SNAKE_CASE", requestId?: "uuid" }`.
+Validation errors add: `{ details: [{ field, message }] }`. `requestId` included when `req.id` is available (middleware and route errors, not validation).
 
 ## Response Headers (Authenticated Requests)
 
@@ -66,3 +68,4 @@ Validation errors add: `{ details: [{ field, message }] }`.
 - `X-Credits-Remaining` — Remaining credits
 - `X-Tweet-ID` — Tweet ID (screenshot routes)
 - `X-Tweet-Author` — Tweet author handle (screenshot routes)
+- `X-Render-Time-Ms` — Render duration in ms (screenshot + demo routes)

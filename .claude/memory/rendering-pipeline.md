@@ -35,7 +35,7 @@ Before Satori call, `renderTweetToImage()` replaces all URLs with base64 data UR
 - Quote tweet: profile pic + first media image
 - Logo (if provided)
 
-`fetchImageAsBase64()` returns `null` on failure (silent degradation — image simply missing).
+`fetchImageAsBase64()` has 10s per-image timeout via AbortController. Returns `null` on failure (silent degradation — image simply missing). Twitter CDN images capped at `medium` size (1200px) — `large` (2048px) causes timeouts on multi-image tweets.
 
 ## Height Estimation
 
@@ -49,7 +49,9 @@ No retry or overflow detection. Known limitation — CJK text and heavy newlines
 
 ## Worker Thread Pool
 
-`render-pool.mjs` manages N workers (default: `cpus - 1`, min 2). Each worker imports `core.mjs` independently. Image buffers are transferred (not copied) via `postMessage` transferable. Pool auto-replaces crashed workers. Skipped in test env (`NODE_ENV=test`).
+`render-pool.mjs` manages N workers (default: `cpus - 1`, min 2). Each worker imports `tweet-render.mjs` directly. Image buffers are transferred (not copied) via `postMessage` transferable. Pool auto-replaces crashed workers. Skipped in test env (`NODE_ENV=test`).
+
+Dynamic timeout: `30s base + 5s per media image, max 60s`. `countMediaImages()` counts main + quote tweet images. Timeout errors return 504 with `RENDER_TIMEOUT` code. `settled` flag prevents race between timeout and successful completion.
 
 ## Scale Factor
 
