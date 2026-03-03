@@ -363,6 +363,36 @@ function getFirstMediaUrl(tweet) {
   return tweet.mediaDetails?.[0]?.media_url_https || tweet.photos?.[0]?.url;
 }
 
+// Pre-fetch a user's profile image and replace URL with base64 data URI in-place
+async function preFetchProfileImage(user) {
+  if (user?.profile_image_url_https) {
+    const base64 = await fetchImageAsBase64(getHighResProfileUrl(user));
+    if (base64) user.profile_image_url_https = base64;
+  }
+}
+
+// Pre-fetch media images from mediaDetails + photos arrays, replacing URLs with base64 in-place.
+// When onlyFirst is true, only the first image from each array is fetched (used for quote tweets).
+async function preFetchMediaImages(tweet, { onlyFirst = false } = {}) {
+  const limit = onlyFirst ? 1 : Infinity;
+  if (tweet.mediaDetails) {
+    for (let i = 0; i < Math.min(tweet.mediaDetails.length, limit); i++) {
+      if (tweet.mediaDetails[i].media_url_https) {
+        const base64 = await fetchImageAsBase64(tweet.mediaDetails[i].media_url_https);
+        if (base64) tweet.mediaDetails[i].media_url_https = base64;
+      }
+    }
+  }
+  if (tweet.photos) {
+    for (let i = 0; i < Math.min(tweet.photos.length, limit); i++) {
+      if (tweet.photos[i].url) {
+        const base64 = await fetchImageAsBase64(tweet.photos[i].url);
+        if (base64) tweet.photos[i].url = base64;
+      }
+    }
+  }
+}
+
 // Verified badge SVG — reused for main tweet (18px) and quote tweet (14px)
 function verifiedBadgeSvg(color, size = 18) {
   const ml = size >= 18 ? 4 : 2;
@@ -726,55 +756,12 @@ export async function renderTweetToImage(tweet, options = {}) {
     logoSize = 40,
   } = options;
 
-  // Pre-fetch profile image and convert to base64
-  if (tweet.user?.profile_image_url_https) {
-    const base64 = await fetchImageAsBase64(getHighResProfileUrl(tweet.user));
-    if (base64) {
-      tweet.user.profile_image_url_https = base64;
-    }
-  }
-
-  // Pre-fetch media images (from mediaDetails or photos)
-  if (tweet.mediaDetails) {
-    for (let i = 0; i < tweet.mediaDetails.length; i++) {
-      if (tweet.mediaDetails[i].media_url_https) {
-        const base64 = await fetchImageAsBase64(tweet.mediaDetails[i].media_url_https);
-        if (base64) {
-          tweet.mediaDetails[i].media_url_https = base64;
-        }
-      }
-    }
-  }
-  if (tweet.photos) {
-    for (let i = 0; i < tweet.photos.length; i++) {
-      const base64 = await fetchImageAsBase64(tweet.photos[i].url);
-      if (base64) {
-        tweet.photos[i].url = base64;
-      }
-    }
-  }
-
-  // Pre-fetch quote tweet images
+  // Pre-fetch all remote images and replace URLs with base64 data URIs
+  await preFetchProfileImage(tweet.user);
+  await preFetchMediaImages(tweet);
   if (tweet.quoted_tweet) {
-    const qt = tweet.quoted_tweet;
-    if (qt.user?.profile_image_url_https) {
-      const base64 = await fetchImageAsBase64(getHighResProfileUrl(qt.user));
-      if (base64) {
-        qt.user.profile_image_url_https = base64;
-      }
-    }
-    if (qt.mediaDetails?.[0]?.media_url_https) {
-      const base64 = await fetchImageAsBase64(qt.mediaDetails[0].media_url_https);
-      if (base64) {
-        qt.mediaDetails[0].media_url_https = base64;
-      }
-    }
-    if (qt.photos?.[0]?.url) {
-      const base64 = await fetchImageAsBase64(qt.photos[0].url);
-      if (base64) {
-        qt.photos[0].url = base64;
-      }
-    }
+    await preFetchProfileImage(tweet.quoted_tweet.user);
+    await preFetchMediaImages(tweet.quoted_tweet, { onlyFirst: true });
   }
 
   // Pre-fetch logo if provided
