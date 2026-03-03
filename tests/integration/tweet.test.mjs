@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
 import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
+import { AppError } from '../../src/errors.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ describe('GET /tweet/:tweetIdOrUrl', () => {
 
   it('returns 400 for invalid tweet ID', async () => {
     extractTweetId.mockImplementation(() => {
-      throw new Error('Could not extract tweet ID from: invalid');
+      throw new AppError('Could not extract tweet ID from: invalid');
     });
 
     const res = await fetch(`${baseUrl}/tweet/invalid`, {
@@ -134,7 +135,7 @@ describe('GET /tweet/:tweetIdOrUrl', () => {
   });
 
   it('returns 400 when tweet fetch fails', async () => {
-    fetchTweet.mockRejectedValue(new Error('Failed to fetch tweet: 404'));
+    fetchTweet.mockRejectedValue(new AppError('Failed to fetch tweet: 404'));
 
     const res = await fetch(`${baseUrl}/tweet/1234567890`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },

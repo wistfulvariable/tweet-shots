@@ -11,6 +11,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
 import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
+import { AppError } from '../../src/errors.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -445,7 +446,7 @@ describe('Contract: GET /screenshot/:tweetIdOrUrl', () => {
   });
 
   it('returns SCREENSHOT_FAILED error shape on tweet fetch failure', async () => {
-    fetchTweet.mockRejectedValue(new Error('Tweet not found'));
+    fetchTweet.mockRejectedValue(new AppError('Tweet not found'));
     const res = await fetch(`${baseUrl}/screenshot/999`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
     });
@@ -526,13 +527,14 @@ describe('Contract: POST /screenshot', () => {
     }
   });
 
-  it('SCREENSHOT_FAILED error has correct shape', async () => {
+  it('SCREENSHOT_FAILED error has correct shape (internal error → 500)', async () => {
     renderTweetToImage.mockRejectedValue(new Error('Satori crash'));
     const res = await post({ tweetId: '1234567890' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
 
     const body = await res.json();
     expectErrorShape(body, 'SCREENSHOT_FAILED');
+    expect(body.error).toBe('Internal server error');
   });
 });
 
@@ -568,7 +570,7 @@ describe('Contract: GET /tweet/:tweetIdOrUrl', () => {
   });
 
   it('FETCH_FAILED error has correct shape', async () => {
-    fetchTweet.mockRejectedValue(new Error('404 Not Found'));
+    fetchTweet.mockRejectedValue(new AppError('404 Not Found'));
     const res = await fetch(`${baseUrl}/tweet/999`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
     });

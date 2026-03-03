@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { extractTweetId, fetchTweet } from '../../core.mjs';
+import { AppError } from '../errors.mjs';
 
 /**
  * @param {object} deps
@@ -24,7 +25,11 @@ export function tweetRoutes({ authenticate, applyRateLimit, billingGuard, logger
       res.json({ success: true, tweetId, data: tweet });
     } catch (err) {
       logger.error({ err, tweetIdOrUrl: req.params.tweetIdOrUrl }, 'Tweet fetch failed');
-      res.status(400).json({ error: err.message, code: 'FETCH_FAILED' });
+      const status = err instanceof AppError ? err.statusCode : 500;
+      res.status(status).json({
+        error: status >= 500 ? 'Internal server error' : err.message,
+        code: 'FETCH_FAILED',
+      });
     }
   });
 
