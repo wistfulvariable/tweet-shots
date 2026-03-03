@@ -102,14 +102,14 @@ tweet-shots/
 - Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
 - Keep API key strings stable across tier changes (only update the tier field)
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
-- Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `sendRouteError(res, err, code)` which maps `AppError` to its `statusCode` and plain `Error` to 500 with generic message
+- Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `sendRouteError(res, err, code, logger)` which maps `AppError` to its `statusCode` and plain `Error` to 500 with generic message. Always pass `logger` so 500s get logged server-side.
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
 - Use HTML attributes for `<img>` width/height (`width="80"`) — satori-html parses them as strings, satori 0.24+ rejects non-numeric values. Use CSS style instead: `style="width: 80px; height: 80px;"`
 - Render images directly from remote URLs in HTML — must convert to data URIs first
-- Block the event loop with synchronous rendering — use the worker thread pool
+- Block the event loop with synchronous rendering — use the worker thread pool (30s timeout per render; hung Satori/Resvg renders reject automatically)
 - Bypass Firestore for data storage — no local JSON files
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
 - Create express-rate-limit instances inside request handlers — pre-create at module load
@@ -207,10 +207,10 @@ node tweet-shots.mjs <tweet-url-or-id> [options]
 docker build -t tweet-shots .
 docker run -p 8080:8080 -e ADMIN_KEY=<secret> tweet-shots
 
-# Cloud Run
+# Cloud Run (source deploy — builds Docker image automatically)
 gcloud run deploy tweet-shots-api \
-  --image <tag> --region us-central1 --allow-unauthenticated \
-  --port 8080 --memory 1Gi --cpu 2
+  --source . --region us-central1 --allow-unauthenticated \
+  --port 8080 --memory 1Gi --cpu 2 --project tweet-shots-api
 ```
 
 ---
