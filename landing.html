@@ -95,18 +95,189 @@
       padding: 60px 0;
       text-align: center;
     }
-    
+
+    .demo h2 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .demo-form {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .demo-input-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .demo-input {
+      flex: 1;
+      padding: 14px 16px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .demo-input:focus { border-color: var(--accent); }
+    .demo-input::placeholder { color: var(--text-secondary); }
+
+    .demo-btn {
+      white-space: nowrap;
+      min-width: 120px;
+    }
+
+    .demo-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .demo-options {
+      display: grid;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .demo-label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .demo-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .demo-chip {
+      padding: 6px 14px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .demo-chip:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .demo-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .demo-select {
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.875rem;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .demo-select option { background: var(--card); }
+
+    .demo-toggles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .demo-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .demo-toggle input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+    }
+
+    .demo-result {
+      max-width: 700px;
+      margin: 30px auto 0;
+    }
+
+    .demo-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .demo-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .demo-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      color: #fca5a5;
+      text-align: center;
+    }
+
     .demo-preview {
-      margin: 40px auto;
+      margin: 0 auto;
       max-width: 600px;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
     }
-    
+
     .demo-preview img {
       width: 100%;
       display: block;
+    }
+
+    .demo-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .demo-fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
     /* Features */
@@ -293,12 +464,91 @@
     </div>
   </section>
   
-  <section class="demo">
+  <section class="demo" id="demo">
     <div class="container">
-      <h2>One API call. Beautiful results.</h2>
-      <div class="demo-preview">
-        <img src="/screenshot/1617979122625712128?theme=dark&apiKey=demo" alt="Tweet Screenshot Demo" 
-             onerror="this.src='https://via.placeholder.com/590x316/1e293b/ffffff?text=Tweet+Screenshot'">
+      <h2>Try it live</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 30px;">
+        Paste a tweet URL and customize your screenshot. No API key needed.
+      </p>
+
+      <div class="demo-form">
+        <div class="demo-input-row">
+          <input type="text" id="demo-url" class="demo-input"
+                 placeholder="Paste tweet URL or ID (e.g. https://x.com/user/status/123...)"
+                 autocomplete="off">
+          <button id="demo-generate" class="btn btn-primary demo-btn">Generate</button>
+        </div>
+
+        <div class="demo-options">
+          <div class="demo-option-group">
+            <label class="demo-label">Theme</label>
+            <div class="demo-chips" id="demo-theme">
+              <button class="demo-chip active" data-value="dark">Dark</button>
+              <button class="demo-chip" data-value="light">Light</button>
+              <button class="demo-chip" data-value="dim">Dim</button>
+              <button class="demo-chip" data-value="black">Black</button>
+            </div>
+          </div>
+
+          <div class="demo-option-group">
+            <label class="demo-label">Gradient</label>
+            <div class="demo-chips" id="demo-gradient">
+              <button class="demo-chip active" data-value="">None</button>
+              <button class="demo-chip" data-value="sunset">Sunset</button>
+              <button class="demo-chip" data-value="ocean">Ocean</button>
+              <button class="demo-chip" data-value="forest">Forest</button>
+              <button class="demo-chip" data-value="fire">Fire</button>
+              <button class="demo-chip" data-value="midnight">Midnight</button>
+              <button class="demo-chip" data-value="sky">Sky</button>
+              <button class="demo-chip" data-value="candy">Candy</button>
+              <button class="demo-chip" data-value="peach">Peach</button>
+            </div>
+          </div>
+
+          <div class="demo-option-group">
+            <label class="demo-label">Dimension</label>
+            <select id="demo-dimension" class="demo-select">
+              <option value="auto" selected>Auto (550px)</option>
+              <option value="instagramFeed">Instagram Feed (1080x1080)</option>
+              <option value="instagramStory">Instagram Story (1080x1920)</option>
+              <option value="instagramVertical">Instagram Vertical (1080x1350)</option>
+              <option value="tiktok">TikTok (1080x1920)</option>
+              <option value="linkedin">LinkedIn (1200x627)</option>
+              <option value="twitter">Twitter (1200x675)</option>
+              <option value="facebook">Facebook (1200x630)</option>
+              <option value="youtube">YouTube (1280x720)</option>
+            </select>
+          </div>
+
+          <div class="demo-option-group">
+            <label class="demo-label">Display Options</label>
+            <div class="demo-toggles">
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideMetrics"> Hide metrics</label>
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideMedia"> Hide media</label>
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideDate"> Hide date</label>
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideVerified"> Hide verified badge</label>
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideQuoteTweet"> Hide quote tweet</label>
+              <label class="demo-toggle"><input type="checkbox" id="demo-hideShadow"> Hide shadow</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="demo-result" class="demo-result" style="display: none;">
+        <div id="demo-loading" class="demo-loading" style="display: none;">
+          <div class="demo-spinner"></div>
+          <p id="demo-loading-text">Generating screenshot...</p>
+        </div>
+        <div id="demo-error" class="demo-error" style="display: none;"></div>
+        <div id="demo-image-container" style="display: none;">
+          <div class="demo-preview">
+            <img id="demo-image" alt="Generated tweet screenshot">
+          </div>
+          <div class="demo-actions">
+            <a id="demo-download" class="btn btn-primary" download="tweet-screenshot.png">Download PNG</a>
+            <button id="demo-copy-api" class="btn btn-secondary">Copy API call</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -408,5 +658,164 @@
       <p style="margin-top: 10px;"><a href="/docs">API Docs</a> · <a href="https://github.com/wistfulvariable/tweet-shots">GitHub</a></p>
     </div>
   </footer>
+
+  <script>
+  (function() {
+    'use strict';
+
+    var urlInput = document.getElementById('demo-url');
+    var generateBtn = document.getElementById('demo-generate');
+    var resultArea = document.getElementById('demo-result');
+    var loadingEl = document.getElementById('demo-loading');
+    var errorEl = document.getElementById('demo-error');
+    var imageContainer = document.getElementById('demo-image-container');
+    var imageEl = document.getElementById('demo-image');
+    var downloadLink = document.getElementById('demo-download');
+    var copyApiBtn = document.getElementById('demo-copy-api');
+    var dimensionSelect = document.getElementById('demo-dimension');
+
+    var currentBlobUrl = null;
+    var loadingTextEl = document.getElementById('demo-loading-text');
+    var loadingTimer = null;
+
+    // Chip picker — toggle active state within each group
+    document.querySelectorAll('.demo-chips').forEach(function(group) {
+      group.addEventListener('click', function(e) {
+        var chip = e.target.closest('.demo-chip');
+        if (!chip) return;
+        group.querySelectorAll('.demo-chip').forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      });
+    });
+
+    function getSelectedValue(groupId) {
+      var active = document.querySelector('#' + groupId + ' .demo-chip.active');
+      return active ? active.dataset.value : '';
+    }
+
+    function buildQueryString() {
+      var params = new URLSearchParams();
+
+      var theme = getSelectedValue('demo-theme');
+      if (theme && theme !== 'dark') params.set('theme', theme);
+
+      var gradient = getSelectedValue('demo-gradient');
+      if (gradient) params.set('gradient', gradient);
+
+      var dimension = dimensionSelect.value;
+      if (dimension !== 'auto') params.set('dimension', dimension);
+
+      var toggles = ['hideMetrics', 'hideMedia', 'hideDate', 'hideVerified', 'hideQuoteTweet', 'hideShadow'];
+      toggles.forEach(function(id) {
+        if (document.getElementById('demo-' + id).checked) params.set(id, 'true');
+      });
+
+      return params.toString();
+    }
+
+    function showLoading() {
+      resultArea.style.display = 'block';
+      loadingEl.style.display = 'block';
+      errorEl.style.display = 'none';
+      imageContainer.style.display = 'none';
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
+      loadingTextEl.textContent = 'Generating screenshot...';
+      if (loadingTimer) clearInterval(loadingTimer);
+      var startTime = Date.now();
+      loadingTimer = setInterval(function() {
+        var elapsed = Math.floor((Date.now() - startTime) / 1000);
+        if (elapsed >= 5) {
+          loadingTextEl.textContent = 'Still rendering... (' + elapsed + 's) Tweets with images take longer.';
+        }
+      }, 1000);
+    }
+
+    function stopLoadingTimer() {
+      if (loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }
+    }
+
+    function showError(message) {
+      stopLoadingTimer();
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+      errorEl.textContent = message;
+      imageContainer.style.display = 'none';
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate';
+    }
+
+    function showImage(blobUrl) {
+      stopLoadingTimer();
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = blobUrl;
+
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'none';
+      imageContainer.style.display = 'block';
+      imageContainer.classList.remove('demo-fade-in');
+      void imageContainer.offsetWidth; // force reflow for animation restart
+      imageContainer.classList.add('demo-fade-in');
+
+      imageEl.src = blobUrl;
+      downloadLink.href = blobUrl;
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate';
+    }
+
+    async function generate() {
+      var input = urlInput.value.trim();
+      if (!input) { urlInput.focus(); return; }
+
+      showLoading();
+
+      var qs = buildQueryString();
+      var encodedInput = encodeURIComponent(input);
+      var url = '/demo/screenshot/' + encodedInput + (qs ? '?' + qs : '');
+
+      try {
+        var response = await fetch(url);
+
+        if (!response.ok) {
+          var body = await response.json().catch(function() { return null; });
+          if (response.status === 429) {
+            showError(body && body.error ? body.error : 'Rate limit reached. Please wait a moment and try again.');
+          } else if (response.status === 504) {
+            showError(body && body.error ? body.error : 'This tweet took too long to render. Try checking "Hide media" or using a different tweet.');
+          } else if (response.status === 400) {
+            showError(body && body.error ? body.error : 'Invalid tweet URL or ID. Please check and try again.');
+          } else {
+            showError(body && body.error ? body.error : 'Something went wrong. Please try again.');
+          }
+          return;
+        }
+
+        var blob = await response.blob();
+        showImage(URL.createObjectURL(blob));
+      } catch (err) {
+        showError('Network error. Please check your connection and try again.');
+      }
+    }
+
+    function copyApiCall() {
+      var input = urlInput.value.trim();
+      if (!input) return;
+
+      var qs = buildQueryString();
+      var encodedInput = encodeURIComponent(input);
+      var apiCall = 'curl "' + window.location.origin + '/screenshot/' + encodedInput + (qs ? '?' + qs : '') + '" \\\n  -H "X-API-KEY: your-api-key" \\\n  -o tweet.png';
+
+      navigator.clipboard.writeText(apiCall).then(function() {
+        var original = copyApiBtn.textContent;
+        copyApiBtn.textContent = 'Copied!';
+        setTimeout(function() { copyApiBtn.textContent = original; }, 2000);
+      });
+    }
+
+    generateBtn.addEventListener('click', generate);
+    urlInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') generate(); });
+    copyApiBtn.addEventListener('click', copyApiCall);
+  })();
+  </script>
 </body>
 </html>

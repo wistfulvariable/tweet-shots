@@ -207,6 +207,28 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
     expect(body.code).toBe('SCREENSHOT_FAILED');
   });
 
+  it('returns 504 with RENDER_TIMEOUT code when render times out', async () => {
+    renderTweetToImage.mockRejectedValue(new Error('Render timed out after 30s'));
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(504);
+    const body = await res.json();
+    expect(body.code).toBe('RENDER_TIMEOUT');
+    expect(body.error).toContain('too long to render');
+    expect(body.error).toContain('hideMedia');
+  });
+
+  it('returns X-Render-Time-Ms header on successful render', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const renderTime = res.headers.get('x-render-time-ms');
+    expect(renderTime).toBeDefined();
+    expect(Number(renderTime)).toBeGreaterThanOrEqual(0);
+  });
+
   it('applies gradient from query param', async () => {
     await fetch(`${baseUrl}/screenshot/1234567890?gradient=sunset`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
@@ -375,6 +397,30 @@ describe('POST /screenshot', () => {
     const body = await res.json();
     expect(body.code).toBe('SCREENSHOT_FAILED');
     expect(body.error).toBe('An unexpected error occurred. Please try again later.');
+  });
+
+  it('returns 504 with RENDER_TIMEOUT code when render times out', async () => {
+    renderTweetToImage.mockRejectedValue(new Error('Render timed out after 50s'));
+    const res = await postScreenshot({ tweetId: '1234567890' });
+    expect(res.status).toBe(504);
+    const body = await res.json();
+    expect(body.code).toBe('RENDER_TIMEOUT');
+    expect(body.error).toContain('too long to render');
+  });
+
+  it('returns X-Render-Time-Ms header on image response', async () => {
+    const res = await postScreenshot({ tweetId: '1234567890' });
+    expect(res.status).toBe(200);
+    const renderTime = res.headers.get('x-render-time-ms');
+    expect(renderTime).toBeDefined();
+    expect(Number(renderTime)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('returns X-Render-Time-Ms header on base64 response', async () => {
+    const res = await postScreenshot({ tweetId: '1234567890', response: 'base64' });
+    expect(res.status).toBe(200);
+    const renderTime = res.headers.get('x-render-time-ms');
+    expect(renderTime).toBeDefined();
   });
 
   it('handles dimension presets', async () => {

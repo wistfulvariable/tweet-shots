@@ -108,6 +108,7 @@ All API errors follow this JSON structure:
 | Code | Trigger | Message |
 |---|---|---|
 | `SCREENSHOT_FAILED` | Render/fetch error (varies) | Varies by root cause (tweet not found, rate limited, or generic 500) |
+| `RENDER_TIMEOUT` | Render exceeds dynamic timeout (504) | This tweet took too long to render. Tweets with many large images may exceed the time limit. Try setting hideMedia=true or using a different tweet. |
 | `URL_NOT_CONFIGURED` | URL response without GCS (503) | URL response mode is not available. Use "image" or "base64" response type instead. |
 
 ### Webhook
@@ -117,10 +118,11 @@ All API errors follow this JSON structure:
 | `MISSING_SIGNATURE` | No stripe-signature header | Missing stripe-signature header |
 | `WEBHOOK_FAILED` | Signature/processing error | Webhook signature verification failed |
 
-### Demo (429)
+### Demo (429 / 504)
 | Code | Trigger | Message |
 |---|---|---|
 | `DEMO_RATE_LIMITED` | Demo IP rate limit (5/min) | Demo rate limit reached. Sign up for an API key for higher limits. |
+| `DEMO_RENDER_TIMEOUT` | Demo render exceeds dynamic timeout (504) | This tweet took too long to render. Tweets with many large images may exceed the time limit. Try checking "Hide media" or using a different tweet. |
 | `DEMO_SCREENSHOT_FAILED` | Demo render/fetch error (varies) | Varies by root cause (via sendRouteError) |
 
 ### Internal (500)

@@ -67,6 +67,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
     validate(screenshotQuerySchema, 'query'),
     async (req, res) => {
       try {
+        const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
         const tweet = await fetchTweet(tweetId);
         const options = buildRenderOptions(req.validated);
@@ -75,10 +76,18 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.set('Content-Type', result.contentType);
         res.set('X-Tweet-ID', tweetId);
         res.set('X-Tweet-Author', tweet.user?.screen_name || 'unknown');
+        res.set('X-Render-Time-Ms', String(Date.now() - start));
         res.send(result.data);
       } catch (err) {
         logger.error({ err, tweetIdOrUrl: req.params.tweetIdOrUrl }, 'GET screenshot failed');
-        sendRouteError(res, err, 'SCREENSHOT_FAILED');
+        if (err.message?.includes('timed out')) {
+          return res.status(504).json({
+            error: 'This tweet took too long to render. Tweets with many large images may exceed the time limit. Try setting hideMedia=true or using a different tweet.',
+            code: 'RENDER_TIMEOUT',
+            ...(req.id && { requestId: req.id }),
+          });
+        }
+        sendRouteError(res, err, 'SCREENSHOT_FAILED', logger);
       }
     }
   );
@@ -92,14 +101,17 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
     validate(screenshotBodySchema, 'body'),
     async (req, res) => {
       try {
+        const start = Date.now();
         const { tweetId: rawId, tweetUrl, response: responseType = 'image', ...rest } = req.validated;
         const tweetId = extractTweetId(rawId || tweetUrl);
         const tweet = await fetchTweet(tweetId);
         const options = buildRenderOptions(rest);
         const result = await render(tweet, options);
+        const renderTimeMs = String(Date.now() - start);
 
         // Base64 response
         if (responseType === 'base64') {
+          res.set('X-Render-Time-Ms', renderTimeMs);
           return res.json({
             success: true,
             tweetId,
@@ -119,6 +131,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
           const filename = `screenshots/${tweetId}-${Date.now()}.${result.format}`;
           const publicUrl = await upload(bucket, filename, result.data, result.contentType);
 
+          res.set('X-Render-Time-Ms', renderTimeMs);
           return res.json({
             success: true,
             tweetId,
@@ -132,10 +145,18 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.set('Content-Type', result.contentType);
         res.set('X-Tweet-ID', tweetId);
         res.set('X-Tweet-Author', tweet.user?.screen_name || 'unknown');
+        res.set('X-Render-Time-Ms', renderTimeMs);
         res.send(result.data);
       } catch (err) {
         logger.error({ err, tweetId: req.validated?.tweetId, tweetUrl: req.validated?.tweetUrl }, 'POST screenshot failed');
-        sendRouteError(res, err, 'SCREENSHOT_FAILED');
+        if (err.message?.includes('timed out')) {
+          return res.status(504).json({
+            error: 'This tweet took too long to render. Tweets with many large images may exceed the time limit. Try setting hideMedia to true or using a different tweet.',
+            code: 'RENDER_TIMEOUT',
+            ...(req.id && { requestId: req.id }),
+          });
+        }
+        sendRouteError(res, err, 'SCREENSHOT_FAILED', logger);
       }
     }
   );

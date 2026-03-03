@@ -63,6 +63,7 @@ const { screenshotRoutes } = await import('../../src/routes/screenshot.mjs');
 const { tweetRoutes } = await import('../../src/routes/tweet.mjs');
 const { adminRoutes } = await import('../../src/routes/admin.mjs');
 const { billingRoutes } = await import('../../src/routes/billing.mjs');
+const { demoRoutes } = await import('../../src/routes/demo.mjs');
 
 // ─── Server Setup ────────────────────────────────────────────────────────────
 
@@ -98,6 +99,9 @@ beforeAll(async () => {
     billingGuard: billingMiddleware,
     logger: mockLogger,
   }));
+
+  // Demo routes (public, no auth — must be mounted before admin gate)
+  app.use(demoRoutes({ demoRateLimit: passthroughRateLimit, renderPool: null, logger: mockLogger }));
 
   // BUG: Billing must be mounted BEFORE admin, because admin's router.use()
   // middleware blocks ALL requests without X-Admin-Key — including /billing/*
@@ -212,5 +216,20 @@ describe('Smoke Tests', () => {
     expect(body.tweetId).toBe('1234567890');
     expect(body.data).toBeDefined();
     expect(body.data.text).toBe(MOCK_TWEET.text);
+  });
+});
+
+// ─── Demo Endpoint ──────────────────────────────────────────────────────────
+
+describe('Demo endpoint', () => {
+  it('GET /demo/screenshot/<valid-tweet-id> returns 200', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890`);
+    expect(res.status).toBe(200);
+  });
+
+  it('response has content-type image/png', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/png');
   });
 });

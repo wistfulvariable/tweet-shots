@@ -39,7 +39,7 @@ tweet-shots/
 ├── tweet-render.mjs             # Satori/Resvg rendering pipeline, font loading
 ├── tweet-utils.mjs              # CLI-only utilities (translation, batch, PDF)
 ├── tweet-shots.mjs              # CLI entry point
-├── landing.html                 # Marketing landing page
+├── landing.html                 # Landing page with interactive demo (vanilla JS)
 ├── fonts/                       # Bundled Inter fonts (no runtime fetch)
 │   ├── Inter-Regular.woff
 │   └── Inter-Bold.woff
@@ -81,9 +81,9 @@ tweet-shots/
 ├── .npmrc                       # npm security settings (audit=true, save-exact)
 ├── audit-reports/               # Test coverage + security audit reports
 ├── tests/
-│   ├── smoke/                   # App-alive smoke tests (7 tests)
+│   ├── smoke/                   # App-alive smoke tests (9 tests)
 │   ├── unit/                    # Per-service unit tests (17 files)
-│   ├── integration/             # API endpoint tests (7 files)
+│   ├── integration/             # API endpoint tests (8 files)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
@@ -96,7 +96,7 @@ tweet-shots/
 ## Architectural Rules
 
 **DO:**
-- Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time
+- Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time. Use `preFetchAllImages()` in `tweet-render.mjs` which fetches all images in parallel via `Promise.all` and uses `twitterImageUrl()` to request optimally-sized Twitter CDN variants (`?name=small|medium`) based on render width/scale
 - Pass `display: flex` on every container element — Satori only supports Flexbox layout
 - Use `extractTweetId()` from `tweet-fetch.mjs` to normalize both URLs and raw IDs — import directly from sub-modules (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs`
 - Use unified `ts_<tier>_<uuid>` format for all API keys (single format everywhere)
@@ -111,7 +111,7 @@ tweet-shots/
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
 - Use HTML attributes for `<img>` width/height (`width="80"`) — satori-html parses them as strings, satori 0.24+ rejects non-numeric values. Use CSS style instead: `style="width: 80px; height: 80px;"`
 - Render images directly from remote URLs in HTML — must convert to data URIs first
-- Block the event loop with synchronous rendering — use the worker thread pool (30s timeout per render; hung Satori/Resvg renders reject automatically)
+- Block the event loop with synchronous rendering — use the worker thread pool (dynamic timeout: 30s base + 5s per media image, max 60s; hung Satori/Resvg renders reject automatically). Timeout errors return 504 with `RENDER_TIMEOUT` / `DEMO_RENDER_TIMEOUT` code
 - Bypass Firestore for data storage — no local JSON files
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
 - Create express-rate-limit instances inside request handlers — pre-create at module load
@@ -255,8 +255,4 @@ Rule: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEM
 | File | When to load |
 |---|---|
 | `testing.md` | Writing or fixing tests |
-| `rendering-pipeline.md` | Touching core.mjs, Satori, Resvg, fonts, workers |
-| `billing-stripe.md` | Stripe integration, webhook handling, tier changes |
-| `data-model.md` | Firestore schemas, queries, usage tracking |
-| `api-endpoints.md` | Adding/modifying API routes, request/response shapes |
-| `deployment.md` | Docker, Cloud Run, Secret Manager, CI/CD |
+| `debugging.md` | Font rendering bugs, diagnostic techniques |

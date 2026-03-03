@@ -15,7 +15,7 @@ import { createLogger } from './logger.mjs';
 
 // Middleware
 import { authenticate } from './middleware/authenticate.mjs';
-import { applyRateLimit } from './middleware/rate-limit.mjs';
+import { applyRateLimit, demoLimiter } from './middleware/rate-limit.mjs';
 import { billingGuard } from './middleware/billing-guard.mjs';
 import { errorHandler } from './middleware/error-handler.mjs';
 
@@ -26,6 +26,7 @@ import { screenshotRoutes } from './routes/screenshot.mjs';
 import { tweetRoutes } from './routes/tweet.mjs';
 import { adminRoutes } from './routes/admin.mjs';
 import { billingRoutes } from './routes/billing.mjs';
+import { demoRoutes } from './routes/demo.mjs';
 
 // Workers
 import { createRenderPool } from './workers/render-pool.mjs';
@@ -51,15 +52,15 @@ app.use((req, res, next) => {
     let rawBody = '';
     req.on('data', chunk => { rawBody += chunk; });
     req.on('error', (err) => {
-      logger.error({ err }, 'Webhook request stream error');
-      res.status(400).json({ error: 'Request stream error', code: 'STREAM_ERROR' });
+      logger.error({ err, path: req.path }, 'Webhook raw body stream error');
+      res.status(400).json({ error: 'Request body could not be read. Please retry.', code: 'STREAM_ERROR' });
     });
     req.on('end', () => {
       req.rawBody = rawBody;
       try {
         req.body = JSON.parse(rawBody || '{}');
       } catch (e) {
-        logger.warn({ parseError: e.message }, 'Webhook body JSON parse failed');
+        logger.warn({ err: e.message, bodyLength: rawBody.length }, 'Webhook body JSON parse failed — proceeding with empty body');
         req.body = {};
       }
       next();
@@ -88,6 +89,11 @@ const billingMiddleware = billingGuard(logger);
 // Public (no auth)
 app.use(landingRoutes());
 app.use(healthRoutes());
+app.use(demoRoutes({
+  demoRateLimit: demoLimiter(),
+  renderPool,
+  logger,
+}));
 
 // Authenticated routes
 app.use(screenshotRoutes({

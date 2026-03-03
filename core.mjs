@@ -19,7 +19,7 @@ export { extractTweetId, fetchTweet, fetchThread } from './tweet-fetch.mjs';
 export { THEMES, GRADIENTS, formatDate, formatNumber, generateTweetHtml, addLogoToHtml } from './tweet-html.mjs';
 
 // Rendering pipeline
-export { DIMENSIONS, fetchImageAsBase64, loadFonts, renderTweetToImage } from './tweet-render.mjs';
+export { DIMENSIONS, fetchImageAsBase64, loadFonts, renderTweetToImage, countMediaImages } from './tweet-render.mjs';
 
 // CLI utilities
 export { translateText, processBatch, generatePDF } from './tweet-utils.mjs';

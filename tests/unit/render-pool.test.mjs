@@ -86,6 +86,18 @@ vi.mock('os', () => ({
   cpus: () => Array(4).fill({}), // 4 CPUs → pool size of 3
 }));
 
+// Mock tweet-render.mjs — only countMediaImages is used by render-pool
+vi.mock('../../tweet-render.mjs', () => ({
+  countMediaImages: (tweet) => {
+    let count = 0;
+    if (tweet?.mediaDetails) count += tweet.mediaDetails.length;
+    else if (tweet?.photos) count += tweet.photos.length;
+    if (tweet?.quoted_tweet?.mediaDetails) count += tweet.quoted_tweet.mediaDetails.length;
+    else if (tweet?.quoted_tweet?.photos) count += tweet.quoted_tweet.photos.length;
+    return count;
+  },
+}));
+
 const { createRenderPool } = await import('../../src/workers/render-pool.mjs');
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -309,7 +321,7 @@ describe('worker error recovery', () => {
     expect(createdWorkers.length).toBe(initialCount);
   });
 
-  it('rejects with timeout error when render exceeds 30s', async () => {
+  it('rejects with timeout error when render exceeds base 30s (no media)', async () => {
     // Worker that never responds — simulates a hung render
     const hungWorker = new MockWorker();
     hungWorker.postMessage = function (msg) { this.messages.push(msg); };
@@ -318,12 +330,64 @@ describe('worker error recovery', () => {
     vi.useFakeTimers();
     const pool = createRenderPool({ size: 1, logger: mockLogger });
 
+    // No media → 30s base timeout
     const renderPromise = pool.render({ text: 'test' }, {});
 
-    // Advance past the 30s timeout
     vi.advanceTimersByTime(30_000);
 
     await expect(renderPromise).rejects.toThrow('Render timed out after 30s');
+
+    vi.useRealTimers();
+    await pool.shutdown();
+  });
+
+  it('extends timeout for media-heavy tweets (30s + 5s per image)', async () => {
+    const hungWorker = new MockWorker();
+    hungWorker.postMessage = function (msg) { this.messages.push(msg); };
+    workerFactory = () => hungWorker;
+
+    vi.useFakeTimers();
+    const pool = createRenderPool({ size: 1, logger: mockLogger });
+
+    // 4 media images → 30s + 4*5s = 50s timeout
+    const tweetWith4Images = {
+      text: 'test',
+      mediaDetails: Array(4).fill({ media_url_https: 'img.jpg' }),
+    };
+    const renderPromise = pool.render(tweetWith4Images, {});
+
+    // At 30s it should NOT have timed out yet
+    vi.advanceTimersByTime(30_000);
+    // Promise should still be pending (not rejected)
+
+    // At 50s it should time out
+    vi.advanceTimersByTime(20_000);
+    await expect(renderPromise).rejects.toThrow('Render timed out after 50s');
+
+    vi.useRealTimers();
+    await pool.shutdown();
+  });
+
+  it('caps timeout at 60s even with many images', async () => {
+    const hungWorker = new MockWorker();
+    hungWorker.postMessage = function (msg) { this.messages.push(msg); };
+    workerFactory = () => hungWorker;
+
+    vi.useFakeTimers();
+    const pool = createRenderPool({ size: 1, logger: mockLogger });
+
+    // 8 images → 30s + 8*5s = 70s, capped at 60s
+    const tweetWith8Images = {
+      text: 'test',
+      mediaDetails: Array(4).fill({ media_url_https: 'img.jpg' }),
+      quoted_tweet: {
+        mediaDetails: Array(4).fill({ media_url_https: 'qt.jpg' }),
+      },
+    };
+    const renderPromise = pool.render(tweetWith8Images, {});
+
+    vi.advanceTimersByTime(60_000);
+    await expect(renderPromise).rejects.toThrow('Render timed out after 60s');
 
     vi.useRealTimers();
     await pool.shutdown();
@@ -360,7 +424,7 @@ describe('worker error recovery', () => {
     // First task dispatched to the only worker (never resolves)
     pool.render({ text: 'first' }, {}).catch(() => {});
 
-    // Second task gets queued
+    // Second task gets queued (no media → 30s timeout)
     const task2Promise = pool.render({ text: 'second' }, {});
 
     // Advance past timeout — both should reject

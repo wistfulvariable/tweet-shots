@@ -81,6 +81,7 @@ const {
   fetchThread,
   translateText,
   fetchImageAsBase64,
+  countMediaImages,
   formatDate,
   formatNumber,
   generateTweetHtml,
@@ -325,6 +326,109 @@ describe('fetchImageAsBase64', () => {
 
     const result = await fetchImageAsBase64('https://example.com/empty');
     expect(result).toMatch(/^data:image\/png;base64,$/);
+  });
+
+  it('returns null when image fetch times out (AbortError)', async () => {
+    // Simulate a fetch that never resolves — gets aborted by the internal timeout
+    globalThis.fetch = vi.fn(async (url, opts) => {
+      return new Promise((resolve, reject) => {
+        opts?.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+
+    vi.useFakeTimers();
+    const resultPromise = fetchImageAsBase64('https://example.com/huge-image.jpg');
+
+    // Advance past the 10s per-image timeout
+    vi.advanceTimersByTime(10_000);
+
+    const result = await resultPromise;
+    expect(result).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('returns null on HTTP error status', async () => {
+    globalThis.fetch = vi.fn(async () => ({ ok: false, status: 404, headers: { get: () => null } }));
+
+    const result = await fetchImageAsBase64('https://example.com/missing.jpg');
+    expect(result).toBeNull();
+  });
+});
+
+// ─── countMediaImages ────────────────────────────────────────────────────────
+
+describe('countMediaImages', () => {
+  it('returns 0 for tweet with no media', () => {
+    expect(countMediaImages({ text: 'Hello' })).toBe(0);
+  });
+
+  it('returns 0 for null/undefined input', () => {
+    expect(countMediaImages(null)).toBe(0);
+    expect(countMediaImages(undefined)).toBe(0);
+  });
+
+  it('counts mediaDetails images', () => {
+    const tweet = {
+      mediaDetails: [
+        { media_url_https: 'https://pbs.twimg.com/media/a.jpg' },
+        { media_url_https: 'https://pbs.twimg.com/media/b.jpg' },
+      ],
+    };
+    expect(countMediaImages(tweet)).toBe(2);
+  });
+
+  it('counts photos when mediaDetails is absent', () => {
+    const tweet = {
+      photos: [
+        { url: 'https://pbs.twimg.com/media/a.jpg' },
+        { url: 'https://pbs.twimg.com/media/b.jpg' },
+        { url: 'https://pbs.twimg.com/media/c.jpg' },
+      ],
+    };
+    expect(countMediaImages(tweet)).toBe(3);
+  });
+
+  it('prefers mediaDetails over photos (no double counting)', () => {
+    const tweet = {
+      mediaDetails: [{ media_url_https: 'a.jpg' }],
+      photos: [{ url: 'a.jpg' }, { url: 'b.jpg' }],
+    };
+    // Should use mediaDetails (1), not photos (2)
+    expect(countMediaImages(tweet)).toBe(1);
+  });
+
+  it('includes quoted tweet media', () => {
+    const tweet = {
+      mediaDetails: [{ media_url_https: 'a.jpg' }],
+      quoted_tweet: {
+        mediaDetails: [{ media_url_https: 'qt-a.jpg' }, { media_url_https: 'qt-b.jpg' }],
+      },
+    };
+    expect(countMediaImages(tweet)).toBe(3);
+  });
+
+  it('counts quoted tweet photos when mediaDetails absent', () => {
+    const tweet = {
+      quoted_tweet: {
+        photos: [{ url: 'qt.jpg' }],
+      },
+    };
+    expect(countMediaImages(tweet)).toBe(1);
+  });
+
+  it('handles max case: 4 main + 4 quoted', () => {
+    const tweet = {
+      mediaDetails: Array(4).fill({ media_url_https: 'img.jpg' }),
+      quoted_tweet: {
+        mediaDetails: Array(4).fill({ media_url_https: 'qt.jpg' }),
+      },
+    };
+    expect(countMediaImages(tweet)).toBe(8);
   });
 });
 
@@ -886,6 +990,54 @@ describe('renderTweetToImage', () => {
     });
     await renderTweetToImage(tweet);
     expect(tweet.mediaDetails[0].media_url_https).toMatch(/^data:/);
+  });
+
+  it('requests small Twitter CDN size for narrow widths', async () => {
+    const tweet = cloneTweet({
+      mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/test.jpg' }],
+      photos: [{ url: 'https://pbs.twimg.com/media/test.jpg' }],
+    });
+    await renderTweetToImage(tweet, { width: 550, scale: 1 });
+    // Verify fetch was called with ?name=small for Twitter media URLs
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    const mediaCalls = fetchCalls.filter(u => u.includes('pbs.twimg.com/media/'));
+    expect(mediaCalls.length).toBeGreaterThan(0);
+    mediaCalls.forEach(url => expect(url).toContain('?name=small'));
+  });
+
+  it('requests medium Twitter CDN size for wider widths', async () => {
+    const tweet = cloneTweet({
+      mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/test.jpg' }],
+    });
+    await renderTweetToImage(tweet, { width: 1080, scale: 1 });
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    const mediaCalls = fetchCalls.filter(u => u.includes('pbs.twimg.com/media/'));
+    expect(mediaCalls.length).toBeGreaterThan(0);
+    mediaCalls.forEach(url => expect(url).toContain('?name=medium'));
+  });
+
+  it('fetches all images in parallel (profile + media + photos)', async () => {
+    const tweet = cloneTweet({
+      mediaDetails: [
+        { media_url_https: 'https://pbs.twimg.com/media/img1.jpg' },
+        { media_url_https: 'https://pbs.twimg.com/media/img2.jpg' },
+      ],
+      photos: [
+        { url: 'https://pbs.twimg.com/media/img1.jpg' },
+        { url: 'https://pbs.twimg.com/media/img2.jpg' },
+      ],
+    });
+    await renderTweetToImage(tweet);
+    // Profile image + 2 mediaDetails + 2 photos = 5 fetch calls for images
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    const imageCalls = fetchCalls.filter(u => u.includes('twimg.com'));
+    expect(imageCalls.length).toBe(5);
+    // All images should be converted to base64
+    expect(tweet.user.profile_image_url_https).toMatch(/^data:/);
+    expect(tweet.mediaDetails[0].media_url_https).toMatch(/^data:/);
+    expect(tweet.mediaDetails[1].media_url_https).toMatch(/^data:/);
+    expect(tweet.photos[0].url).toMatch(/^data:/);
+    expect(tweet.photos[1].url).toMatch(/^data:/);
   });
 
   it('pre-fetches quote tweet images', async () => {

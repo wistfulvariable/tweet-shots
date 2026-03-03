@@ -5,7 +5,7 @@
 
 import { describe, it, expect, afterAll } from 'vitest';
 import express from 'express';
-import { applyRateLimit, signupLimiter, billingLimiter } from '../../src/middleware/rate-limit.mjs';
+import { applyRateLimit, signupLimiter, billingLimiter, demoLimiter } from '../../src/middleware/rate-limit.mjs';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -203,5 +203,52 @@ describe('billingLimiter', () => {
     const body = await blocked.json();
     expect(body.error).toContain('Too many billing requests');
     expect(body.code).toBe('RATE_LIMITED');
+  });
+});
+
+// ─── demoLimiter ──────────────────────────────────────────────────────────────
+
+describe('demoLimiter', () => {
+  it('returns a middleware function', () => {
+    const limiter = demoLimiter();
+    expect(typeof limiter).toBe('function');
+  });
+
+  it('allows first request through', async () => {
+    const baseUrl = await startApp((app) => {
+      app.get('/demo', demoLimiter(), (req, res) => res.json({ ok: true }));
+    });
+
+    const res = await fetch(`${baseUrl}/demo`);
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 429 with DEMO_RATE_LIMITED after 5 requests are exhausted', async () => {
+    const baseUrl = await startApp((app) => {
+      app.get('/demo', demoLimiter(), (req, res) => res.json({ ok: true }));
+    });
+
+    for (let i = 0; i < 5; i++) {
+      const res = await fetch(`${baseUrl}/demo`);
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await fetch(`${baseUrl}/demo`);
+    expect(blocked.status).toBe(429);
+
+    const body = await blocked.json();
+    expect(body.error).toBe('Demo rate limit reached. Sign up for an API key for higher limits.');
+    expect(body.code).toBe('DEMO_RATE_LIMITED');
+  });
+
+  it('includes standard rate-limit headers', async () => {
+    const baseUrl = await startApp((app) => {
+      app.get('/demo', demoLimiter(), (req, res) => res.json({ ok: true }));
+    });
+
+    const res = await fetch(`${baseUrl}/demo`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('ratelimit-limit')).toBeDefined();
+    expect(res.headers.get('ratelimit-remaining')).toBeDefined();
   });
 });

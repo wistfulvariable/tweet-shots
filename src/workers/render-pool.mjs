@@ -12,10 +12,13 @@ import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { countMediaImages } from '../../tweet-render.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKER_PATH = path.join(__dirname, 'render-worker.mjs');
-const RENDER_TIMEOUT_MS = 30_000;
+const RENDER_TIMEOUT_BASE_MS = 30_000;
+const RENDER_TIMEOUT_PER_IMAGE_MS = 5_000;
+const RENDER_TIMEOUT_MAX_MS = 60_000;
 
 /**
  * @param {object} [options]
@@ -44,7 +47,12 @@ export function createRenderPool({ size, logger } = {}) {
 
     worker.on('message', ({ id, result, error, errorName }) => {
       const task = pending.get(id);
-      if (!task) return;
+      if (!task) {
+        // Task was already timed out — return worker to idle pool
+        idle.push(worker);
+        drainQueue();
+        return;
+      }
       pending.delete(id);
 
       if (error) {
@@ -111,7 +119,7 @@ export function createRenderPool({ size, logger } = {}) {
 
   /**
    * Render a tweet to image via the worker pool.
-   * Rejects with timeout error if render exceeds RENDER_TIMEOUT_MS.
+   * Timeout scales with media count: 30s base + 5s per image, max 60s.
    * @param {object} tweet - Tweet data object
    * @param {object} options - Render options
    * @returns {Promise<{ data: Buffer, contentType: string, format: string }>}
@@ -122,6 +130,12 @@ export function createRenderPool({ size, logger } = {}) {
     }
 
     const id = taskIdCounter++;
+    const mediaCount = countMediaImages(tweet);
+    const timeoutMs = Math.min(
+      RENDER_TIMEOUT_BASE_MS + mediaCount * RENDER_TIMEOUT_PER_IMAGE_MS,
+      RENDER_TIMEOUT_MAX_MS,
+    );
+    const timeoutSec = Math.round(timeoutMs / 1000);
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -132,8 +146,8 @@ export function createRenderPool({ size, logger } = {}) {
         pending.delete(id);
         const qi = queue.findIndex(t => t.id === id);
         if (qi !== -1) queue.splice(qi, 1);
-        reject(new Error('Render timed out after 30s'));
-      }, RENDER_TIMEOUT_MS);
+        reject(new Error(`Render timed out after ${timeoutSec}s`));
+      }, timeoutMs);
 
       const task = {
         id, tweet, options,

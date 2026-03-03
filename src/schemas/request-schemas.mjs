@@ -108,3 +108,21 @@ export const portalSchema = z.object({
   email: z.string().email('Valid email required'),
   returnUrl: z.string().url().optional(),
 });
+
+/**
+ * GET /demo/screenshot/:tweetIdOrUrl query parameters.
+ * Subset of screenshotQuerySchema — no format, scale, or custom colors.
+ */
+export const demoQuerySchema = z.object({
+  theme: z.enum(THEME_VALUES).default('dark'),
+  dimension: z.enum(DIMENSION_VALUES).default('auto'),
+  gradient: z.enum(GRADIENT_VALUES).optional(),
+  hideMetrics: boolString,
+  hideMedia: boolString,
+  hideDate: boolString,
+  hideVerified: boolString,
+  hideShadow: boolString,
+  hideQuoteTweet: boolString,
+  padding: z.coerce.number().int().min(0).max(100).default(20),
+  radius: z.coerce.number().int().min(0).max(100).default(16),
+});

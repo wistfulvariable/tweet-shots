@@ -33,14 +33,51 @@ export const DIMENSIONS = {
 // ============================================================================
 
 /**
+ * Append a Twitter CDN size variant to an image URL.
+ * Twitter pbs.twimg.com supports: small (680px), medium (1200px), large (2048px).
+ * Non-Twitter URLs are returned unchanged.
+ * @param {string} url - Image URL
+ * @param {'small'|'medium'|'large'} size - Desired size variant
+ * @returns {string} URL with size suffix
+ */
+function twitterImageUrl(url, size) {
+  if (!url || !size || !url.includes('pbs.twimg.com/media/')) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}name=${size}`;
+}
+
+/**
+ * Choose optimal Twitter CDN size based on render width and scale.
+ * Capped at 'medium' (1200px) — 'large' (2048px) is unnecessary for our
+ * max render widths and causes timeouts on multi-image tweets.
+ * @param {number} width - Render width in pixels
+ * @param {number} scale - Render scale multiplier
+ * @returns {'small'|'medium'}
+ */
+function pickImageSize(width, scale) {
+  const effective = width * scale;
+  if (effective <= 680) return 'small';
+  return 'medium';
+}
+
+const IMAGE_FETCH_TIMEOUT_MS = 10_000;
+
+/**
  * Fetch a remote image and convert it to a base64 data URI.
- * Returns null on any failure (non-OK response, network error).
+ * Returns null on any failure (non-OK response, network error, timeout).
+ * Each image fetch is individually capped at IMAGE_FETCH_TIMEOUT_MS to
+ * prevent a single slow image from exhausting the render budget.
  * @param {string} url - Image URL to fetch
  * @returns {Promise<string|null>} Base64 data URI or null on failure
  */
 export async function fetchImageAsBase64(url) {
   try {
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+
     if (!response.ok) {
       console.error(`Image pre-fetch failed: HTTP ${response.status} for ${url.substring(0, 80)}`);
       return null;
@@ -50,39 +87,95 @@ export async function fetchImageAsBase64(url) {
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     return `data:${contentType};base64,${base64}`;
   } catch (e) {
-    console.error(`Image pre-fetch error for ${url.substring(0, 80)}: ${e.message}`);
+    const reason = e.name === 'AbortError' ? 'timed out' : e.message;
+    console.error(`Image pre-fetch error for ${url.substring(0, 80)}: ${reason}`);
     return null;
   }
 }
 
-// Pre-fetch a user's profile image and replace URL with base64 data URI in-place
-async function preFetchProfileImage(user) {
-  if (user?.profile_image_url_https) {
-    const base64 = await fetchImageAsBase64(getHighResProfileUrl(user));
-    if (base64) user.profile_image_url_https = base64;
-  }
-}
+/**
+ * Pre-fetch all remote images in a tweet (profile, media, quote tweet) in parallel.
+ * Replaces URLs with base64 data URIs in-place.
+ * @param {object} tweet - Tweet data object (mutated in-place)
+ * @param {object} [options]
+ * @param {'small'|'medium'|'large'} [options.imageSize] - Twitter CDN size variant
+ */
+async function preFetchAllImages(tweet, { imageSize } = {}) {
+  const jobs = [];
 
-// Pre-fetch media images from mediaDetails + photos arrays, replacing URLs with base64 in-place.
-// When onlyFirst is true, only the first image from each array is fetched (used for quote tweets).
-async function preFetchMediaImages(tweet, { onlyFirst = false } = {}) {
-  const limit = onlyFirst ? 1 : Infinity;
+  // Profile image
+  if (tweet.user?.profile_image_url_https) {
+    jobs.push(
+      fetchImageAsBase64(getHighResProfileUrl(tweet.user))
+        .then(b64 => { if (b64) tweet.user.profile_image_url_https = b64; })
+    );
+  }
+
+  // Media images (mediaDetails + photos)
   if (tweet.mediaDetails) {
-    for (let i = 0; i < Math.min(tweet.mediaDetails.length, limit); i++) {
-      if (tweet.mediaDetails[i].media_url_https) {
-        const base64 = await fetchImageAsBase64(tweet.mediaDetails[i].media_url_https);
-        if (base64) tweet.mediaDetails[i].media_url_https = base64;
+    for (const media of tweet.mediaDetails) {
+      if (media.media_url_https) {
+        const url = twitterImageUrl(media.media_url_https, imageSize);
+        jobs.push(
+          fetchImageAsBase64(url)
+            .then(b64 => { if (b64) media.media_url_https = b64; })
+        );
       }
     }
   }
   if (tweet.photos) {
-    for (let i = 0; i < Math.min(tweet.photos.length, limit); i++) {
-      if (tweet.photos[i].url) {
-        const base64 = await fetchImageAsBase64(tweet.photos[i].url);
-        if (base64) tweet.photos[i].url = base64;
+    for (const photo of tweet.photos) {
+      if (photo.url) {
+        const url = twitterImageUrl(photo.url, imageSize);
+        jobs.push(
+          fetchImageAsBase64(url)
+            .then(b64 => { if (b64) photo.url = b64; })
+        );
       }
     }
   }
+
+  // Quote tweet images (profile + first media only)
+  if (tweet.quoted_tweet) {
+    const qt = tweet.quoted_tweet;
+    if (qt.user?.profile_image_url_https) {
+      jobs.push(
+        fetchImageAsBase64(getHighResProfileUrl(qt.user))
+          .then(b64 => { if (b64) qt.user.profile_image_url_https = b64; })
+      );
+    }
+    if (qt.mediaDetails?.[0]?.media_url_https) {
+      const url = twitterImageUrl(qt.mediaDetails[0].media_url_https, imageSize);
+      jobs.push(
+        fetchImageAsBase64(url)
+          .then(b64 => { if (b64) qt.mediaDetails[0].media_url_https = b64; })
+      );
+    }
+    if (qt.photos?.[0]?.url) {
+      const url = twitterImageUrl(qt.photos[0].url, imageSize);
+      jobs.push(
+        fetchImageAsBase64(url)
+          .then(b64 => { if (b64) qt.photos[0].url = b64; })
+      );
+    }
+  }
+
+  await Promise.all(jobs);
+}
+
+/**
+ * Count the total number of media images in a tweet (including quote tweet).
+ * Used by the render pool to set dynamic timeouts for media-heavy tweets.
+ * @param {object} tweet - Tweet data object
+ * @returns {number}
+ */
+export function countMediaImages(tweet) {
+  let count = 0;
+  if (tweet?.mediaDetails) count += tweet.mediaDetails.length;
+  else if (tweet?.photos) count += tweet.photos.length;
+  if (tweet?.quoted_tweet?.mediaDetails) count += tweet.quoted_tweet.mediaDetails.length;
+  else if (tweet?.quoted_tweet?.photos) count += tweet.quoted_tweet.photos.length;
+  return count;
 }
 
 // ============================================================================
@@ -221,13 +314,9 @@ export async function renderTweetToImage(tweet, options = {}) {
     logoSize = 40,
   } = options;
 
-  // Pre-fetch all remote images and replace URLs with base64 data URIs
-  await preFetchProfileImage(tweet.user);
-  await preFetchMediaImages(tweet);
-  if (tweet.quoted_tweet) {
-    await preFetchProfileImage(tweet.quoted_tweet.user);
-    await preFetchMediaImages(tweet.quoted_tweet, { onlyFirst: true });
-  }
+  // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants
+  const imageSize = pickImageSize(width, scale);
+  await preFetchAllImages(tweet, { imageSize });
 
   // Pre-fetch logo if provided
   let logoBase64 = null;
