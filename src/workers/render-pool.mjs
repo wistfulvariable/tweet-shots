@@ -31,6 +31,13 @@ export function createRenderPool({ size, logger } = {}) {
   let taskIdCounter = 0;
   let shuttingDown = false;
 
+  /** Assign queued tasks to idle workers until one side is exhausted. */
+  function drainQueue() {
+    while (idle.length > 0 && queue.length > 0) {
+      dispatch(idle.shift(), queue.shift());
+    }
+  }
+
   function spawnWorker() {
     const worker = new Worker(WORKER_PATH);
 
@@ -51,13 +58,9 @@ export function createRenderPool({ size, logger } = {}) {
         task.resolve(result);
       }
 
-      // Try to process next queued task
-      if (queue.length > 0) {
-        const next = queue.shift();
-        dispatch(worker, next);
-      } else {
-        idle.push(worker);
-      }
+      // Worker is now free — either pick up queued work or go idle
+      idle.push(worker);
+      drainQueue();
     });
 
     worker.on('error', (err) => {
@@ -94,13 +97,7 @@ export function createRenderPool({ size, logger } = {}) {
       const replacement = spawnWorker();
       workers.push(replacement);
       idle.push(replacement);
-
-      // Drain queue if possible
-      while (idle.length > 0 && queue.length > 0) {
-        const worker = idle.shift();
-        const task = queue.shift();
-        dispatch(worker, task);
-      }
+      drainQueue();
     }
   }
 
