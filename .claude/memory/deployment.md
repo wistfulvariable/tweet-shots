@@ -60,6 +60,18 @@ Server handles `SIGTERM` and `SIGINT`:
 2. Shut down worker pool (`renderPool.shutdown()`)
 3. Force exit after 10s if connections don't close
 
+## CI/CD — GitHub Actions
+
+Pipeline: `.github/workflows/ci.yml` — runs on push/PR to master.
+
+| Job | What it does |
+|---|---|
+| **test** | `npm ci` → `npm audit --audit-level=high` → `npm test` |
+| **secrets-scan** | gitleaks v2 against full git history |
+| **lint-security** | eslint with eslint-plugin-security |
+
+All three jobs run in parallel. PRs blocked if any job fails.
+
 ## Stripe Webhook
 
 Register in Stripe Dashboard: `POST https://<domain>/webhook/stripe`

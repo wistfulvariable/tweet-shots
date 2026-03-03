@@ -3,7 +3,7 @@
 ## Auth Boundaries
 
 - **API key auth:** Validates against Firestore on every request (no in-memory cache). Key in `X-API-KEY` header or `?apiKey=` query param.
-- **Admin auth:** Direct string comparison with `config.ADMIN_KEY`. Zod-enforced minimum 16 characters, no default value — server fails to start without it.
+- **Admin auth:** `crypto.timingSafeEqual` comparison with `config.ADMIN_KEY`. Zod-enforced minimum 16 characters, no default value — server fails to start without it.
 - **Stripe webhook:** `stripe.webhooks.constructEvent()` with `STRIPE_WEBHOOK_SECRET`. Returns `400 WEBHOOK_NOT_CONFIGURED` if secret not set.
 
 ## Security Wins
@@ -17,12 +17,23 @@
 - Firestore auth via ADC — no embedded credentials
 - Zod validates all inputs before reaching handlers
 - Config object is `Object.freeze()`d — immutable after load
+- Admin key uses `crypto.timingSafeEqual` — no timing leaks
+- `escapeRegExp()` applied to Twitter entity data before `new RegExp()` — no ReDoS
+- CI pipeline: gitleaks (secret scanning) + npm audit + eslint-plugin-security
+
+## CI Security Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to master:
+- **test:** `npm ci` → `npm audit --audit-level=high` → `npm test`
+- **secrets-scan:** gitleaks against full git history
+- **lint-security:** eslint with eslint-plugin-security rules
 
 ## Accepted Risks
 
 - **CORS allows all origins** — intentional for public API
 - **Billing guard fails open** — Firestore outage allows free rendering without usage tracking
 - **API key soft-delete only** — revoked keys stay in Firestore with `active: false`
+- **CSP disabled** — needed for image serving; landing page has no user input rendering
 
 ## Input Validation (Zod)
 
@@ -33,6 +44,10 @@
 - URLs: Zod `.url()` for optional URL fields
 - Padding/radius: integer 0-100
 - ADMIN_KEY: minimum 16 characters (enforced at startup)
+
+## Security Audit History
+
+- **2026-03-03:** Full audit → `audit-reports/SECURITY_AUDIT_REPORT_01_2026-03-03.md`
 
 ## Previously Resolved
 
