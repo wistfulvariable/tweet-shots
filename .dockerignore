@@ -1,0 +1,29 @@
+node_modules
+.git
+.gitignore
+
+# Old files being replaced
+api-server.mjs
+stripe-billing.mjs
+tweet-shots-api.service
+smoke.test.mjs
+
+# Data files (never bake into image)
+api-keys.json
+usage.json
+customers.json
+subscriptions.json
+output/
+
+# Dev/test files
+tests/
+vitest.config.mjs
+examples/
+*.md
+!landing.html
+
+# IDE/OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db

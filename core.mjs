@@ -11,6 +11,7 @@ import { html } from 'satori-html';
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // ============================================================================
 // CONFIGURATION
@@ -637,34 +638,44 @@ export async function loadFonts() {
 
   const fonts = [];
 
-  try {
-    // Inter Regular
-    const regularUrl = 'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff';
-    const regularResponse = await fetch(regularUrl);
-    if (regularResponse.ok) {
-      const regularData = await regularResponse.arrayBuffer();
-      fonts.push({
-        name: 'Inter',
-        data: regularData,
-        weight: 400,
-        style: 'normal',
-      });
-    }
+  // Try bundled fonts first (eliminates network fetch on cold starts)
+  const __coreDir = path.dirname(fileURLToPath(import.meta.url));
+  const fontsDir = path.join(__coreDir, 'fonts');
+  const localFonts = [
+    { file: 'Inter-Regular.woff', weight: 400 },
+    { file: 'Inter-Bold.woff', weight: 700 },
+  ];
 
-    // Inter Bold
-    const boldUrl = 'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI2fAZ9hjp-Ek-_EeA.woff';
-    const boldResponse = await fetch(boldUrl);
-    if (boldResponse.ok) {
-      const boldData = await boldResponse.arrayBuffer();
-      fonts.push({
-        name: 'Inter',
-        data: boldData,
-        weight: 700,
-        style: 'normal',
-      });
+  for (const { file, weight } of localFonts) {
+    const filePath = path.join(fontsDir, file);
+    try {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        // Create a properly-sized ArrayBuffer copy (Node Buffer.buffer may be a shared pool)
+        const ab = new ArrayBuffer(buf.byteLength);
+        new Uint8Array(ab).set(buf);
+        fonts.push({ name: 'Inter', data: ab, weight, style: 'normal' });
+      }
+    } catch { /* fall through to network fetch */ }
+  }
+
+  // Fall back to network fetch if bundled fonts not found
+  if (fonts.length === 0) {
+    try {
+      const regularUrl = 'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf';
+      const regularResponse = await fetch(regularUrl);
+      if (regularResponse.ok) {
+        fonts.push({ name: 'Inter', data: await regularResponse.arrayBuffer(), weight: 400, style: 'normal' });
+      }
+
+      const boldUrl = 'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf';
+      const boldResponse = await fetch(boldUrl);
+      if (boldResponse.ok) {
+        fonts.push({ name: 'Inter', data: await boldResponse.arrayBuffer(), weight: 700, style: 'normal' });
+      }
+    } catch (e) {
+      console.error('Failed to load fonts:', e.message);
     }
-  } catch (e) {
-    console.error('Failed to load fonts:', e.message);
   }
 
   if (fonts.length === 0) {
@@ -805,6 +816,8 @@ export async function renderTweetToImage(tweet, options = {}) {
     width: width + padding * 2,
     height: calculatedHeight,
     fonts,
+    // Prevent Satori from trying to fetch fallback fonts/emojis from the network
+    loadAdditionalAsset: async () => undefined,
   });
 
   if (format === 'svg') {

@@ -1,0 +1,138 @@
+/**
+ * tweet-shots API Server (v2)
+ *
+ * Modular Express app with Firestore-backed auth, billing, and rate limiting.
+ * Replaces the monolithic api-server.mjs.
+ */
+
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { randomUUID } from 'crypto';
+
+import { loadConfig, TIERS } from './config.mjs';
+import { createLogger } from './logger.mjs';
+
+// Middleware
+import { authenticate } from './middleware/authenticate.mjs';
+import { applyRateLimit } from './middleware/rate-limit.mjs';
+import { billingGuard } from './middleware/billing-guard.mjs';
+import { errorHandler } from './middleware/error-handler.mjs';
+
+// Routes
+import { healthRoutes } from './routes/health.mjs';
+import { landingRoutes } from './routes/landing.mjs';
+import { screenshotRoutes } from './routes/screenshot.mjs';
+import { tweetRoutes } from './routes/tweet.mjs';
+import { adminRoutes } from './routes/admin.mjs';
+import { billingRoutes } from './routes/billing.mjs';
+
+// Workers
+import { createRenderPool } from './workers/render-pool.mjs';
+
+// ─── Bootstrap ──────────────────────────────────────────────────────
+
+const config = loadConfig();
+const logger = createLogger(config);
+
+// Create worker pool for rendering (skip in test env)
+const renderPool = config.NODE_ENV !== 'test' ? createRenderPool({ logger }) : null;
+
+const app = express();
+
+// ─── Global middleware ──────────────────────────────────────────────
+
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors());
+
+// Raw body for Stripe webhook signature verification — must run before express.json()
+app.use((req, res, next) => {
+  if (req.path === '/webhook/stripe') {
+    let rawBody = '';
+    req.on('data', chunk => { rawBody += chunk; });
+    req.on('end', () => {
+      req.rawBody = rawBody;
+      try { req.body = JSON.parse(rawBody || '{}'); } catch { req.body = {}; }
+      next();
+    });
+  } else {
+    express.json()(req, res, next);
+  }
+});
+
+// Request ID + structured logging per request
+app.use((req, res, next) => {
+  req.id = req.headers['x-request-id'] || randomUUID();
+  res.set('X-Request-ID', req.id);
+  req.log = logger.child({ reqId: req.id });
+  req.log.info({ method: req.method, path: req.path }, 'request');
+  next();
+});
+
+// ─── Build dependency-injected middleware ────────────────────────────
+
+const authMiddleware = authenticate(logger);
+const billingMiddleware = billingGuard(logger);
+
+// ─── Mount routes ───────────────────────────────────────────────────
+
+// Public (no auth)
+app.use(landingRoutes());
+app.use(healthRoutes());
+
+// Authenticated routes
+app.use(screenshotRoutes({
+  authenticate: authMiddleware,
+  applyRateLimit,
+  billingGuard: billingMiddleware,
+  renderPool,
+  config,
+  logger,
+}));
+
+app.use(tweetRoutes({
+  authenticate: authMiddleware,
+  applyRateLimit,
+  billingGuard: billingMiddleware,
+  logger,
+}));
+
+// Admin routes
+app.use(adminRoutes({ config, logger }));
+
+// Billing routes (signup, checkout, portal, usage, webhooks)
+app.use(billingRoutes({ authenticate: authMiddleware, config, logger }));
+
+// ─── Error handler (must be last) ───────────────────────────────────
+
+app.use(errorHandler(logger));
+
+// ─── Start server ───────────────────────────────────────────────────
+
+const server = app.listen(config.PORT, config.HOST, () => {
+  logger.info({
+    port: config.PORT,
+    host: config.HOST,
+    env: config.NODE_ENV,
+    stripeEnabled: !!config.STRIPE_SECRET_KEY,
+    tiers: Object.keys(TIERS),
+  }, 'tweet-shots API started');
+});
+
+// ─── Graceful shutdown ──────────────────────────────────────────────
+
+function shutdown(signal) {
+  logger.info({ signal }, 'Shutting down...');
+  server.close(async () => {
+    if (renderPool) await renderPool.shutdown();
+    logger.info('Server closed');
+    process.exit(0);
+  });
+  // Force exit after 10s if connections don't close
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+export default app;
