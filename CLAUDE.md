@@ -173,9 +173,7 @@ Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
 | `STRIPE_PRICE_BUSINESS` | — | For billing | Stripe Price ID for Business |
 | `STRIPE_WEBHOOK_SECRET` | — | For billing | Webhook signature verification |
 | `GCS_BUCKET` | `tweet-shots-screenshots` | For URL response | Cloud Storage bucket |
-| `GCP_PROJECT_ID` | — | No | Auto-detected from ADC |
 | `OPENAI_API_KEY` | — | For translation | GPT-4o-mini translation |
-| `PUBLIC_URL` | — | For URL response | Base URL for hosted images |
 
 ---
 
