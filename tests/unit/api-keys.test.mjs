@@ -23,6 +23,7 @@ const {
   revokeApiKey,
   listApiKeys,
   updateApiKeyTier,
+  findKeyByEmail,
 } = await import('../../src/services/api-keys.mjs');
 
 describe('generateKeyString', () => {
@@ -189,5 +190,42 @@ describe('updateApiKeyTier', () => {
   it('throws on invalid tier', async () => {
     const { keyString } = await createApiKey({ tier: 'free' });
     await expect(updateApiKeyTier(keyString, 'ultra')).rejects.toThrow('Invalid tier');
+  });
+});
+
+describe('findKeyByEmail', () => {
+  beforeEach(() => {
+    mock.collections.apiKeys._store.clear();
+  });
+
+  it('returns null when no key exists for email', async () => {
+    const result = await findKeyByEmail('nobody@example.com');
+    expect(result).toBeNull();
+  });
+
+  it('returns the active key for a matching email', async () => {
+    const { keyString } = await createApiKey({ tier: 'free', name: 'Test', email: 'found@example.com' });
+    const result = await findKeyByEmail('found@example.com');
+    expect(result).not.toBeNull();
+    expect(result.keyString).toBe(keyString);
+    expect(result.tier).toBe('free');
+    expect(result.name).toBe('Test');
+  });
+
+  it('returns null for revoked key', async () => {
+    const { keyString } = await createApiKey({ tier: 'free', email: 'revoked@example.com' });
+    await revokeApiKey(keyString);
+    const result = await findKeyByEmail('revoked@example.com');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when email is null', async () => {
+    const result = await findKeyByEmail(null);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when email is undefined', async () => {
+    const result = await findKeyByEmail(undefined);
+    expect(result).toBeNull();
   });
 });
