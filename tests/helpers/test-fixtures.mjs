@@ -17,10 +17,8 @@ export const TEST_CONFIG = {
   STRIPE_PRICE_PRO: undefined,
   STRIPE_PRICE_BUSINESS: undefined,
   STRIPE_WEBHOOK_SECRET: undefined,
-  GCP_PROJECT_ID: undefined,
   GCS_BUCKET: 'test-bucket',
   OPENAI_API_KEY: undefined,
-  PUBLIC_URL: undefined,
 };
 
 export const MOCK_TWEET = {

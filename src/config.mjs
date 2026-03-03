@@ -20,12 +20,10 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
   // GCP
-  GCP_PROJECT_ID: z.string().optional(),
   GCS_BUCKET: z.string().default('tweet-shots-screenshots'),
 
   // Optional features
   OPENAI_API_KEY: z.string().optional(),
-  PUBLIC_URL: z.string().url().optional(),
 });
 
 /**
