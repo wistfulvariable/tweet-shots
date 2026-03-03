@@ -249,6 +249,83 @@ function generateTweetHtml(tweet, theme, options = {}) {
     `;
   }
   
+  // Handle quote tweets
+  let quoteTweetHtml = '';
+  if (tweet.quoted_tweet) {
+    const qt = tweet.quoted_tweet;
+    const qtUserName = qt.user?.name || 'Unknown';
+    const qtUserHandle = qt.user?.screen_name || 'unknown';
+    const qtIsVerified = qt.user?.is_blue_verified || qt.user?.verified;
+    const qtProfilePic = qt.user?.profile_image_url_https?.replace('_normal', '_400x400') || '';
+    
+    // Process quote tweet text
+    let qtText = qt.text || '';
+    if (qt.entities?.media) {
+      for (const media of qt.entities.media) {
+        qtText = qtText.replace(media.url, '');
+      }
+    }
+    // Decode HTML entities from Twitter API (they come pre-encoded)
+    qtText = qtText
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim()
+      .replace(/\n/g, ' '); // Single line for compactness
+    
+    // Truncate if too long
+    if (qtText.length > 200) {
+      qtText = qtText.substring(0, 197) + '...';
+    }
+    
+    // Handle URLs in quote tweet
+    if (qt.entities?.urls) {
+      for (const url of qt.entities.urls) {
+        const displayUrl = url.display_url || url.expanded_url;
+        qtText = qtText.replace(
+          url.url,
+          `<span style="color: ${colors.link}">${displayUrl}</span>`
+        );
+      }
+    }
+    
+    const qtVerifiedBadge = qtIsVerified ? `
+      <svg viewBox="0 0 22 22" width="14" height="14" style="margin-left: 2px;">
+        <path fill="${colors.link}" d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"/>
+      </svg>
+    ` : '';
+    
+    // Quote tweet media (smaller)
+    let qtMediaHtml = '';
+    const qtMediaUrl = qt.mediaDetails?.[0]?.media_url_https || qt.photos?.[0]?.url;
+    if (qtMediaUrl) {
+      qtMediaHtml = `
+        <img src="${qtMediaUrl}" width="80" height="80" style="border-radius: 8px; object-fit: cover; margin-left: auto;" />
+      `;
+    }
+    
+    quoteTweetHtml = `
+      <div style="display: flex; flex-direction: row; margin-top: 12px; padding: 12px; border: 1px solid ${colors.border}; border-radius: 16px; gap: 12px;">
+        <div style="display: flex; flex-direction: column; flex: 1;">
+          <!-- Quote tweet header -->
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <img src="${qtProfilePic}" width="20" height="20" style="border-radius: 50%;" />
+            <span style="font-weight: 700; font-size: 13px; color: ${colors.text};">${qtUserName}</span>
+            ${qtVerifiedBadge}
+            <span style="font-size: 13px; color: ${colors.textSecondary};">@${qtUserHandle}</span>
+          </div>
+          <!-- Quote tweet text -->
+          <div style="display: flex; margin-top: 4px; font-size: 14px; line-height: 1.4; color: ${colors.text};">
+            ${qtText}
+          </div>
+        </div>
+        ${qtMediaHtml}
+      </div>
+    `;
+  }
+  
   return `
     <div style="display: flex; flex-direction: column; padding: 20px; background: ${colors.bg}; border-radius: 16px; width: ${width}px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
       <!-- Header: Profile pic + name -->
@@ -276,6 +353,9 @@ function generateTweetHtml(tweet, theme, options = {}) {
       
       <!-- Media -->
       ${mediaHtml}
+      
+      <!-- Quote Tweet -->
+      ${quoteTweetHtml}
       
       <!-- Timestamp -->
       <div style="display: flex; margin-top: 16px; font-size: 15px; color: ${colors.textSecondary};">
@@ -370,6 +450,30 @@ async function renderTweetToImage(tweet, options = {}) {
     }
   }
   
+  // Pre-fetch quote tweet images
+  if (tweet.quoted_tweet) {
+    const qt = tweet.quoted_tweet;
+    if (qt.user?.profile_image_url_https) {
+      const profilePicUrl = qt.user.profile_image_url_https.replace('_normal', '_400x400');
+      const base64 = await fetchImageAsBase64(profilePicUrl);
+      if (base64) {
+        qt.user.profile_image_url_https = base64;
+      }
+    }
+    if (qt.mediaDetails?.[0]?.media_url_https) {
+      const base64 = await fetchImageAsBase64(qt.mediaDetails[0].media_url_https);
+      if (base64) {
+        qt.mediaDetails[0].media_url_https = base64;
+      }
+    }
+    if (qt.photos?.[0]?.url) {
+      const base64 = await fetchImageAsBase64(qt.photos[0].url);
+      if (base64) {
+        qt.photos[0].url = base64;
+      }
+    }
+  }
+  
   const htmlContent = generateTweetHtml(tweet, theme, { showMetrics, width });
   const markup = html(htmlContent);
   
@@ -379,11 +483,13 @@ async function renderTweetToImage(tweet, options = {}) {
   // Calculate approximate height based on content
   const textLength = tweet.text?.length || 0;
   const hasMedia = (tweet.photos && tweet.photos.length > 0) || (tweet.mediaDetails && tweet.mediaDetails.length > 0);
+  const hasQuoteTweet = !!tweet.quoted_tweet;
   const baseHeight = 180; // Header + timestamp
   const textHeight = Math.ceil(textLength / 45) * 28; // ~45 chars per line, 28px line height
   const mediaHeight = hasMedia ? 320 : 0;
+  const quoteTweetHeight = hasQuoteTweet ? 120 : 0; // Quote tweet box
   const metricsHeight = showMetrics ? 60 : 0;
-  const calculatedHeight = baseHeight + textHeight + mediaHeight + metricsHeight;
+  const calculatedHeight = baseHeight + textHeight + mediaHeight + quoteTweetHeight + metricsHeight;
   
   // Generate SVG with Satori
   const svg = await satori(markup, {

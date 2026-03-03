@@ -85,7 +85,7 @@ npm link
 
 - Some tweets may not be available via the syndication API (private accounts, deleted tweets, etc.)
 - Videos are rendered as static thumbnail images
-- Quote tweets are not yet rendered inline
+- ✅ Quote tweets (rendered inline)
 - Polls are not yet supported
 
 ## Rate Limiting
