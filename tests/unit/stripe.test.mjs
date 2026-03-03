@@ -17,6 +17,7 @@ vi.mock('../../src/services/firestore.mjs', () => ({
   customersCollection: mock.customersCollection,
   subscriptionsCollection: mock.subscriptionsCollection,
   FieldValue: mock.FieldValue,
+  getDb: mock.getDb,
 }));
 
 vi.mock('../../src/services/api-keys.mjs', () => ({
@@ -151,11 +152,9 @@ describe('getOrCreateCustomer', () => {
       name: 'New User',
       metadata: { source: 'tweet-shots-api' },
     });
-    expect(createApiKey).toHaveBeenCalledWith({
-      tier: 'free',
-      name: 'New User',
-      email: 'new@example.com',
-    });
+    expect(createApiKey).toHaveBeenCalledWith(
+      expect.objectContaining({ tier: 'free', name: 'New User', email: 'new@example.com' })
+    );
     expect(result.email).toBe('new@example.com');
     expect(result.apiKeyId).toMatch(/^ts_free_/);
   });

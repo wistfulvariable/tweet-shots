@@ -24,18 +24,30 @@ export function generateKeyString(tier) {
 
 /**
  * Create and store a new API key in Firestore.
+ * @param {object} opts
+ * @param {string} [opts.tier='free']
+ * @param {string} [opts.name]
+ * @param {string} [opts.email]
+ * @param {object} [opts.batch] - Firestore WriteBatch. When provided, the write
+ *   is added to the batch instead of committed immediately (caller must commit).
  * @returns {{ keyString: string, tier: string, name: string }}
  */
-export async function createApiKey({ tier = 'free', name, email = null }) {
+export async function createApiKey({ tier = 'free', name, email = null, batch = null }) {
   const keyString = generateKeyString(tier);
-
-  await apiKeysCollection().doc(keyString).set({
+  const data = {
     tier,
     name: name || 'Unnamed',
     email,
     active: true,
     created: FieldValue.serverTimestamp(),
-  });
+  };
+
+  const docRef = apiKeysCollection().doc(keyString);
+  if (batch) {
+    batch.set(docRef, data);
+  } else {
+    await docRef.set(data);
+  }
 
   return { keyString, tier, name: name || 'Unnamed' };
 }

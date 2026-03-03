@@ -9,7 +9,7 @@
  */
 
 import Stripe from 'stripe';
-import { customersCollection, subscriptionsCollection, FieldValue } from './firestore.mjs';
+import { customersCollection, subscriptionsCollection, FieldValue, getDb } from './firestore.mjs';
 import { createApiKey, updateApiKeyTier } from './api-keys.mjs';
 
 /**
@@ -45,8 +45,9 @@ export async function getOrCreateCustomer(stripe, email, name = null) {
     });
   }
 
-  // Create a free API key
-  const { keyString } = await createApiKey({ tier: 'free', name: name || email, email });
+  // Atomic batch: create API key + customer record together
+  const batch = getDb().batch();
+  const { keyString } = await createApiKey({ tier: 'free', name: name || email, email, batch });
 
   const customerData = {
     email,
@@ -57,7 +58,8 @@ export async function getOrCreateCustomer(stripe, email, name = null) {
     created: FieldValue.serverTimestamp(),
   };
 
-  await custRef.set(customerData);
+  batch.set(custRef, customerData);
+  await batch.commit();
   return { ...customerData, created: new Date().toISOString() };
 }
 
