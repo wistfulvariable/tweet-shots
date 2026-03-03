@@ -348,6 +348,11 @@ export function formatNumber(num) {
   return num.toString();
 }
 
+// Escape special regex characters to prevent ReDoS from untrusted input
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ============================================================================
 // HTML TEMPLATE GENERATION
 // ============================================================================
@@ -428,7 +433,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   if (tweet.entities?.user_mentions) {
     for (const mention of tweet.entities.user_mentions) {
       tweetText = tweetText.replace(
-        new RegExp(`@${mention.screen_name}`, 'gi'),
+        new RegExp(`@${escapeRegExp(mention.screen_name)}`, 'gi'),
         `<span style="color: ${finalColors.link}">@${mention.screen_name}</span>`
       );
     }
@@ -438,7 +443,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   if (tweet.entities?.hashtags) {
     for (const hashtag of tweet.entities.hashtags) {
       tweetText = tweetText.replace(
-        new RegExp(`#${hashtag.text}`, 'gi'),
+        new RegExp(`#${escapeRegExp(hashtag.text)}`, 'gi'),
         `<span style="color: ${finalColors.link}">#${hashtag.text}</span>`
       );
     }

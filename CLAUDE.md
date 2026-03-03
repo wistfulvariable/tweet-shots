@@ -23,6 +23,7 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | pdfkit | 0.15 | PDF generation from image arrays |
 | vitest | 4.0 | Test framework |
 | helmet / cors / express-rate-limit | latest | API security middleware |
+| eslint + eslint-plugin-security | 9.x / 4.x | Security-focused static analysis |
 
 ---
 
@@ -65,7 +66,12 @@ tweet-shots/
 │   │   └── render-worker.mjs    # Worker entry point
 │   └── schemas/
 │       └── request-schemas.mjs  # Zod schemas for all requests
-├── audit-reports/               # Test coverage audit reports
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions: tests, npm audit, gitleaks, eslint
+├── eslint.config.mjs            # ESLint flat config with eslint-plugin-security
+├── .npmrc                       # npm security settings (audit=true, save-exact)
+├── audit-reports/               # Test coverage + security audit reports
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (7 tests)
 │   ├── unit/                    # Per-service unit tests (17 files)
@@ -99,6 +105,8 @@ tweet-shots/
 - Bypass Firestore for data storage — no local JSON files
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
 - Create express-rate-limit instances inside request handlers — pre-create at module load
+- Use `!==` for secret comparison — use `crypto.timingSafeEqual` to prevent timing attacks
+- Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `core.mjs`
 
 ---
 
@@ -134,7 +142,7 @@ Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
 
 **API auth:** `X-API-KEY` header or `?apiKey=` query param. Keys validated against Firestore `apiKeys` collection.
 
-**Admin auth:** `X-Admin-Key` header compared to `config.ADMIN_KEY`. Must be at least 16 characters — no default.
+**Admin auth:** `X-Admin-Key` header compared to `config.ADMIN_KEY` via `crypto.timingSafeEqual`. Must be at least 16 characters — no default.
 
 **Tiers (defined in `src/config.mjs`):**
 

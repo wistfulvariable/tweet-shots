@@ -11,3 +11,13 @@ customers.json
 subscriptions.json
 .admin-key
 output/
+
+# Environment and credentials — never commit
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json

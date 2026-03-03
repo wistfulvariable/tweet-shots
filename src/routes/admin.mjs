@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { timingSafeEqual } from 'crypto';
 import { createApiKey, revokeApiKey, listApiKeys } from '../services/api-keys.mjs';
 import { getUsageStats } from '../services/usage.mjs';
 import { createKeySchema } from '../schemas/request-schemas.mjs';
@@ -18,9 +19,15 @@ export function adminRoutes({ config, logger }) {
   const router = Router();
 
   // Admin auth — all routes in this router require X-Admin-Key
+  // Uses constant-time comparison to prevent timing attacks
   router.use((req, res, next) => {
     const adminKey = req.headers['x-admin-key'];
-    if (adminKey !== config.ADMIN_KEY) {
+    if (!adminKey || typeof adminKey !== 'string') {
+      return res.status(403).json({ error: 'Admin access denied', code: 'ADMIN_DENIED' });
+    }
+    const a = Buffer.from(adminKey);
+    const b = Buffer.from(config.ADMIN_KEY);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
       return res.status(403).json({ error: 'Admin access denied', code: 'ADMIN_DENIED' });
     }
     next();
