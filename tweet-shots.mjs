@@ -98,15 +98,12 @@ Examples:
 `);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
+// ============================================================================
+// ARGUMENT PARSING
+// ============================================================================
 
-  if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
-    printUsage();
-    process.exit(0);
-  }
-
-  // Parse arguments with defaults
+/** Parse CLI arguments into a structured options object. */
+function parseArgs(args) {
   const options = {
     input: null,
     output: null,
@@ -142,66 +139,56 @@ async function main() {
     logoSize: 40,
   };
 
+  // Map of flags to their handler: [key, transform?]
+  const valueFlags = {
+    '-o': 'output', '--output': 'output',
+    '-t': 'theme', '--theme': 'theme',
+    '-d': 'dimension', '--dimension': 'dimension',
+    '--bg-color': 'backgroundColor',
+    '--bg-gradient': 'backgroundGradient',
+    '--bg-image': 'backgroundImage',
+    '--text-color': 'textColor',
+    '--link-color': 'linkColor',
+    '--batch': 'batchFile',
+    '--batch-dir': 'batchDir',
+    '--translate': 'translate',
+    '--logo': 'logo',
+    '--logo-position': 'logoPosition',
+  };
+
+  const intFlags = {
+    '-w': 'width', '--width': 'width',
+    '--scale': 'scale',
+    '--padding': 'padding',
+    '--radius': 'borderRadius',
+    '--logo-size': 'logoSize',
+  };
+
+  const boolFlags = {
+    '--no-metrics': ['showMetrics', false],
+    '--no-media': ['hideMedia', true],
+    '--no-verified': ['hideVerified', true],
+    '--no-date': ['hideDate', true],
+    '--no-quote': ['hideQuoteTweet', true],
+    '--no-shadow': ['hideShadow', true],
+    '--svg': ['format', 'svg'],
+    '-j': ['jsonOnly', true], '--json': ['jsonOnly', true],
+    '--thread': ['thread', true],
+  };
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg === '-o' || arg === '--output') {
-      options.output = args[++i];
-    } else if (arg === '-t' || arg === '--theme') {
-      options.theme = args[++i];
-    } else if (arg === '-d' || arg === '--dimension') {
-      options.dimension = args[++i];
-    } else if (arg === '-w' || arg === '--width') {
-      options.width = parseInt(args[++i], 10);
-    } else if (arg === '--scale') {
-      options.scale = parseInt(args[++i], 10);
-    } else if (arg === '--no-metrics') {
-      options.showMetrics = false;
-    } else if (arg === '--no-media') {
-      options.hideMedia = true;
-    } else if (arg === '--no-verified') {
-      options.hideVerified = true;
-    } else if (arg === '--no-date') {
-      options.hideDate = true;
-    } else if (arg === '--no-quote') {
-      options.hideQuoteTweet = true;
-    } else if (arg === '--no-shadow') {
-      options.hideShadow = true;
-    } else if (arg === '--bg-color') {
-      options.backgroundColor = args[++i];
-    } else if (arg === '--bg-gradient') {
-      options.backgroundGradient = args[++i];
-    } else if (arg === '--bg-image') {
-      options.backgroundImage = args[++i];
-    } else if (arg === '--text-color') {
-      options.textColor = args[++i];
-    } else if (arg === '--link-color') {
-      options.linkColor = args[++i];
-    } else if (arg === '--padding') {
-      options.padding = parseInt(args[++i], 10);
-    } else if (arg === '--radius') {
-      options.borderRadius = parseInt(args[++i], 10);
-    } else if (arg === '--svg') {
-      options.format = 'svg';
-    } else if (arg === '-j' || arg === '--json') {
-      options.jsonOnly = true;
-    } else if (arg === '--batch') {
-      options.batchFile = args[++i];
-    } else if (arg === '--batch-dir') {
-      options.batchDir = args[++i];
-    } else if (arg === '--thread') {
-      options.thread = true;
+    if (valueFlags[arg]) {
+      options[valueFlags[arg]] = args[++i];
+    } else if (intFlags[arg]) {
+      options[intFlags[arg]] = parseInt(args[++i], 10);
+    } else if (boolFlags[arg]) {
+      const [key, value] = boolFlags[arg];
+      options[key] = value;
     } else if (arg === '--thread-pdf') {
       options.thread = true;
       options.threadPdf = true;
-    } else if (arg === '--translate') {
-      options.translate = args[++i];
-    } else if (arg === '--logo') {
-      options.logo = args[++i];
-    } else if (arg === '--logo-position') {
-      options.logoPosition = args[++i];
-    } else if (arg === '--logo-size') {
-      options.logoSize = parseInt(args[++i], 10);
     } else if (!arg.startsWith('-')) {
       options.input = arg;
     }
@@ -214,14 +201,16 @@ async function main() {
     options.width = 550;
   }
 
-  const { width, showMetrics, format, jsonOnly, input, output, theme } = options;
+  return options;
+}
 
-  // Prepare render options
-  const renderOpts = {
-    theme,
-    width,
-    showMetrics,
-    format,
+/** Extract renderer-specific options from parsed CLI options. */
+function buildRenderOptions(options) {
+  return {
+    theme: options.theme,
+    width: options.width,
+    showMetrics: options.showMetrics,
+    format: options.format,
     scale: options.scale,
     hideMedia: options.hideMedia,
     hideVerified: options.hideVerified,
@@ -240,107 +229,126 @@ async function main() {
     logoSize: options.logoSize,
     translate: options.translate,
   };
+}
 
-  try {
-    // =========== BATCH PROCESSING ===========
-    if (options.batchFile) {
-      console.log(`Batch processing from ${options.batchFile}...`);
+// ============================================================================
+// COMMAND HANDLERS
+// ============================================================================
 
-      if (!fs.existsSync(options.batchFile)) {
-        throw new Error(`Batch file not found: ${options.batchFile}`);
-      }
+async function handleBatch(options, renderOpts) {
+  console.log(`Batch processing from ${options.batchFile}...`);
 
-      const urls = fs.readFileSync(options.batchFile, 'utf-8').split('\n').filter(l => l.trim());
-      console.log(`Found ${urls.length} URLs to process`);
+  if (!fs.existsSync(options.batchFile)) {
+    throw new Error(`Batch file not found: ${options.batchFile}`);
+  }
 
-      if (options.batchDir !== '.' && !fs.existsSync(options.batchDir)) {
-        fs.mkdirSync(options.batchDir, { recursive: true });
-      }
+  const urls = fs.readFileSync(options.batchFile, 'utf-8').split('\n').filter(l => l.trim());
+  console.log(`Found ${urls.length} URLs to process`);
 
-      const results = await processBatch(urls, renderOpts, options.batchDir);
+  if (options.batchDir !== '.' && !fs.existsSync(options.batchDir)) {
+    fs.mkdirSync(options.batchDir, { recursive: true });
+  }
 
-      const successful = results.filter(r => r.success).length;
-      console.log(`\n✓ Batch complete: ${successful}/${results.length} succeeded`);
-      return;
-    }
+  const results = await processBatch(urls, renderOpts, options.batchDir);
 
-    // =========== THREAD PROCESSING ===========
-    if (options.thread && input) {
-      const tweetId = extractTweetId(input);
-      console.log(`Fetching thread starting from ${tweetId}...`);
+  const successful = results.filter(r => r.success).length;
+  console.log(`\n✓ Batch complete: ${successful}/${results.length} succeeded`);
+}
 
-      const tweets = await fetchThread(tweetId);
-      console.log(`Found ${tweets.length} tweets in thread`);
+async function handleThread(options, renderOpts) {
+  const tweetId = extractTweetId(options.input);
+  console.log(`Fetching thread starting from ${tweetId}...`);
 
-      const images = [];
+  const tweets = await fetchThread(tweetId);
+  console.log(`Found ${tweets.length} tweets in thread`);
 
-      for (let i = 0; i < tweets.length; i++) {
-        let tweet = tweets[i];
-        console.log(`[${i + 1}/${tweets.length}] Rendering tweet...`);
+  const images = [];
 
-        if (options.translate) {
-          console.log(`  Translating to ${options.translate}...`);
-          tweet.text = await translateText(tweet.text, options.translate);
-        }
-
-        const result = await renderTweetToImage(tweet, renderOpts);
-        images.push(result.data);
-
-        if (!options.threadPdf || output?.endsWith('.png')) {
-          const imgPath = output
-            ? output.replace(/\.\w+$/, `-${i + 1}.png`)
-            : `thread-${tweetId}-${i + 1}.png`;
-          fs.writeFileSync(imgPath, result.data);
-          console.log(`  ✓ Saved ${imgPath}`);
-        }
-      }
-
-      if (options.threadPdf) {
-        const pdfPath = output || `thread-${tweetId}.pdf`;
-        console.log(`Generating PDF: ${pdfPath}`);
-        await generatePDF(images, pdfPath, {
-          title: `Thread by @${tweets[0]?.user?.screen_name}`,
-          author: tweets[0]?.user?.name,
-        });
-        console.log(`✓ PDF saved to ${pdfPath}`);
-      }
-
-      return;
-    }
-
-    // =========== SINGLE TWEET ===========
-    if (!input) {
-      console.error('Error: No tweet URL or ID provided');
-      printUsage();
-      process.exit(1);
-    }
-
-    const tweetId = extractTweetId(input);
-    console.log(`Fetching tweet ${tweetId}...`);
-
-    let tweet = await fetchTweet(tweetId);
-
-    if (jsonOnly) {
-      console.log(JSON.stringify(tweet, null, 2));
-      return;
-    }
+  for (let i = 0; i < tweets.length; i++) {
+    let tweet = tweets[i];
+    console.log(`[${i + 1}/${tweets.length}] Rendering tweet...`);
 
     if (options.translate) {
-      console.log(`Translating to ${options.translate}...`);
+      console.log(`  Translating to ${options.translate}...`);
       tweet.text = await translateText(tweet.text, options.translate);
     }
 
-    console.log(`Tweet by @${tweet.user?.screen_name}: "${tweet.text?.substring(0, 50)}..."`);
-    console.log(`Rendering with theme: ${theme}, dimension: ${options.dimension}`);
-
     const result = await renderTweetToImage(tweet, renderOpts);
+    images.push(result.data);
 
-    const ext = result.format;
-    const outputPath = output || `tweet-${tweetId}.${ext}`;
+    if (!options.threadPdf || options.output?.endsWith('.png')) {
+      const imgPath = options.output
+        ? options.output.replace(/\.\w+$/, `-${i + 1}.png`)
+        : `thread-${tweetId}-${i + 1}.png`;
+      fs.writeFileSync(imgPath, result.data);
+      console.log(`  ✓ Saved ${imgPath}`);
+    }
+  }
 
-    fs.writeFileSync(outputPath, result.data);
-    console.log(`✓ Saved to ${outputPath}`);
+  if (options.threadPdf) {
+    const pdfPath = options.output || `thread-${tweetId}.pdf`;
+    console.log(`Generating PDF: ${pdfPath}`);
+    await generatePDF(images, pdfPath, {
+      title: `Thread by @${tweets[0]?.user?.screen_name}`,
+      author: tweets[0]?.user?.name,
+    });
+    console.log(`✓ PDF saved to ${pdfPath}`);
+  }
+}
 
+async function handleSingle(options, renderOpts) {
+  if (!options.input) {
+    console.error('Error: No tweet URL or ID provided');
+    printUsage();
+    process.exit(1);
+  }
+
+  const tweetId = extractTweetId(options.input);
+  console.log(`Fetching tweet ${tweetId}...`);
+
+  let tweet = await fetchTweet(tweetId);
+
+  if (options.jsonOnly) {
+    console.log(JSON.stringify(tweet, null, 2));
+    return;
+  }
+
+  if (options.translate) {
+    console.log(`Translating to ${options.translate}...`);
+    tweet.text = await translateText(tweet.text, options.translate);
+  }
+
+  console.log(`Tweet by @${tweet.user?.screen_name}: "${tweet.text?.substring(0, 50)}..."`);
+  console.log(`Rendering with theme: ${options.theme}, dimension: ${options.dimension}`);
+
+  const result = await renderTweetToImage(tweet, renderOpts);
+
+  const ext = result.format;
+  const outputPath = options.output || `tweet-${tweetId}.${ext}`;
+
+  fs.writeFileSync(outputPath, result.data);
+  console.log(`✓ Saved to ${outputPath}`);
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
+    printUsage();
+    process.exit(0);
+  }
+
+  const options = parseArgs(args);
+  const renderOpts = buildRenderOptions(options);
+
+  try {
+    if (options.batchFile) return handleBatch(options, renderOpts);
+    if (options.thread && options.input) return handleThread(options, renderOpts);
+    return handleSingle(options, renderOpts);
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
