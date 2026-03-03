@@ -92,6 +92,49 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Process raw tweet text: strip media URLs, escape HTML, colorize entities.
+ * Handles URLs (direct replace), mentions and hashtags (regex replace).
+ */
+function processTweetText(tweet, linkColor) {
+  let text = tweet.text || '';
+
+  // Remove t.co media URLs from text (they show as images instead)
+  if (tweet.entities?.media) {
+    for (const media of tweet.entities.media) {
+      text = text.replace(media.url, '');
+    }
+  }
+
+  text = text
+    .trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+
+  // Colorize URLs
+  if (tweet.entities?.urls) {
+    for (const url of tweet.entities.urls) {
+      const displayUrl = url.display_url || url.expanded_url;
+      text = text.replace(
+        url.url,
+        `<span style="color: ${linkColor}">${displayUrl}</span>`
+      );
+    }
+  }
+
+  // Colorize mentions and hashtags
+  if (tweet.entities?.user_mentions) {
+    text = colorizeEntities(text, tweet.entities.user_mentions, '@', 'screen_name', linkColor);
+  }
+  if (tweet.entities?.hashtags) {
+    text = colorizeEntities(text, tweet.entities.hashtags, '#', 'text', linkColor);
+  }
+
+  return text;
+}
+
 /** Replace entity occurrences (e.g. @mention, #hashtag) with colored spans. */
 function colorizeEntities(text, entities, prefix, textKey, linkColor) {
   let result = text;
@@ -303,41 +346,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   const isVerified = tweet.user?.is_blue_verified || tweet.user?.verified;
   const profilePic = getHighResProfileUrl(tweet.user);
 
-  // Process tweet text - escape HTML and handle newlines
-  let tweetText = tweet.text || '';
-
-  // Remove t.co media URLs from text (they show as images instead)
-  if (tweet.entities?.media) {
-    for (const media of tweet.entities.media) {
-      tweetText = tweetText.replace(media.url, '');
-    }
-  }
-
-  tweetText = tweetText
-    .trim()
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>');
-
-  // Handle URLs in text - make them blue
-  if (tweet.entities?.urls) {
-    for (const url of tweet.entities.urls) {
-      const displayUrl = url.display_url || url.expanded_url;
-      tweetText = tweetText.replace(
-        url.url,
-        `<span style="color: ${finalColors.link}">${displayUrl}</span>`
-      );
-    }
-  }
-
-  // Handle user mentions and hashtags — make them blue
-  if (tweet.entities?.user_mentions) {
-    tweetText = colorizeEntities(tweetText, tweet.entities.user_mentions, '@', 'screen_name', finalColors.link);
-  }
-  if (tweet.entities?.hashtags) {
-    tweetText = colorizeEntities(tweetText, tweet.entities.hashtags, '#', 'text', finalColors.link);
-  }
+  const tweetText = processTweetText(tweet, finalColors.link);
 
   const verifiedBadge = isVerified ? verifiedBadgeSvg(finalColors.link, 18) : '';
 
