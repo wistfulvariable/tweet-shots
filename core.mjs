@@ -2,7 +2,7 @@
  * tweet-shots core library
  *
  * Shared rendering, fetching, and utility code used by both the CLI
- * (tweet-shots.mjs) and the API server (api-server.mjs).
+ * (tweet-shots.mjs) and the API server (src/server.mjs).
  */
 
 import satori from 'satori';
