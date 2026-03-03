@@ -74,7 +74,7 @@ export async function revokeApiKey(keyString) {
   const doc = await apiKeysCollection().doc(keyString).get();
   if (!doc.exists) return false;
 
-  await apiKeysCollection().doc(keyString).update({ active: false });
+  await apiKeysCollection().doc(keyString).update({ active: false, updated: FieldValue.serverTimestamp() });
   return true;
 }
 
@@ -122,5 +122,5 @@ export async function updateApiKeyTier(keyString, newTier) {
   if (!VALID_TIERS.includes(newTier)) {
     throw new Error(`Invalid tier: ${newTier}`);
   }
-  await apiKeysCollection().doc(keyString).update({ tier: newTier });
+  await apiKeysCollection().doc(keyString).update({ tier: newTier, updated: FieldValue.serverTimestamp() });
 }

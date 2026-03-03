@@ -11,12 +11,14 @@ export function authenticate(logger) {
     const apiKey = req.headers['x-api-key'] || req.query.apiKey;
 
     if (!apiKey) {
+      logger.warn({ method: req.method, path: req.path, ip: req.ip }, 'Auth failed: missing API key');
       return res.status(401).json({ error: 'API key required', code: 'MISSING_API_KEY' });
     }
 
     try {
       const keyData = await validateApiKey(apiKey);
       if (!keyData) {
+        logger.warn({ method: req.method, path: req.path, keyPrefix: apiKey.slice(0, 12) }, 'Auth failed: invalid or revoked key');
         return res.status(401).json({ error: 'Invalid or revoked API key', code: 'INVALID_API_KEY' });
       }
 

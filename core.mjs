@@ -102,13 +102,13 @@ export async function fetchTweet(tweetId) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`);
+    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`, 404);
   }
 
   const data = await response.json();
 
   if (!data.text) {
-    throw new AppError('Tweet not found or unavailable');
+    throw new AppError('Tweet not found or unavailable', 404);
   }
 
   return data;

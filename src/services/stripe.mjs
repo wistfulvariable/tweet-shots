@@ -128,7 +128,7 @@ export async function handleSubscriptionUpdate(config, subscription, logger) {
   const activeTier = subscription.status === 'active' ? tier : 'free';
 
   // Update the customer's tier
-  await custDoc.ref.update({ tier: activeTier });
+  await custDoc.ref.update({ tier: activeTier, updated: FieldValue.serverTimestamp() });
 
   // Update the existing API key's tier — key string stays the same
   if (customer.apiKeyId) {
@@ -168,7 +168,7 @@ export async function handleSubscriptionCancelled(config, subscription, logger) 
   const customer = custDoc.data();
 
   // Downgrade to free
-  await custDoc.ref.update({ tier: 'free' });
+  await custDoc.ref.update({ tier: 'free', updated: FieldValue.serverTimestamp() });
 
   if (customer.apiKeyId) {
     await updateApiKeyTier(customer.apiKeyId, 'free');

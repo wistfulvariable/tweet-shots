@@ -11,6 +11,7 @@
 | `email` | string/null | Optional, set on signup |
 | `active` | boolean | `false` = soft-revoked |
 | `created` | Timestamp | `FieldValue.serverTimestamp()` |
+| `updated` | Timestamp | Set on revoke and tier change |
 
 ### usage (doc ID: same as apiKeys)
 
@@ -31,6 +32,7 @@
 | `name` | string/null | Customer name |
 | `email` | string | Email address |
 | `created` | Timestamp | |
+| `updated` | Timestamp | Set on tier change |
 
 ### subscriptions (doc ID: Stripe subscription ID)
 

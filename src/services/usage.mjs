@@ -22,7 +22,7 @@ import { TIERS } from '../config.mjs';
  */
 export async function trackAndEnforce(keyString, tier) {
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   const limit = TIERS[tier]?.monthlyCredits ?? TIERS.free.monthlyCredits;
 
   const usageRef = usageCollection().doc(keyString);
@@ -92,7 +92,7 @@ export async function getUsageStats(keyString, tier) {
 
   const data = doc.data();
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
   // If stored month differs from current month, usage is effectively 0
   const used = data.currentMonth === currentMonth ? data.currentMonthCount : 0;

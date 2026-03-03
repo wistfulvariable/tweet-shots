@@ -2,8 +2,8 @@
 
 **Date:** 2026-03-03
 **Branch:** `cross-cutting-consistency-2026-03-03`
-**Status:** Read-only audit (no code changes)
-**Tests:** All 390 passing (verified pre-audit)
+**Status:** Audit + fixes applied
+**Tests:** All 390 passing (verified post-fix)
 
 ---
 

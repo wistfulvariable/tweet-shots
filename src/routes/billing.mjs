@@ -40,6 +40,7 @@ export function billingRoutes({ authenticate, config, logger }) {
         // If Stripe is configured, create full customer record
         if (stripe) {
           const customer = await getOrCreateCustomer(stripe, email, name);
+          logger.info({ email, tier: 'free' }, 'Signup via Stripe customer');
           return res.json({
             success: true,
             apiKey: customer.apiKeyId,
@@ -62,6 +63,7 @@ export function billingRoutes({ authenticate, config, logger }) {
         }
 
         const { keyString } = await createApiKey({ tier: 'free', name: name || email, email });
+        logger.info({ email, tier: 'free' }, 'Self-service signup: new key created');
         res.json({
           success: true,
           apiKey: keyString,
@@ -102,7 +104,7 @@ export function billingRoutes({ authenticate, config, logger }) {
         res.json({ url: session.url, sessionId: session.id });
       } catch (err) {
         logger.error({ err }, 'Checkout session creation failed');
-        res.status(400).json({ error: err.message, code: 'CHECKOUT_FAILED' });
+        res.status(400).json({ error: 'Checkout session creation failed', code: 'CHECKOUT_FAILED' });
       }
     }
   );
@@ -130,7 +132,7 @@ export function billingRoutes({ authenticate, config, logger }) {
         res.json({ url: session.url });
       } catch (err) {
         logger.error({ err }, 'Portal session creation failed');
-        res.status(400).json({ error: err.message, code: 'PORTAL_FAILED' });
+        res.status(400).json({ error: 'Portal session creation failed', code: 'PORTAL_FAILED' });
       }
     }
   );
@@ -163,7 +165,7 @@ export function billingRoutes({ authenticate, config, logger }) {
       res.json({ received: true });
     } catch (err) {
       logger.error({ err }, 'Webhook processing failed');
-      res.status(400).json({ error: err.message, code: 'WEBHOOK_FAILED' });
+      res.status(400).json({ error: 'Webhook processing failed', code: 'WEBHOOK_FAILED' });
     }
   });
 
