@@ -16,13 +16,13 @@ vi.mock('worker_threads', () => ({
   parentPort: fakeParentPort,
 }));
 
-vi.mock('../../core.mjs', () => ({
+vi.mock('../../tweet-render.mjs', () => ({
   renderTweetToImage: vi.fn(),
 }));
 
 // Import the worker — this registers the 'message' listener on fakeParentPort
 await import('../../src/workers/render-worker.mjs');
-const { renderTweetToImage } = await import('../../core.mjs');
+const { renderTweetToImage } = await import('../../tweet-render.mjs');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

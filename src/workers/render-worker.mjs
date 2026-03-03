@@ -1,11 +1,11 @@
 /**
  * Worker thread entry point for rendering.
- * Each worker imports core.mjs and renders tweets in isolation,
+ * Each worker imports tweet-render.mjs and renders tweets in isolation,
  * keeping the main thread free for HTTP handling.
  */
 
 import { parentPort } from 'worker_threads';
-import { renderTweetToImage } from '../../core.mjs';
+import { renderTweetToImage } from '../../tweet-render.mjs';
 
 parentPort.on('message', async ({ id, tweet, options }) => {
   try {

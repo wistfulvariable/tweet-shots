@@ -24,6 +24,10 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application files
 COPY package.json ./
 COPY core.mjs ./
+COPY tweet-fetch.mjs ./
+COPY tweet-html.mjs ./
+COPY tweet-render.mjs ./
+COPY tweet-utils.mjs ./
 COPY tweet-shots.mjs ./
 COPY landing.html ./
 COPY fonts/ ./fonts/

@@ -24,12 +24,19 @@ vi.mock('../../src/services/firestore.mjs', () => ({
   FieldValue: mock.FieldValue,
 }));
 
-vi.mock('../../core.mjs', async (importOriginal) => {
+vi.mock('../../tweet-fetch.mjs', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
     extractTweetId: vi.fn(actual.extractTweetId),
     fetchTweet: vi.fn(async () => structuredClone(MOCK_TWEET)),
+  };
+});
+
+vi.mock('../../tweet-render.mjs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
     renderTweetToImage: vi.fn(async (tweet, opts = {}) => {
       const format = opts.format || 'png';
       return {

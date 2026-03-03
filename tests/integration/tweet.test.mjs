@@ -24,7 +24,7 @@ vi.mock('../../src/services/firestore.mjs', () => ({
 // Uses the REAL extractTweetId to prevent mock drift (audit recommendation #2).
 let _realExtractTweetId;
 
-vi.mock('../../core.mjs', async (importOriginal) => {
+vi.mock('../../tweet-fetch.mjs', async (importOriginal) => {
   const actual = await importOriginal();
   _realExtractTweetId = actual.extractTweetId;
   return {
@@ -37,7 +37,7 @@ vi.mock('../../core.mjs', async (importOriginal) => {
 const { authenticate } = await import('../../src/middleware/authenticate.mjs');
 const { billingGuard } = await import('../../src/middleware/billing-guard.mjs');
 const { tweetRoutes } = await import('../../src/routes/tweet.mjs');
-const { extractTweetId, fetchTweet } = await import('../../core.mjs');
+const { extractTweetId, fetchTweet } = await import('../../tweet-fetch.mjs');
 
 // ─── Test Setup ──────────────────────────────────────────────────────────────
 

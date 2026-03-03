@@ -45,7 +45,7 @@ tweet-shots/
 │   └── Inter-Bold.woff
 ├── src/
 │   ├── server.mjs               # Express app entry point
-│   ├── errors.mjs               # AppError class (client errors with statusCode)
+│   ├── errors.mjs               # AppError class + sendRouteError helper
 │   ├── config.mjs               # Zod-validated env config + TIERS
 │   ├── logger.mjs               # pino structured logging
 │   ├── middleware/
@@ -97,12 +97,12 @@ tweet-shots/
 **DO:**
 - Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time
 - Pass `display: flex` on every container element — Satori only supports Flexbox layout
-- Use `extractTweetId()` from `tweet-fetch.mjs` (or `core.mjs` re-export) to normalize both URLs and raw IDs
+- Use `extractTweetId()` from `tweet-fetch.mjs` to normalize both URLs and raw IDs — import directly from sub-modules (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs`
 - Use unified `ts_<tier>_<uuid>` format for all API keys (single format everywhere)
 - Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
 - Keep API key strings stable across tier changes (only update the tier field)
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
-- Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `instanceof AppError` to return `err.statusCode`, plain `Error` becomes 500 with generic message
+- Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `sendRouteError(res, err, code)` which maps `AppError` to its `statusCode` and plain `Error` to 500 with generic message
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 
 **DO NOT:**

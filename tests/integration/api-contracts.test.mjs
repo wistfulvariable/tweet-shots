@@ -28,13 +28,20 @@ vi.mock('../../src/services/firestore.mjs', () => ({
 // Uses the REAL extractTweetId to prevent mock drift (audit recommendation #2).
 let _realExtractTweetId;
 
-vi.mock('../../core.mjs', async (importOriginal) => {
+vi.mock('../../tweet-fetch.mjs', async (importOriginal) => {
   const actual = await importOriginal();
   _realExtractTweetId = actual.extractTweetId;
   return {
     ...actual,
     extractTweetId: vi.fn(actual.extractTweetId),
     fetchTweet: vi.fn(async () => structuredClone(MOCK_TWEET)),
+  };
+});
+
+vi.mock('../../tweet-render.mjs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
     renderTweetToImage: vi.fn(async (tweet, opts = {}) => {
       const format = opts.format || 'png';
       return {
@@ -61,7 +68,8 @@ const { screenshotRoutes } = await import('../../src/routes/screenshot.mjs');
 const { tweetRoutes } = await import('../../src/routes/tweet.mjs');
 const { adminRoutes } = await import('../../src/routes/admin.mjs');
 const { billingRoutes } = await import('../../src/routes/billing.mjs');
-const { extractTweetId, fetchTweet, renderTweetToImage } = await import('../../core.mjs');
+const { extractTweetId, fetchTweet } = await import('../../tweet-fetch.mjs');
+const { renderTweetToImage } = await import('../../tweet-render.mjs');
 const { upload } = await import('../../src/services/storage.mjs');
 
 // ─── Server Setup ────────────────────────────────────────────────────────────
