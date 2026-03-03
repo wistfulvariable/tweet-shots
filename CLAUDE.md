@@ -11,8 +11,8 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | Technology | Version | Purpose |
 |---|---|---|
 | Node.js | 20+ | Runtime (ES Modules — `"type": "module"`) |
-| Express | 4.18 | REST API server |
-| Satori | 0.12 | HTML/CSS → SVG rendering |
+| Express | 5.2 | REST API server |
+| Satori | 0.24 | HTML/CSS → SVG rendering |
 | @resvg/resvg-js | 2.6 | SVG → PNG conversion |
 | satori-html | 0.3 | HTML string → Satori VDOM |
 | Firestore | 8.3 | API keys, usage, customer data |
@@ -20,9 +20,11 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | Stripe | 20.4 | Subscription billing |
 | Zod | 4.3 | Request validation schemas |
 | pino | 10.3 | Structured logging (GCP Cloud Logging) |
-| pdfkit | 0.15 | PDF generation from image arrays |
+| pdfkit | 0.17 | PDF generation from image arrays |
 | vitest | 4.0 | Test framework |
-| helmet / cors / express-rate-limit | latest | API security middleware |
+| helmet | 8.1 | HTTP security headers |
+| cors | 2.8 | CORS middleware |
+| express-rate-limit | 8.2 | Per-tier rate limiting |
 | eslint + eslint-plugin-security | 9.x / 4.x | Security-focused static analysis |
 
 ---
@@ -67,6 +69,7 @@ tweet-shots/
 │   └── schemas/
 │       └── request-schemas.mjs  # Zod schemas for all requests
 ├── .github/
+│   ├── dependabot.yml           # Automated dependency update PRs
 │   └── workflows/
 │       └── ci.yml               # GitHub Actions: tests, npm audit, gitleaks, eslint
 ├── eslint.config.mjs            # ESLint flat config with eslint-plugin-security
@@ -100,6 +103,7 @@ tweet-shots/
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
+- Use HTML attributes for `<img>` width/height (`width="80"`) — satori-html parses them as strings, satori 0.24+ rejects non-numeric values. Use CSS style instead: `style="width: 80px; height: 80px;"`
 - Render images directly from remote URLs in HTML — must convert to data URIs first
 - Block the event loop with synchronous rendering — use the worker thread pool
 - Bypass Firestore for data storage — no local JSON files

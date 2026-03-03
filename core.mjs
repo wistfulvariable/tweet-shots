@@ -501,7 +501,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   if (mediaUrl) {
     mediaHtml = `
       <div style="display: flex; margin-top: 12px; border-radius: 16px; overflow: hidden; border: 1px solid ${colors.border};">
-        <img src="${mediaUrl}" width="${width - 40}" height="280" style="object-fit: cover;" />
+        <img src="${mediaUrl}" style="width: ${width - 40}px; height: 280px; object-fit: cover;" />
       </div>
     `;
   }
@@ -559,7 +559,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     const qtMediaUrl = qt.mediaDetails?.[0]?.media_url_https || qt.photos?.[0]?.url;
     if (qtMediaUrl) {
       qtMediaHtml = `
-        <img src="${qtMediaUrl}" width="80" height="80" style="border-radius: 8px; object-fit: cover; margin-left: auto;" />
+        <img src="${qtMediaUrl}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-left: auto;" />
       `;
     }
 
@@ -567,7 +567,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
       <div style="display: flex; flex-direction: row; margin-top: 12px; padding: 12px; border: 1px solid ${colors.border}; border-radius: 16px; gap: 12px;">
         <div style="display: flex; flex-direction: column; flex: 1;">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <img src="${qtProfilePic}" width="20" height="20" style="border-radius: 50%;" />
+            <img src="${qtProfilePic}" style="width: 20px; height: 20px; border-radius: 50%;" />
             <span style="font-weight: 700; font-size: 13px; color: ${finalColors.text};">${qtUserName}</span>
             ${qtVerifiedBadge}
             <span style="font-size: 13px; color: ${colors.textSecondary};">@${qtUserHandle}</span>

@@ -6,7 +6,7 @@
  * from the old codebase with a single random format.
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { apiKeysCollection, FieldValue } from './firestore.mjs';
 import { VALID_TIERS } from '../config.mjs';
 
@@ -19,7 +19,7 @@ export function generateKeyString(tier) {
   if (!VALID_TIERS.includes(tier)) {
     throw new Error(`Invalid tier: ${tier}. Must be one of: ${VALID_TIERS.join(', ')}`);
   }
-  return `ts_${tier}_${uuidv4().replace(/-/g, '')}`;
+  return `ts_${tier}_${randomUUID().replace(/-/g, '')}`;
 }
 
 /**
