@@ -114,6 +114,75 @@ function getFirstMediaUrl(tweet) {
   return tweet.mediaDetails?.[0]?.media_url_https || tweet.photos?.[0]?.url;
 }
 
+/** Build the quote tweet embed card. Returns empty string if no quoted tweet. */
+function buildQuoteTweetHtml(quotedTweet, colors, finalColors) {
+  const qtUserName = quotedTweet.user?.name || 'Unknown';
+  const qtUserHandle = quotedTweet.user?.screen_name || 'unknown';
+  const qtIsVerified = quotedTweet.user?.is_blue_verified || quotedTweet.user?.verified;
+  const qtProfilePic = getHighResProfileUrl(quotedTweet.user);
+
+  // Process quote tweet text
+  let qtText = quotedTweet.text || '';
+  if (quotedTweet.entities?.media) {
+    for (const media of quotedTweet.entities.media) {
+      qtText = qtText.replace(media.url, '');
+    }
+  }
+  // Decode HTML entities from Twitter API (they come pre-encoded)
+  qtText = qtText
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim()
+    .replace(/\n/g, ' '); // Single line for compactness
+
+  // Truncate if too long
+  if (qtText.length > 200) {
+    qtText = qtText.substring(0, 197) + '...';
+  }
+
+  // Handle URLs in quote tweet
+  if (quotedTweet.entities?.urls) {
+    for (const url of quotedTweet.entities.urls) {
+      const displayUrl = url.display_url || url.expanded_url;
+      qtText = qtText.replace(
+        url.url,
+        `<span style="color: ${finalColors.link}">${displayUrl}</span>`
+      );
+    }
+  }
+
+  const qtVerifiedBadge = qtIsVerified ? verifiedBadgeSvg(finalColors.link, 14) : '';
+
+  // Quote tweet media (smaller thumbnail)
+  let qtMediaHtml = '';
+  const qtMediaUrl = getFirstMediaUrl(quotedTweet);
+  if (qtMediaUrl) {
+    qtMediaHtml = `
+      <img src="${qtMediaUrl}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-left: auto;" />
+    `;
+  }
+
+  return `
+    <div style="display: flex; flex-direction: row; margin-top: 12px; padding: 12px; border: 1px solid ${colors.border}; border-radius: 16px; gap: 12px;">
+      <div style="display: flex; flex-direction: column; flex: 1;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <img src="${qtProfilePic}" style="width: 20px; height: 20px; border-radius: 50%;" />
+          <span style="font-weight: 700; font-size: 13px; color: ${finalColors.text};">${qtUserName}</span>
+          ${qtVerifiedBadge}
+          <span style="font-size: 13px; color: ${colors.textSecondary};">@${qtUserHandle}</span>
+        </div>
+        <div style="display: flex; margin-top: 4px; font-size: 14px; line-height: 1.4; color: ${finalColors.text};">
+          ${qtText}
+        </div>
+      </div>
+      ${qtMediaHtml}
+    </div>
+  `;
+}
+
 /** Build the engagement metrics bar (replies, retweets, likes, views). */
 function buildMetricsHtml(tweet, colors) {
   const replies = tweet.conversation_count || 0;
@@ -285,76 +354,9 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     `;
   }
 
-  // Handle quote tweets
-  let quoteTweetHtml = '';
-  if (tweet.quoted_tweet) {
-    const qt = tweet.quoted_tweet;
-    const qtUserName = qt.user?.name || 'Unknown';
-    const qtUserHandle = qt.user?.screen_name || 'unknown';
-    const qtIsVerified = qt.user?.is_blue_verified || qt.user?.verified;
-    const qtProfilePic = getHighResProfileUrl(qt.user);
-
-    // Process quote tweet text
-    let qtText = qt.text || '';
-    if (qt.entities?.media) {
-      for (const media of qt.entities.media) {
-        qtText = qtText.replace(media.url, '');
-      }
-    }
-    // Decode HTML entities from Twitter API (they come pre-encoded)
-    qtText = qtText
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .trim()
-      .replace(/\n/g, ' '); // Single line for compactness
-
-    // Truncate if too long
-    if (qtText.length > 200) {
-      qtText = qtText.substring(0, 197) + '...';
-    }
-
-    // Handle URLs in quote tweet
-    if (qt.entities?.urls) {
-      for (const url of qt.entities.urls) {
-        const displayUrl = url.display_url || url.expanded_url;
-        qtText = qtText.replace(
-          url.url,
-          `<span style="color: ${finalColors.link}">${displayUrl}</span>`
-        );
-      }
-    }
-
-    const qtVerifiedBadge = qtIsVerified ? verifiedBadgeSvg(finalColors.link, 14) : '';
-
-    // Quote tweet media (smaller)
-    let qtMediaHtml = '';
-    const qtMediaUrl = getFirstMediaUrl(qt);
-    if (qtMediaUrl) {
-      qtMediaHtml = `
-        <img src="${qtMediaUrl}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-left: auto;" />
-      `;
-    }
-
-    quoteTweetHtml = `
-      <div style="display: flex; flex-direction: row; margin-top: 12px; padding: 12px; border: 1px solid ${colors.border}; border-radius: 16px; gap: 12px;">
-        <div style="display: flex; flex-direction: column; flex: 1;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <img src="${qtProfilePic}" style="width: 20px; height: 20px; border-radius: 50%;" />
-            <span style="font-weight: 700; font-size: 13px; color: ${finalColors.text};">${qtUserName}</span>
-            ${qtVerifiedBadge}
-            <span style="font-size: 13px; color: ${colors.textSecondary};">@${qtUserHandle}</span>
-          </div>
-          <div style="display: flex; margin-top: 4px; font-size: 14px; line-height: 1.4; color: ${finalColors.text};">
-            ${qtText}
-          </div>
-        </div>
-        ${qtMediaHtml}
-      </div>
-    `;
-  }
+  const quoteTweetHtml = tweet.quoted_tweet
+    ? buildQuoteTweetHtml(tweet.quoted_tweet, colors, finalColors)
+    : '';
 
   // Conditionally render sections
   const dateHtml = hideDate ? '' : `
