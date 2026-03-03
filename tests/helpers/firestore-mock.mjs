@@ -1,9 +1,18 @@
 /**
  * In-memory Firestore mock for unit tests.
  * Implements the subset of Firestore API used by our services.
+ *
+ * Timestamps use a deterministic counter to avoid wall-clock dependence.
+ * Call mock._resetTimestampCounter() in beforeEach to reset.
  */
 
 import { vi } from 'vitest';
+
+let _timestampCounter = 0;
+function deterministicTimestamp() {
+  _timestampCounter++;
+  return `2024-01-15T00:00:${String(_timestampCounter).padStart(2, '0')}.000Z`;
+}
 
 class MockDocSnapshot {
   constructor(id, data) {
@@ -14,7 +23,7 @@ class MockDocSnapshot {
   }
 
   data() {
-    return this._data ? { ...this._data } : undefined;
+    return this._data ? structuredClone(this._data) : undefined;
   }
 
   _applyUpdates(updates) {
@@ -23,7 +32,7 @@ class MockDocSnapshot {
       if (value?._type === 'increment') {
         this._data[key] = (this._data[key] || 0) + value._value;
       } else if (value?._type === 'serverTimestamp') {
-        this._data[key] = new Date().toISOString();
+        this._data[key] = deterministicTimestamp();
       } else {
         this._data[key] = value;
       }
@@ -63,7 +72,7 @@ class MockDocRef {
       if (value?._type === 'increment') {
         existing[key] = (existing[key] || 0) + value._value;
       } else if (value?._type === 'serverTimestamp') {
-        existing[key] = new Date().toISOString();
+        existing[key] = deterministicTimestamp();
       } else {
         existing[key] = value;
       }
@@ -113,7 +122,7 @@ function resolveFieldValues(data) {
   const resolved = {};
   for (const [key, value] of Object.entries(data)) {
     if (value?._type === 'serverTimestamp') {
-      resolved[key] = new Date().toISOString();
+      resolved[key] = deterministicTimestamp();
     } else if (value?._type === 'increment') {
       resolved[key] = value._value;
     } else {
@@ -121,6 +130,35 @@ function resolveFieldValues(data) {
     }
   }
   return resolved;
+}
+
+class MockWriteBatch {
+  constructor() {
+    this._operations = [];
+  }
+
+  set(docRef, data) {
+    this._operations.push({ type: 'set', docRef, data });
+    return this;
+  }
+
+  update(docRef, data) {
+    this._operations.push({ type: 'update', docRef, data });
+    return this;
+  }
+
+  delete(docRef) {
+    this._operations.push({ type: 'delete', docRef });
+    return this;
+  }
+
+  async commit() {
+    for (const op of this._operations) {
+      if (op.type === 'set') await op.docRef.set(op.data);
+      else if (op.type === 'update') await op.docRef.update(op.data);
+      else if (op.type === 'delete') await op.docRef.delete();
+    }
+  }
 }
 
 /**
@@ -148,5 +186,9 @@ export function createFirestoreMock() {
     subscriptionsCollection: () => collections.subscriptions,
     FieldValue: MockFieldValue,
     MockCollectionRef,
+    /** Mock getDb() returning an object with batch() support */
+    getDb: () => ({ batch: () => new MockWriteBatch() }),
+    /** Reset the deterministic timestamp counter (call in beforeEach) */
+    resetTimestampCounter() { _timestampCounter = 0; },
   };
 }

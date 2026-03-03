@@ -79,6 +79,23 @@ describe('createApiKey', () => {
     const doc = await mock.apiKeysCollection().doc(result.keyString).get();
     expect(doc.data().email).toBe('test@example.com');
   });
+
+  it('adds to batch instead of writing directly when batch is provided', async () => {
+    const batch = mock.getDb().batch();
+    const result = await createApiKey({ tier: 'free', name: 'Batched', batch });
+
+    // Key should NOT be in store yet (batch hasn't committed)
+    const docBefore = await mock.apiKeysCollection().doc(result.keyString).get();
+    expect(docBefore.exists).toBe(false);
+
+    // After commit, key should be in store
+    await batch.commit();
+    const docAfter = await mock.apiKeysCollection().doc(result.keyString).get();
+    expect(docAfter.exists).toBe(true);
+    expect(docAfter.data().tier).toBe('free');
+    expect(docAfter.data().name).toBe('Batched');
+    expect(docAfter.data().active).toBe(true);
+  });
 });
 
 describe('validateApiKey', () => {

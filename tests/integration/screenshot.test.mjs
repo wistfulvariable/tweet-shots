@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
-import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET } from '../helpers/test-fixtures.mjs';
+import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -122,7 +122,7 @@ beforeEach(() => {
   // Seed usage doc so billingGuard can track
   mock.collections.usage._store.set(MOCK_API_KEY, {
     total: 0,
-    currentMonth: '2024-01',
+    currentMonth: currentMonth(),
     currentMonthCount: 0,
     lastUsed: null,
   });
@@ -314,17 +314,17 @@ describe('POST /screenshot', () => {
   });
 
   it('returns error when url response but no GCS bucket', async () => {
-    // Temporarily override config to have no bucket
     const originalBucket = TEST_CONFIG.GCS_BUCKET;
     TEST_CONFIG.GCS_BUCKET = undefined;
+    try {
+      const res = await postScreenshot({ tweetId: '1234567890', response: 'url' });
+      expect(res.status).toBe(400);
 
-    const res = await postScreenshot({ tweetId: '1234567890', response: 'url' });
-    expect(res.status).toBe(400);
-
-    const body = await res.json();
-    expect(body.code).toBe('URL_NOT_CONFIGURED');
-
-    TEST_CONFIG.GCS_BUCKET = originalBucket;
+      const body = await res.json();
+      expect(body.code).toBe('URL_NOT_CONFIGURED');
+    } finally {
+      TEST_CONFIG.GCS_BUCKET = originalBucket;
+    }
   });
 
   it('accepts tweetId parameter', async () => {

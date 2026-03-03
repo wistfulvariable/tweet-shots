@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
+import { currentMonth } from '../helpers/test-fixtures.mjs';
 
 const mock = createFirestoreMock();
 
@@ -17,10 +18,7 @@ vi.mock('../../src/services/firestore.mjs', () => ({
 
 const { trackAndEnforce, getUsageStats } = await import('../../src/services/usage.mjs');
 
-const currentMonth = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
+// currentMonth() imported from shared test-fixtures
 
 describe('trackAndEnforce', () => {
   beforeEach(() => {
@@ -49,7 +47,7 @@ describe('trackAndEnforce', () => {
       total: 50,
       currentMonth: currentMonth(),
       currentMonthCount: 50,
-      lastUsed: new Date().toISOString(),
+      lastUsed: '2024-01-15T00:00:00.000Z',
     });
 
     const result = await trackAndEnforce(key, 'free');
@@ -78,7 +76,7 @@ describe('trackAndEnforce', () => {
       total: 45,
       currentMonth: '2023-12', // old month
       currentMonthCount: 45,
-      lastUsed: new Date().toISOString(),
+      lastUsed: '2024-01-15T00:00:00.000Z',
     });
 
     const result = await trackAndEnforce(key, 'free');
@@ -110,7 +108,7 @@ describe('getUsageStats', () => {
       total: 25,
       currentMonth: currentMonth(),
       currentMonthCount: 10,
-      lastUsed: new Date().toISOString(),
+      lastUsed: '2024-01-15T00:00:00.000Z',
     });
 
     const stats = await getUsageStats('ts_free_active', 'free');
@@ -124,7 +122,7 @@ describe('getUsageStats', () => {
       total: 100,
       currentMonth: '2023-01', // old month
       currentMonthCount: 50,
-      lastUsed: new Date().toISOString(),
+      lastUsed: '2024-01-15T00:00:00.000Z',
     });
 
     const stats = await getUsageStats('ts_free_stale', 'free');
@@ -148,7 +146,7 @@ describe('getUsageStats', () => {
       total: 60,
       currentMonth: currentMonth(),
       currentMonthCount: 60, // over free limit of 50
-      lastUsed: new Date().toISOString(),
+      lastUsed: '2024-01-15T00:00:00.000Z',
     });
 
     const stats = await getUsageStats('ts_free_over', 'free');
