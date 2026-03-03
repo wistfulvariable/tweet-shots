@@ -74,6 +74,10 @@ Conventions codified from the API Design Audit (2026-03-03). Reference this guid
 - Never expose stack traces, internal paths, or SQL/query details in error messages.
 - Error codes follow pattern: `{DOMAIN}_{ACTION}_{RESULT}` (e.g., `KEY_CREATE_FAILED`, `BILLING_NOT_CONFIGURED`).
 
+**Client vs internal errors (AppError pattern):**
+- `core.mjs` throws `AppError` (from `src/errors.mjs`) for client errors — bad tweet ID, tweet not found, fetch failure. These carry `statusCode: 400`.
+- Route catch blocks: `err instanceof AppError ? err.statusCode : 500`. Internal errors (Satori crash, OOM) return 500 with `"Internal server error"` — never leak the real message.
+
 ## Request Validation
 
 - Use **Zod** schemas for all input validation.
@@ -107,7 +111,7 @@ authenticate → applyRateLimit → billingGuard → validate(schema) → handle
 ## Rate Limiting
 
 - **Per-tier:** Pre-created `express-rate-limit` instances at module load (never inside request handlers).
-- **IP-based:** For unauthenticated endpoints with abuse risk (e.g., signup).
+- **IP-based:** For unauthenticated endpoints with abuse risk (e.g., signup: 5 req/15min, billing checkout/portal: 10 req/15min).
 - **Headers:** Use `standardHeaders: true` (RFC `RateLimit-*` headers). Set `legacyHeaders: false`.
 
 ## Pagination (When Needed)
