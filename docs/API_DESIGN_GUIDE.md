@@ -75,7 +75,7 @@ Conventions codified from the API Design Audit (2026-03-03). Reference this guid
 - Error codes follow pattern: `{DOMAIN}_{ACTION}_{RESULT}` (e.g., `KEY_CREATE_FAILED`, `BILLING_NOT_CONFIGURED`).
 
 **Client vs internal errors (AppError pattern):**
-- `core.mjs` throws `AppError` (from `src/errors.mjs`) for client errors — bad tweet ID, tweet not found, fetch failure. These carry `statusCode: 400`.
+- `tweet-fetch.mjs` throws `AppError` (from `src/errors.mjs`) for client errors — bad tweet ID, tweet not found, fetch failure. These carry appropriate `statusCode` (400 for bad input, 404 for not found).
 - Route catch blocks: `err instanceof AppError ? err.statusCode : 500`. Internal errors (Satori crash, OOM) return 500 with `"Internal server error"` — never leak the real message.
 
 ## Request Validation

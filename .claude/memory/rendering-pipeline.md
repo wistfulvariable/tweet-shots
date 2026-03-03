@@ -6,7 +6,11 @@
 fetchTweet(id) → pre-fetch images to base64 → generateTweetHtml() → html() → satori() → Resvg → PNG/SVG
 ```
 
-All rendering lives in `core.mjs`. Both CLI (`tweet-shots.mjs`) and API (via `render-worker.mjs`) import from it.
+Rendering logic is split across focused modules (all re-exported via `core.mjs` for backward compatibility):
+- `tweet-fetch.mjs` — `fetchTweet`, `extractTweetId`, `fetchThread`
+- `tweet-html.mjs` — `generateTweetHtml`, themes, gradients, formatting
+- `tweet-render.mjs` — `renderTweetToImage`, `loadFonts`, image pre-fetching
+- `tweet-utils.mjs` — `translateText`, `processBatch`, `generatePDF` (CLI-only)
 
 ## Satori Constraints (CRITICAL)
 
