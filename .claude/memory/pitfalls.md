@@ -12,7 +12,7 @@ No fallback or retry mechanism exists.
 
 ## Logo Overlay Does Not Render
 
-`addLogoToHtml()` in `core.mjs` uses `position: absolute`, which Satori does not support. The logo/watermark feature is broken in rendered output. CLI `--logo` flag accepts the argument but the logo won't appear.
+`addLogoToHtml()` in `tweet-html.mjs` uses `position: absolute`, which Satori does not support. The logo/watermark feature is broken in rendered output. CLI `--logo` flag accepts the argument but the logo won't appear.
 
 ## Thread Walking Only Goes Backward
 

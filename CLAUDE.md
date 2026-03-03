@@ -97,12 +97,12 @@ tweet-shots/
 **DO:**
 - Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time
 - Pass `display: flex` on every container element — Satori only supports Flexbox layout
-- Use `extractTweetId()` from `core.mjs` to normalize both URLs and raw IDs
+- Use `extractTweetId()` from `tweet-fetch.mjs` (or `core.mjs` re-export) to normalize both URLs and raw IDs
 - Use unified `ts_<tier>_<uuid>` format for all API keys (single format everywhere)
 - Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
 - Keep API key strings stable across tier changes (only update the tier field)
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
-- Throw `AppError` (from `src/errors.mjs`) for client errors in `core.mjs` — route catch blocks use `instanceof AppError` to return `err.statusCode`, plain `Error` becomes 500 with generic message
+- Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `instanceof AppError` to return `err.statusCode`, plain `Error` becomes 500 with generic message
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 
 **DO NOT:**
@@ -114,7 +114,7 @@ tweet-shots/
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
 - Create express-rate-limit instances inside request handlers — pre-create at module load
 - Use `!==` for secret comparison — use `crypto.timingSafeEqual` to prevent timing attacks
-- Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `core.mjs`
+- Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `tweet-html.mjs`
 - Forward raw `err.message` from Stripe or external APIs to clients — use generic error messages, log the real error server-side
 - Throw `new AppError(message)` without an explicit `statusCode` when the error isn't a 400 — always specify the correct HTTP status (e.g. `404` for not-found)
 

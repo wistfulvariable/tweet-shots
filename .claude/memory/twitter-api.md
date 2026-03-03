@@ -60,11 +60,11 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 - Thread: `parent.id_str` for backward walk only, no forward links
 - Rate limits: permissive but unofficial limits unclear
 
-## Error Handling (core.mjs)
+## Error Handling (tweet-fetch.mjs)
 
 ```js
-if (!response.ok) throw new Error(`Failed to fetch tweet: ${response.status}`);
-if (!data.text) throw new Error('Tweet not found or unavailable');
+if (!response.ok) throw new AppError(`Failed to fetch tweet: ${response.status}`, 404);
+if (!data.text) throw new AppError('Tweet not found or unavailable', 404);
 ```
 
-Both CLI and API use `fetchTweet()` from `core.mjs` with `!data.text` as availability check.
+Both CLI and API use `fetchTweet()` from `tweet-fetch.mjs` (re-exported via `core.mjs`) with `!data.text` as availability check.

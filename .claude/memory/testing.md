@@ -62,9 +62,9 @@ afterAll(() => server?.close());
 
 `TEST_CONFIG.ADMIN_KEY` = `'test-admin-key-long-enough'` (meets 16-char minimum).
 
-## Mocking core.mjs (Satori / Resvg)
+## Mocking Rendering Dependencies (Satori / Resvg)
 
-When testing code that calls `renderTweetToImage` or imports from `core.mjs`:
+When testing code that calls `renderTweetToImage` (lives in `tweet-render.mjs`, re-exported via `core.mjs`):
 
 ```js
 // Satori — mock default export
@@ -84,9 +84,9 @@ vi.mock('satori-html', () => ({
 }));
 ```
 
-- `renderTweetToImage` mutates the tweet object in-place (replaces URLs with base64) — use `structuredClone(MOCK_TWEET)` per test
-- `loadFonts` has a module-level `_cachedFonts` cache — use `vi.resetModules()` if testing cache behavior
-- Mock `global.fetch` for `fetchTweet`, `fetchImageAsBase64`, `translateText`
+- `renderTweetToImage` (in `tweet-render.mjs`) mutates the tweet object in-place (replaces URLs with base64) — use `structuredClone(MOCK_TWEET)` per test
+- `loadFonts` (in `tweet-render.mjs`) has a module-level `_cachedFonts` cache — use `vi.resetModules()` if testing cache behavior
+- Mock `global.fetch` for `fetchTweet` (`tweet-fetch.mjs`), `fetchImageAsBase64` (`tweet-render.mjs`), `translateText` (`tweet-utils.mjs`)
 
 ## Screenshot Route Integration Tests
 
@@ -103,7 +103,7 @@ app.use(screenshotRoutes({
 }));
 ```
 
-Mock `core.mjs` exports (`extractTweetId`, `fetchTweet`, `renderTweetToImage`) and `storage.mjs` (`upload`). Seed `apiKeys` and `usage` mock stores in `beforeEach`. Re-set mock implementations after `vi.clearAllMocks()`.
+Mock `core.mjs` re-exports (`extractTweetId` from `tweet-fetch.mjs`, `fetchTweet` from `tweet-fetch.mjs`, `renderTweetToImage` from `tweet-render.mjs`) and `storage.mjs` (`upload`). Tests mock via `vi.mock('../../core.mjs', ...)` since route modules import from `core.mjs`. Seed `apiKeys` and `usage` mock stores in `beforeEach`. Re-set mock implementations after `vi.clearAllMocks()`.
 
 ## Pitfalls
 
