@@ -97,11 +97,13 @@ app.use(tweetRoutes({
   logger,
 }));
 
-// Admin routes
-app.use(adminRoutes({ config, logger }));
-
 // Billing routes (signup, checkout, portal, usage, webhooks)
+// Must be mounted BEFORE admin — admin's router.use() guard blocks
+// all requests without X-Admin-Key, including /billing/* paths.
 app.use(billingRoutes({ authenticate: authMiddleware, config, logger }));
+
+// Admin routes (router-level X-Admin-Key guard)
+app.use(adminRoutes({ config, logger }));
 
 // ─── Error handler (must be last) ───────────────────────────────────
 

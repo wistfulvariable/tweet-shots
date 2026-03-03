@@ -142,4 +142,17 @@ describe('getUsageStats', () => {
     expect(pro.limit).toBe(1000);
     expect(biz.limit).toBe(10000);
   });
+
+  it('clamps remaining to 0 when usage exceeds limit', async () => {
+    mock.collections.usage._store.set('ts_free_over', {
+      total: 60,
+      currentMonth: currentMonth(),
+      currentMonthCount: 60, // over free limit of 50
+      lastUsed: new Date().toISOString(),
+    });
+
+    const stats = await getUsageStats('ts_free_over', 'free');
+    expect(stats.remaining).toBe(0); // Math.max(0, ...) prevents negative
+    expect(stats.used).toBe(60);
+  });
 });

@@ -64,9 +64,11 @@ tweet-shots/
 │   │   └── render-worker.mjs    # Worker entry point
 │   └── schemas/
 │       └── request-schemas.mjs  # Zod schemas for all requests
+├── audit-reports/               # Test coverage audit reports
 ├── tests/
-│   ├── unit/                    # Per-service unit tests (93 tests)
-│   ├── integration/             # API endpoint tests (21 tests)
+│   ├── smoke/                   # App-alive smoke tests (7 tests)
+│   ├── unit/                    # Per-service unit tests (261 tests)
+│   ├── integration/             # API endpoint tests (50 tests)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
@@ -85,6 +87,7 @@ tweet-shots/
 - Use unified `ts_<tier>_<uuid>` format for all API keys (single format everywhere)
 - Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
 - Keep API key strings stable across tier changes (only update the tier field)
+- Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them

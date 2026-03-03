@@ -105,6 +105,12 @@ describe('validateApiKey', () => {
     const result = await validateApiKey(keyString);
     expect(result).toBeNull();
   });
+
+  it('includes keyString in the returned data', async () => {
+    const { keyString } = await createApiKey({ tier: 'free', name: 'KeyStringTest' });
+    const result = await validateApiKey(keyString);
+    expect(result.keyString).toBe(keyString);
+  });
 });
 
 describe('revokeApiKey', () => {
