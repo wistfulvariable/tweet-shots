@@ -111,7 +111,7 @@ describe('GET /admin/usage', () => {
       },
       body: JSON.stringify({ tier: 'pro', name: 'Pro Key' }),
     });
-    expect(createRes.status).toBe(200);
+    expect(createRes.status).toBe(201);
 
     const res = await fetch(`${baseUrl}/admin/usage`, {
       headers: { 'X-Admin-Key': TEST_CONFIG.ADMIN_KEY },

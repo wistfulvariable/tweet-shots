@@ -8,6 +8,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
 import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
+import { AppError } from '../../src/errors.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
 
   it('returns 400 for invalid tweet ID', async () => {
     extractTweetId.mockImplementation(() => {
-      throw new Error('Could not extract tweet ID');
+      throw new AppError('Could not extract tweet ID');
     });
     const res = await fetch(`${baseUrl}/screenshot/not-a-tweet`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
@@ -189,7 +190,7 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
   });
 
   it('returns 400 when tweet fetch fails', async () => {
-    fetchTweet.mockRejectedValue(new Error('Failed to fetch tweet: 404'));
+    fetchTweet.mockRejectedValue(new AppError('Failed to fetch tweet: 404'));
     const res = await fetch(`${baseUrl}/screenshot/999999`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
     });
@@ -359,13 +360,13 @@ describe('POST /screenshot', () => {
     );
   });
 
-  it('returns 400 when rendering fails', async () => {
+  it('returns 500 when rendering fails (internal error)', async () => {
     renderTweetToImage.mockRejectedValue(new Error('Render crashed'));
     const res = await postScreenshot({ tweetId: '1234567890' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.code).toBe('SCREENSHOT_FAILED');
-    expect(body.error).toContain('Render crashed');
+    expect(body.error).toBe('Internal server error');
   });
 
   it('handles dimension presets', async () => {

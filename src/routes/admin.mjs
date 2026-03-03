@@ -33,7 +33,7 @@ export function adminRoutes({ config, logger }) {
       const result = await createApiKey({ tier, name });
 
       logger.info({ tier, name: result.name }, 'Admin created API key');
-      res.json({ success: true, apiKey: result.keyString, tier: result.tier, name: result.name });
+      res.status(201).json({ success: true, apiKey: result.keyString, tier: result.tier, name: result.name });
     } catch (err) {
       logger.error({ err }, 'Admin key creation failed');
       res.status(500).json({ error: 'Failed to create key', code: 'KEY_CREATE_FAILED' });

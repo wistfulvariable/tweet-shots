@@ -38,6 +38,7 @@ tweet-shots/
 │   └── Inter-Bold.woff
 ├── src/
 │   ├── server.mjs               # Express app entry point
+│   ├── errors.mjs               # AppError class (client errors with statusCode)
 │   ├── config.mjs               # Zod-validated env config + TIERS
 │   ├── logger.mjs               # pino structured logging
 │   ├── middleware/
@@ -55,7 +56,7 @@ tweet-shots/
 │   │   └── landing.mjs          # GET / (landing page)
 │   ├── services/
 │   │   ├── firestore.mjs        # Firestore client + collection refs
-│   │   ├── api-keys.mjs         # API key CRUD (unified ts_<tier>_<uuid>)
+│   │   ├── api-keys.mjs         # API key CRUD + findKeyByEmail (unified ts_<tier>_<uuid>)
 │   │   ├── usage.mjs            # Unified tracking + enforcement
 │   │   ├── stripe.mjs           # Stripe customer/subscription mgmt
 │   │   └── storage.mjs          # Cloud Storage uploads
@@ -67,8 +68,8 @@ tweet-shots/
 ├── audit-reports/               # Test coverage audit reports
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (7 tests)
-│   ├── unit/                    # Per-service unit tests (262 tests)
-│   ├── integration/             # API endpoint tests (105 tests)
+│   ├── unit/                    # Per-service unit tests (17 files)
+│   ├── integration/             # API endpoint tests (7 files)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
@@ -88,6 +89,8 @@ tweet-shots/
 - Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
 - Keep API key strings stable across tier changes (only update the tier field)
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
+- Throw `AppError` (from `src/errors.mjs`) for client errors in `core.mjs` — route catch blocks use `instanceof AppError` to return `err.statusCode`, plain `Error` becomes 500 with generic message
+- Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them

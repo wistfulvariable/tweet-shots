@@ -92,6 +92,29 @@ export async function listApiKeys() {
 }
 
 /**
+ * Find an existing active API key by email address.
+ * @param {string} email
+ * @returns {Promise<{ keyString: string, tier: string, name: string } | null>}
+ */
+export async function findKeyByEmail(email) {
+  if (!email) return null;
+
+  const snapshot = await apiKeysCollection()
+    .where('email', '==', email)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0];
+  const data = doc.data();
+
+  if (!data.active) return null;
+
+  return { keyString: doc.id, tier: data.tier, name: data.name };
+}
+
+/**
  * Update a key's tier without changing the key string.
  * Used by Stripe subscription changes — customers keep one key forever.
  */

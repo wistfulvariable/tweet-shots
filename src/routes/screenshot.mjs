@@ -8,6 +8,7 @@ import { extractTweetId, fetchTweet, renderTweetToImage, DIMENSIONS } from '../.
 import { screenshotQuerySchema, screenshotBodySchema } from '../schemas/request-schemas.mjs';
 import { validate } from '../middleware/validate.mjs';
 import { upload } from '../services/storage.mjs';
+import { AppError } from '../errors.mjs';
 
 /**
  * @param {object} deps
@@ -76,7 +77,11 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.send(result.data);
       } catch (err) {
         logger.error({ err, tweetIdOrUrl: req.params.tweetIdOrUrl }, 'GET screenshot failed');
-        res.status(400).json({ error: err.message, code: 'SCREENSHOT_FAILED' });
+        const status = err instanceof AppError ? err.statusCode : 500;
+        res.status(status).json({
+          error: status >= 500 ? 'Internal server error' : err.message,
+          code: 'SCREENSHOT_FAILED',
+        });
       }
     }
   );
@@ -133,7 +138,11 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.send(result.data);
       } catch (err) {
         logger.error({ err }, 'POST screenshot failed');
-        res.status(400).json({ error: err.message, code: 'SCREENSHOT_FAILED' });
+        const status = err instanceof AppError ? err.statusCode : 500;
+        res.status(status).json({
+          error: status >= 500 ? 'Internal server error' : err.message,
+          code: 'SCREENSHOT_FAILED',
+        });
       }
     }
   );

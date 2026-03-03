@@ -65,7 +65,7 @@ describe('POST /admin/keys', () => {
       },
       body: JSON.stringify({ name: 'Test Key' }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
 
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -83,7 +83,7 @@ describe('POST /admin/keys', () => {
       },
       body: JSON.stringify({ tier: 'pro', name: 'Pro Key' }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
 
     const body = await res.json();
     expect(body.apiKey).toMatch(/^ts_pro_/);

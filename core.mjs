@@ -12,6 +12,7 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { AppError } from './src/errors.mjs';
 
 // ============================================================================
 // CONFIGURATION
@@ -91,7 +92,7 @@ export function extractTweetId(input) {
     return match[1];
   }
 
-  throw new Error(`Could not extract tweet ID from: ${input}`);
+  throw new AppError(`Could not extract tweet ID from: ${input}`);
 }
 
 export async function fetchTweet(tweetId) {
@@ -101,13 +102,13 @@ export async function fetchTweet(tweetId) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch tweet: ${response.status} ${response.statusText}`);
+    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
 
   if (!data.text) {
-    throw new Error('Tweet not found or unavailable');
+    throw new AppError('Tweet not found or unavailable');
   }
 
   return data;

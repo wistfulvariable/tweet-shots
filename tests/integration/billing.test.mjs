@@ -94,6 +94,7 @@ describe('POST /billing/signup', () => {
     });
     expect(res.status).toBe(400);
   });
+
 });
 
 describe('POST /billing/checkout', () => {
@@ -183,5 +184,61 @@ describe('GET /billing/cancel', () => {
 
     const text = await res.text();
     expect(text).toContain('Payment Cancelled');
+  });
+});
+
+// Uses a fresh server to get a clean rate limiter (signupLimiter: 5 req/15min)
+describe('POST /billing/signup — idempotency', () => {
+  let idempotentServer, idempotentBaseUrl;
+
+  beforeAll(async () => {
+    const idempotentApp = express();
+    idempotentApp.use(express.json());
+    idempotentApp.use(billingRoutes({
+      authenticate: authenticate(mockLogger),
+      config: TEST_CONFIG,
+      logger: mockLogger,
+    }));
+
+    await new Promise((resolve) => {
+      idempotentServer = idempotentApp.listen(0, '127.0.0.1', () => {
+        idempotentBaseUrl = `http://127.0.0.1:${idempotentServer.address().port}`;
+        resolve();
+      });
+    });
+  });
+
+  afterAll(() => {
+    idempotentServer?.close();
+  });
+
+  beforeEach(() => {
+    mock.collections.apiKeys._store.clear();
+    mock.collections.customers._store.clear();
+  });
+
+  it('returns the same key for duplicate signups with the same email', async () => {
+    const res1 = await fetch(`${idempotentBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'idempotent@example.com' }),
+    });
+    const body1 = await res1.json();
+    expect(body1.success).toBe(true);
+
+    const res2 = await fetch(`${idempotentBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'idempotent@example.com' }),
+    });
+    const body2 = await res2.json();
+    expect(body2.success).toBe(true);
+
+    expect(body2.apiKey).toBe(body1.apiKey);
+
+    // Only one key should exist for this email
+    const allKeys = [...mock.collections.apiKeys._store.entries()];
+    const keysForEmail = allKeys.filter(([, data]) => data.email === 'idempotent@example.com');
+    expect(keysForEmail).toHaveLength(1);
   });
 });

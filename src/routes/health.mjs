@@ -47,6 +47,7 @@ export function healthRoutes() {
             hideDate: 'true|false (exact strings only)',
             hideVerified: 'true|false (exact strings only)',
             hideShadow: 'true|false (exact strings only)',
+            hideQuoteTweet: 'true|false (exact strings only)',
             padding: '0-100 (default: 20)',
             radius: '0-100 (default: 16)',
           },
