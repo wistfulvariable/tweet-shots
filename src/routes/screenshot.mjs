@@ -47,6 +47,15 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
     };
   }
 
+  /** Send a standardized screenshot error response. */
+  function sendScreenshotError(res, err) {
+    const status = err instanceof AppError ? err.statusCode : 500;
+    res.status(status).json({
+      error: status >= 500 ? 'Internal server error' : err.message,
+      code: 'SCREENSHOT_FAILED',
+    });
+  }
+
   /**
    * Render via worker pool or direct call.
    */
@@ -77,11 +86,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.send(result.data);
       } catch (err) {
         logger.error({ err, tweetIdOrUrl: req.params.tweetIdOrUrl }, 'GET screenshot failed');
-        const status = err instanceof AppError ? err.statusCode : 500;
-        res.status(status).json({
-          error: status >= 500 ? 'Internal server error' : err.message,
-          code: 'SCREENSHOT_FAILED',
-        });
+        sendScreenshotError(res, err);
       }
     }
   );
@@ -138,11 +143,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.send(result.data);
       } catch (err) {
         logger.error({ err }, 'POST screenshot failed');
-        const status = err instanceof AppError ? err.statusCode : 500;
-        res.status(status).json({
-          error: status >= 500 ? 'Internal server error' : err.message,
-          code: 'SCREENSHOT_FAILED',
-        });
+        sendScreenshotError(res, err);
       }
     }
   );
