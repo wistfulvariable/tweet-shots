@@ -187,6 +187,252 @@ describe('GET /billing/cancel', () => {
   });
 });
 
+// ============================================================================
+// CHARACTERIZATION TESTS — capture current billing behavior before refactoring
+// ============================================================================
+
+// Uses a fresh server to get a clean rate limiter for characterization tests
+describe('Billing routes — characterization tests', () => {
+  let charServer, charBaseUrl;
+
+  beforeAll(async () => {
+    const charApp = express();
+    charApp.use(express.json());
+    charApp.use(billingRoutes({
+      authenticate: authenticate(mockLogger),
+      config: TEST_CONFIG,
+      logger: mockLogger,
+    }));
+
+    await new Promise((resolve) => {
+      charServer = charApp.listen(0, '127.0.0.1', () => {
+        charBaseUrl = `http://127.0.0.1:${charServer.address().port}`;
+        resolve();
+      });
+    });
+  });
+
+  afterAll(() => {
+    charServer?.close();
+  });
+
+  beforeEach(() => {
+    mock.collections.apiKeys._store.clear();
+    mock.collections.usage._store.clear();
+    mock.collections.customers._store.clear();
+  });
+
+  // ─── Signup characterization ─────────────────────────────────────
+
+  it('signup with name stores name on the API key document', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'named@example.com', name: 'Alice Test' }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+
+    const keyDoc = mock.collections.apiKeys._store.get(body.apiKey);
+    expect(keyDoc).toBeDefined();
+    expect(keyDoc.name).toBe('Alice Test');
+  });
+
+  it('signup stores email on the API key document', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'stored@example.com' }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+
+    const keyDoc = mock.collections.apiKeys._store.get(body.apiKey);
+    expect(keyDoc).toBeDefined();
+    expect(keyDoc.email).toBe('stored@example.com');
+  });
+
+  it('signup without name uses email as name fallback', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'noname@example.com' }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+
+    const keyDoc = mock.collections.apiKeys._store.get(body.apiKey);
+    expect(keyDoc).toBeDefined();
+    expect(keyDoc.name).toBe('noname@example.com');
+  });
+
+  it('signup response includes success message with API key mention', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'msg@example.com' }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.message).toMatch(/API key/i);
+    expect(body.credits).toBe(50);
+    expect(body.tier).toBe('free');
+  });
+
+  // ─── Checkout validation characterization ────────────────────────
+
+  it('checkout rejects missing email with validation error', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: 'pro' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('checkout rejects invalid tier value with validation error', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'test@example.com', tier: 'free' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  // ─── Portal validation characterization ──────────────────────────
+
+  it('portal rejects missing email with validation error', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('portal rejects invalid email with validation error', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bad-email' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  // ─── Usage characterization (keys seeded directly in mock store) ─
+
+  it('usage returns current month counts when usage data exists', async () => {
+    const testKey = 'ts_free_char0000000000000000000001';
+    mock.collections.apiKeys._store.set(testKey, {
+      tier: 'free', name: 'Usage Test', email: 'usage@test.com',
+      active: true, created: new Date().toISOString(),
+    });
+
+    const now = new Date();
+    const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    mock.collections.usage._store.set(testKey, {
+      total: 10, currentMonth, currentMonthCount: 10,
+      lastUsed: new Date().toISOString(),
+    });
+
+    const res = await fetch(`${charBaseUrl}/billing/usage`, {
+      headers: { 'X-API-KEY': testKey },
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.used).toBe(10);
+    expect(body.remaining).toBe(40);
+    expect(body.limit).toBe(50);
+    expect(body.total).toBe(10);
+  });
+
+  it('usage returns 0 used when month has rolled over', async () => {
+    const testKey = 'ts_free_char0000000000000000000002';
+    mock.collections.apiKeys._store.set(testKey, {
+      tier: 'free', name: 'Stale Test', email: 'stale@test.com',
+      active: true, created: new Date().toISOString(),
+    });
+
+    mock.collections.usage._store.set(testKey, {
+      total: 25, currentMonth: '2025-01', currentMonthCount: 25,
+      lastUsed: '2025-01-15T00:00:00Z',
+    });
+
+    const res = await fetch(`${charBaseUrl}/billing/usage`, {
+      headers: { 'X-API-KEY': testKey },
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.used).toBe(0);
+    expect(body.remaining).toBe(50);
+    expect(body.total).toBe(25);
+  });
+
+  it('usage response includes all expected fields', async () => {
+    const testKey = 'ts_free_char0000000000000000000003';
+    mock.collections.apiKeys._store.set(testKey, {
+      tier: 'free', name: 'Fields Test', email: 'fields@test.com',
+      active: true, created: new Date().toISOString(),
+    });
+
+    const res = await fetch(`${charBaseUrl}/billing/usage`, {
+      headers: { 'X-API-KEY': testKey },
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body).toEqual(expect.objectContaining({
+      tier: 'free',
+      used: expect.any(Number),
+      limit: expect.any(Number),
+      remaining: expect.any(Number),
+      total: expect.any(Number),
+    }));
+  });
+
+  // ─── Webhook characterization ────────────────────────────────────
+
+  it('webhook returns WEBHOOK_NOT_CONFIGURED even with stripe-signature header', async () => {
+    const res = await fetch(`${charBaseUrl}/webhook/stripe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 't=1234567890,v1=abc123def456',
+      },
+      body: JSON.stringify({ type: 'test.event' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('WEBHOOK_NOT_CONFIGURED');
+  });
+
+  // ─── Success/cancel page characterization ────────────────────────
+
+  it('success page contains back-to-API link', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/success`);
+    const text = await res.text();
+    expect(res.status).toBe(200);
+    expect(text).toContain('href="/"');
+    expect(text).toContain('Back to API');
+  });
+
+  it('cancel page contains retry message and back link', async () => {
+    const res = await fetch(`${charBaseUrl}/billing/cancel`);
+    const text = await res.text();
+    expect(res.status).toBe(200);
+    expect(text).toContain('try again');
+    expect(text).toContain('href="/"');
+  });
+});
+
 // Uses a fresh server to get a clean rate limiter (signupLimiter: 5 req/15min)
 describe('POST /billing/signup — idempotency', () => {
   let idempotentServer, idempotentBaseUrl;
