@@ -41,6 +41,31 @@ const THEMES = {
   }
 };
 
+// Dimension presets for social media
+const DIMENSIONS = {
+  auto: { width: 550, height: null }, // Auto height based on content
+  instagramFeed: { width: 1080, height: 1080 },
+  instagramStory: { width: 1080, height: 1920 },
+  instagramVertical: { width: 1080, height: 1350 },
+  tiktok: { width: 1080, height: 1920 },
+  linkedin: { width: 1200, height: 627 },
+  twitter: { width: 1200, height: 675 },
+  facebook: { width: 1200, height: 630 },
+  youtube: { width: 1280, height: 720 },
+};
+
+// Gradient backgrounds
+const GRADIENTS = {
+  sunset: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)',
+  ocean: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  forest: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+  fire: 'linear-gradient(135deg, #f12711 0%, #f5af19 100%)',
+  midnight: 'linear-gradient(135deg, #232526 0%, #414345 100%)',
+  sky: 'linear-gradient(135deg, #2980b9 0%, #6dd5fa 100%)',
+  candy: 'linear-gradient(135deg, #d53369 0%, #daae51 100%)',
+  peach: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+};
+
 // ============================================================================
 // TWEET DATA FETCHING
 // ============================================================================
@@ -137,7 +162,42 @@ function formatNumber(num) {
 
 function generateTweetHtml(tweet, theme, options = {}) {
   const colors = THEMES[theme] || THEMES.dark;
-  const { showMetrics = true, width = 550 } = options;
+  const { 
+    showMetrics = true, 
+    width = 550,
+    padding = 20,
+    hideMedia = false,
+    hideVerified = false,
+    hideDate = false,
+    hideQuoteTweet = false,
+    hideShadow = false,
+    backgroundColor = null,
+    backgroundImage = null,
+    backgroundGradient = null,
+    textColor = null,
+    textSecondaryColor = null,
+    linkColor = null,
+    borderRadius = 16,
+  } = options;
+  
+  // Override colors if custom colors provided
+  const finalColors = {
+    ...colors,
+    text: textColor || colors.text,
+    textSecondary: textSecondaryColor || colors.textSecondary,
+    link: linkColor || colors.link,
+    bg: backgroundColor || colors.bg,
+  };
+  
+  // Background style
+  let bgStyle = `background: ${finalColors.bg};`;
+  if (backgroundGradient && GRADIENTS[backgroundGradient]) {
+    bgStyle = `background: ${GRADIENTS[backgroundGradient]};`;
+  } else if (backgroundImage) {
+    bgStyle = `background: url(${backgroundImage}) center/cover no-repeat;`;
+  }
+  
+  const shadow = hideShadow ? '' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
   
   const userName = tweet.user?.name || 'Unknown';
   const userHandle = tweet.user?.screen_name || 'unknown';
@@ -326,41 +386,50 @@ function generateTweetHtml(tweet, theme, options = {}) {
     `;
   }
   
+  // Conditionally render sections
+  const dateHtml = hideDate ? '' : `
+    <div style="display: flex; margin-top: 16px; font-size: 15px; color: ${finalColors.textSecondary};">
+      ${formatDate(tweet.created_at)}
+    </div>
+  `;
+  
+  const finalMediaHtml = hideMedia ? '' : mediaHtml;
+  const finalQuoteTweetHtml = hideQuoteTweet ? '' : quoteTweetHtml;
+  const finalVerifiedBadge = hideVerified ? '' : verifiedBadge;
+  
   return `
-    <div style="display: flex; flex-direction: column; padding: 20px; background: ${colors.bg}; border-radius: 16px; width: ${width}px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <div style="display: flex; flex-direction: column; padding: ${padding}px; ${bgStyle} border-radius: ${borderRadius}px; width: ${width}px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; ${shadow}">
       <!-- Header: Profile pic + name -->
       <div style="display: flex; align-items: center; gap: 12px;">
         <img src="${profilePic}" style="width: 48px; height: 48px; border-radius: 50%;" />
         <div style="display: flex; flex-direction: column;">
           <div style="display: flex; align-items: center;">
-            <span style="font-weight: 700; font-size: 15px; color: ${colors.text};">${userName}</span>
-            ${verifiedBadge}
+            <span style="font-weight: 700; font-size: 15px; color: ${finalColors.text};">${userName}</span>
+            ${finalVerifiedBadge}
           </div>
-          <span style="font-size: 15px; color: ${colors.textSecondary};">@${userHandle}</span>
+          <span style="font-size: 15px; color: ${finalColors.textSecondary};">@${userHandle}</span>
         </div>
         <!-- X logo -->
         <div style="display: flex; margin-left: auto;">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="${colors.text}">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="${finalColors.text}">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
           </svg>
         </div>
       </div>
       
       <!-- Tweet text -->
-      <div style="display: flex; flex-direction: column; margin-top: 12px; font-size: 17px; line-height: 1.5; color: ${colors.text};">
+      <div style="display: flex; flex-direction: column; margin-top: 12px; font-size: 17px; line-height: 1.5; color: ${finalColors.text};">
         ${tweetText}
       </div>
       
       <!-- Media -->
-      ${mediaHtml}
+      ${finalMediaHtml}
       
       <!-- Quote Tweet -->
-      ${quoteTweetHtml}
+      ${finalQuoteTweetHtml}
       
       <!-- Timestamp -->
-      <div style="display: flex; margin-top: 16px; font-size: 15px; color: ${colors.textSecondary};">
-        ${formatDate(tweet.created_at)}
-      </div>
+      ${dateHtml}
       
       <!-- Metrics -->
       ${metricsHtml}
@@ -419,6 +488,19 @@ async function renderTweetToImage(tweet, options = {}) {
     width = 550,
     showMetrics = true,
     format = 'png',
+    scale = 1,
+    hideMedia = false,
+    hideVerified = false,
+    hideDate = false,
+    hideQuoteTweet = false,
+    hideShadow = false,
+    backgroundColor = null,
+    backgroundGradient = null,
+    backgroundImage = null,
+    textColor = null,
+    linkColor = null,
+    padding = 20,
+    borderRadius = 16,
   } = options;
   
   // Pre-fetch profile image and convert to base64
@@ -474,7 +556,22 @@ async function renderTweetToImage(tweet, options = {}) {
     }
   }
   
-  const htmlContent = generateTweetHtml(tweet, theme, { showMetrics, width });
+  const htmlContent = generateTweetHtml(tweet, theme, { 
+    showMetrics, 
+    width,
+    padding,
+    hideMedia,
+    hideVerified,
+    hideDate,
+    hideQuoteTweet,
+    hideShadow,
+    backgroundColor,
+    backgroundGradient,
+    backgroundImage,
+    textColor,
+    linkColor,
+    borderRadius,
+  });
   const markup = html(htmlContent);
   
   // Load fonts
@@ -482,18 +579,23 @@ async function renderTweetToImage(tweet, options = {}) {
   
   // Calculate approximate height based on content
   const textLength = tweet.text?.length || 0;
-  const hasMedia = (tweet.photos && tweet.photos.length > 0) || (tweet.mediaDetails && tweet.mediaDetails.length > 0);
-  const hasQuoteTweet = !!tweet.quoted_tweet;
-  const baseHeight = 180; // Header + timestamp
+  const hasMedia = !hideMedia && ((tweet.photos && tweet.photos.length > 0) || (tweet.mediaDetails && tweet.mediaDetails.length > 0));
+  const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
+  const baseHeight = 140 + (padding * 2); // Header + padding
   const textHeight = Math.ceil(textLength / 45) * 28; // ~45 chars per line, 28px line height
   const mediaHeight = hasMedia ? 320 : 0;
   const quoteTweetHeight = hasQuoteTweet ? 120 : 0; // Quote tweet box
   const metricsHeight = showMetrics ? 60 : 0;
-  const calculatedHeight = baseHeight + textHeight + mediaHeight + quoteTweetHeight + metricsHeight;
+  const dateHeight = hideDate ? 0 : 40;
+  const calculatedHeight = baseHeight + textHeight + mediaHeight + quoteTweetHeight + metricsHeight + dateHeight;
+  
+  // Apply scale
+  const scaledWidth = (width + padding * 2) * scale;
+  const scaledHeight = calculatedHeight * scale;
   
   // Generate SVG with Satori
   const svg = await satori(markup, {
-    width: width + 40, // Add padding
+    width: width + padding * 2,
     height: calculatedHeight,
     fonts,
   });
@@ -506,7 +608,7 @@ async function renderTweetToImage(tweet, options = {}) {
   const resvg = new Resvg(svg, {
     fitTo: {
       mode: 'width',
-      value: width + 40,
+      value: scaledWidth,
     },
   });
   const pngData = resvg.render();
@@ -526,19 +628,50 @@ tweet-shots - Generate beautiful tweet screenshots
 Usage:
   tweet-shots <tweet-url-or-id> [options]
 
-Options:
-  -o, --output <file>    Output file path (default: tweet-<id>.png)
-  -t, --theme <theme>    Theme: light, dark, dim, black (default: dark)
-  -w, --width <px>       Width in pixels (default: 550)
-  --no-metrics           Hide engagement metrics
-  --svg                  Output SVG instead of PNG
-  -j, --json             Output tweet JSON data
-  -h, --help             Show this help
+Basic Options:
+  -o, --output <file>      Output file path (default: tweet-<id>.png)
+  -t, --theme <theme>      Theme: light, dark, dim, black (default: dark)
+  -d, --dimension <preset> Dimension preset (default: auto)
+  -w, --width <px>         Width in pixels (default: 550, overrides dimension)
+  --svg                    Output SVG instead of PNG
+  -j, --json               Output tweet JSON data
+  --scale <n>              Scale factor: 1, 2, or 3 (default: 1)
+  -h, --help               Show this help
+
+Hide/Show Options:
+  --no-metrics             Hide engagement metrics
+  --no-media               Hide images/videos
+  --no-verified            Hide verified badge
+  --no-date                Hide timestamp
+  --no-quote               Hide quote tweet
+  --no-shadow              Hide shadow effect
+
+Styling Options:
+  --bg-color <hex>         Background color (e.g., #ff0000)
+  --bg-gradient <name>     Gradient: sunset, ocean, forest, fire, midnight, sky, candy, peach
+  --bg-image <url>         Background image URL
+  --text-color <hex>       Primary text color
+  --link-color <hex>       Link/mention color
+  --padding <px>           Padding around tweet (default: 20)
+  --radius <px>            Border radius (default: 16)
+
+Dimension Presets:
+  auto              Auto height (default, 550px wide)
+  instagramFeed     1080x1080 (square)
+  instagramStory    1080x1920 (vertical)
+  instagramVertical 1080x1350 (portrait)
+  tiktok            1080x1920 (vertical)
+  linkedin          1200x627 (horizontal)
+  twitter           1200x675 (horizontal)
+  facebook          1200x630 (horizontal)
+  youtube           1280x720 (16:9)
 
 Examples:
   tweet-shots https://x.com/karpathy/status/1617979122625712128
-  tweet-shots 1617979122625712128 -t light -o my-tweet.png
-  tweet-shots https://twitter.com/elonmusk/status/123456789 --svg
+  tweet-shots 1617979122625712128 -t light -d instagramFeed
+  tweet-shots <url> --bg-gradient ocean --no-shadow
+  tweet-shots <url> --bg-color "#1a1a2e" --text-color "#eee"
+  tweet-shots <url> -d tiktok --scale 2 -o story.png
 `);
 }
 
@@ -550,34 +683,95 @@ async function main() {
     process.exit(0);
   }
   
-  // Parse arguments
-  let input = null;
-  let output = null;
-  let theme = 'dark';
-  let width = 550;
-  let showMetrics = true;
-  let format = 'png';
-  let jsonOnly = false;
+  // Parse arguments with defaults
+  const options = {
+    input: null,
+    output: null,
+    theme: 'dark',
+    dimension: 'auto',
+    width: null, // null means use dimension preset
+    format: 'png',
+    jsonOnly: false,
+    scale: 1,
+    // Hide/show
+    showMetrics: true,
+    hideMedia: false,
+    hideVerified: false,
+    hideDate: false,
+    hideQuoteTweet: false,
+    hideShadow: false,
+    // Styling
+    backgroundColor: null,
+    backgroundGradient: null,
+    backgroundImage: null,
+    textColor: null,
+    linkColor: null,
+    padding: 20,
+    borderRadius: 16,
+  };
   
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     
     if (arg === '-o' || arg === '--output') {
-      output = args[++i];
+      options.output = args[++i];
     } else if (arg === '-t' || arg === '--theme') {
-      theme = args[++i];
+      options.theme = args[++i];
+    } else if (arg === '-d' || arg === '--dimension') {
+      options.dimension = args[++i];
     } else if (arg === '-w' || arg === '--width') {
-      width = parseInt(args[++i], 10);
+      options.width = parseInt(args[++i], 10);
+    } else if (arg === '--scale') {
+      options.scale = parseInt(args[++i], 10);
     } else if (arg === '--no-metrics') {
-      showMetrics = false;
+      options.showMetrics = false;
+    } else if (arg === '--no-media') {
+      options.hideMedia = true;
+    } else if (arg === '--no-verified') {
+      options.hideVerified = true;
+    } else if (arg === '--no-date') {
+      options.hideDate = true;
+    } else if (arg === '--no-quote') {
+      options.hideQuoteTweet = true;
+    } else if (arg === '--no-shadow') {
+      options.hideShadow = true;
+    } else if (arg === '--bg-color') {
+      options.backgroundColor = args[++i];
+    } else if (arg === '--bg-gradient') {
+      options.backgroundGradient = args[++i];
+    } else if (arg === '--bg-image') {
+      options.backgroundImage = args[++i];
+    } else if (arg === '--text-color') {
+      options.textColor = args[++i];
+    } else if (arg === '--link-color') {
+      options.linkColor = args[++i];
+    } else if (arg === '--padding') {
+      options.padding = parseInt(args[++i], 10);
+    } else if (arg === '--radius') {
+      options.borderRadius = parseInt(args[++i], 10);
     } else if (arg === '--svg') {
-      format = 'svg';
+      options.format = 'svg';
     } else if (arg === '-j' || arg === '--json') {
-      jsonOnly = true;
+      options.jsonOnly = true;
     } else if (!arg.startsWith('-')) {
-      input = arg;
+      options.input = arg;
     }
   }
+  
+  // Apply dimension preset if no explicit width
+  if (!options.width && DIMENSIONS[options.dimension]) {
+    options.width = DIMENSIONS[options.dimension].width;
+  } else if (!options.width) {
+    options.width = 550;
+  }
+  
+  const width = options.width;
+  const showMetrics = options.showMetrics;
+  const format = options.format;
+  const jsonOnly = options.jsonOnly;
+  const input = options.input;
+  const output = options.output;
+  const theme = options.theme;
   
   if (!input) {
     console.error('Error: No tweet URL or ID provided');
@@ -599,7 +793,7 @@ async function main() {
     }
     
     console.log(`Tweet by @${tweet.user?.screen_name}: "${tweet.text?.substring(0, 50)}..."`);
-    console.log(`Rendering with theme: ${theme}`);
+    console.log(`Rendering with theme: ${theme}, dimension: ${options.dimension}`);
     
     // Render to image
     const result = await renderTweetToImage(tweet, {
@@ -607,6 +801,19 @@ async function main() {
       width,
       showMetrics,
       format,
+      scale: options.scale,
+      hideMedia: options.hideMedia,
+      hideVerified: options.hideVerified,
+      hideDate: options.hideDate,
+      hideQuoteTweet: options.hideQuoteTweet,
+      hideShadow: options.hideShadow,
+      backgroundColor: options.backgroundColor,
+      backgroundGradient: options.backgroundGradient,
+      backgroundImage: options.backgroundImage,
+      textColor: options.textColor,
+      linkColor: options.linkColor,
+      padding: options.padding,
+      borderRadius: options.borderRadius,
     });
     
     // Determine output path
