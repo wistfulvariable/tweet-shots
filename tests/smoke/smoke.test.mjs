@@ -28,12 +28,7 @@ vi.mock('../../core.mjs', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    extractTweetId: vi.fn((input) => {
-      if (/^\d+$/.test(input)) return input;
-      const match = input.match(/status\/(\d+)/);
-      if (match) return match[1];
-      throw new Error(`Could not extract tweet ID from: ${input}`);
-    }),
+    extractTweetId: vi.fn(actual.extractTweetId),
     fetchTweet: vi.fn(async () => structuredClone(MOCK_TWEET)),
     renderTweetToImage: vi.fn(async (tweet, opts = {}) => {
       const format = opts.format || 'png';

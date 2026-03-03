@@ -24,16 +24,15 @@ vi.mock('../../src/services/firestore.mjs', () => ({
   FieldValue: mock.FieldValue,
 }));
 
+// Uses the REAL extractTweetId to prevent mock drift (audit recommendation #2).
+let _realExtractTweetId;
+
 vi.mock('../../core.mjs', async (importOriginal) => {
   const actual = await importOriginal();
+  _realExtractTweetId = actual.extractTweetId;
   return {
     ...actual,
-    extractTweetId: vi.fn((input) => {
-      if (/^\d+$/.test(input)) return input;
-      const match = input.match(/status\/(\d+)/);
-      if (match) return match[1];
-      throw new Error(`Could not extract tweet ID from: ${input}`);
-    }),
+    extractTweetId: vi.fn(actual.extractTweetId),
     fetchTweet: vi.fn(async () => structuredClone(MOCK_TWEET)),
     renderTweetToImage: vi.fn(async (tweet, opts = {}) => {
       const format = opts.format || 'png';
@@ -122,12 +121,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Restore default mock implementations
-  extractTweetId.mockImplementation((input) => {
-    if (/^\d+$/.test(input)) return input;
-    const match = input.match(/status\/(\d+)/);
-    if (match) return match[1];
-    throw new Error(`Could not extract tweet ID from: ${input}`);
-  });
+  extractTweetId.mockImplementation(_realExtractTweetId);
   fetchTweet.mockImplementation(async () => structuredClone(MOCK_TWEET));
   renderTweetToImage.mockImplementation(async (tweet, opts = {}) => {
     const format = opts.format || 'png';

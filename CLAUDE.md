@@ -67,8 +67,8 @@ tweet-shots/
 ├── audit-reports/               # Test coverage audit reports
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (7 tests)
-│   ├── unit/                    # Per-service unit tests (261 tests)
-│   ├── integration/             # API endpoint tests (50 tests)
+│   ├── unit/                    # Per-service unit tests (262 tests)
+│   ├── integration/             # API endpoint tests (105 tests)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore

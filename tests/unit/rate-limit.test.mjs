@@ -101,6 +101,55 @@ describe('applyRateLimit', () => {
     expect(res1.status).toBe(200);
     expect(res2.status).toBe(200);
   });
+
+  it('returns 429 when free tier limit (10 req/min) is exhausted', async () => {
+    const baseUrl = await startApp((app) => {
+      app.get('/test', (req, res, next) => {
+        req.apiKey = 'ts_free_exhaust_test';
+        req.keyData = { tier: 'free' };
+        next();
+      }, applyRateLimit, (req, res) => res.json({ ok: true }));
+    });
+
+    // Free tier = 10 req/min. Send 10 requests — all should succeed.
+    const results = [];
+    for (let i = 0; i < 10; i++) {
+      const res = await fetch(`${baseUrl}/test`);
+      results.push(res.status);
+    }
+    expect(results).toEqual(Array(10).fill(200));
+
+    // 11th request should be rate-limited
+    const blocked = await fetch(`${baseUrl}/test`);
+    expect(blocked.status).toBe(429);
+
+    const body = await blocked.json();
+    expect(body.error).toBe('Rate limit exceeded');
+    expect(body.code).toBe('RATE_LIMITED');
+  });
+
+  it('does not share rate limit buckets across different API keys', async () => {
+    const baseUrl = await startApp((app) => {
+      app.get('/test', (req, res, next) => {
+        req.apiKey = req.headers['x-test-key'];
+        req.keyData = { tier: 'free' };
+        next();
+      }, applyRateLimit, (req, res) => res.json({ ok: true }));
+    });
+
+    // Exhaust limit for key A (10 requests)
+    for (let i = 0; i < 10; i++) {
+      await fetch(`${baseUrl}/test`, { headers: { 'x-test-key': 'ts_free_bucket_a' } });
+    }
+
+    // Key A should now be blocked
+    const blockedA = await fetch(`${baseUrl}/test`, { headers: { 'x-test-key': 'ts_free_bucket_a' } });
+    expect(blockedA.status).toBe(429);
+
+    // Key B should still work (independent bucket)
+    const okB = await fetch(`${baseUrl}/test`, { headers: { 'x-test-key': 'ts_free_bucket_b' } });
+    expect(okB.status).toBe(200);
+  });
 });
 
 // ─── signupLimiter ───────────────────────────────────────────────────────────
