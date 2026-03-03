@@ -204,7 +204,18 @@ export function handleSubscriptionUpdate(subscription) {
   }
   
   saveJSON(CUSTOMERS_FILE, customers);
-  
+
+  // Sync new key into api-server's apiKeys map so authenticate middleware sees it
+  if (_onKeySync) {
+    _onKeySync(customers[email].apiKey, {
+      name: customers[email].name || email,
+      email,
+      tier: customers[email].tier,
+      created: customers[email].created,
+      active: true,
+    });
+  }
+
   // Track subscription
   subscriptions[subscription.id] = {
     customerId,
@@ -230,11 +241,25 @@ export function handleSubscriptionCancelled(subscription) {
   );
   
   if (email) {
+    const oldApiKey = customers[email].apiKey;
+
     // Downgrade to free tier
     customers[email].tier = 'free';
     customers[email].apiKey = `ts_free_${Buffer.from(email).toString('base64').replace(/[+/=]/g, '').slice(0, 24)}`;
     saveJSON(CUSTOMERS_FILE, customers);
-    
+
+    // Revoke old paid key and sync new free key
+    if (_onKeyRevoke) _onKeyRevoke(oldApiKey);
+    if (_onKeySync) {
+      _onKeySync(customers[email].apiKey, {
+        name: customers[email].name || email,
+        email,
+        tier: 'free',
+        created: customers[email].created,
+        active: true,
+      });
+    }
+
     console.log(`Subscription cancelled: ${email} -> free`);
   }
   
@@ -366,10 +391,25 @@ function getNextMonthStart() {
 }
 
 // ============================================================================
+// KEY SYNC CALLBACKS (set by addBillingRoutes, used by update/cancel handlers)
+// ============================================================================
+
+// Called when a subscription upgrade/downgrade changes a customer's API key.
+// api-server passes callbacks here so its in-memory apiKeys map stays in sync.
+let _onKeySync = null;
+let _onKeyRevoke = null;
+
+// ============================================================================
 // EXPRESS ROUTES (to add to main server)
 // ============================================================================
 
-export function addBillingRoutes(app) {
+/**
+ * @param {import('express').Application} app
+ * @param {{ onKeySync?: (apiKey: string, keyData: object) => void, onKeyRevoke?: (apiKey: string) => void }} callbacks
+ */
+export function addBillingRoutes(app, callbacks = {}) {
+  _onKeySync = callbacks.onKeySync || null;
+  _onKeyRevoke = callbacks.onKeyRevoke || null;
   // Get pricing info
   app.get('/pricing', (req, res) => {
     res.json({
@@ -446,17 +486,16 @@ export function addBillingRoutes(app) {
   app.post('/webhook/stripe', (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
+
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET not set — webhook endpoint is disabled');
+      return res.status(400).json({ error: 'Webhook not configured', code: 'WEBHOOK_NOT_CONFIGURED' });
+    }
+
     let event;
-    
+
     try {
-      if (webhookSecret) {
-        event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
-      } else {
-        // For testing without webhook signature verification
-        event = req.body;
-      }
-      
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
       handleWebhook(event);
       res.json({ received: true });
     } catch (error) {

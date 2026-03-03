@@ -3,3 +3,11 @@ node_modules/
 !examples/*.png
 *.svg
 .DS_Store
+
+# Sensitive runtime data — never commit these
+api-keys.json
+usage.json
+customers.json
+subscriptions.json
+.admin-key
+output/
