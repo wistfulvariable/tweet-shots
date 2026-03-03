@@ -136,6 +136,38 @@ export async function loadFonts() {
 }
 
 // ============================================================================
+// HEIGHT ESTIMATION
+// ============================================================================
+
+// Approximate pixel heights for each tweet section (used for Satori canvas sizing)
+const HEIGHT_HEADER = 140;       // Profile pic + name + X logo
+const HEIGHT_PER_TEXT_LINE = 28; // ~28px per line of body text
+const CHARS_PER_LINE = 45;       // ~45 characters per line at 17px font in 550px width
+const HEIGHT_MEDIA = 320;        // Single media image
+const HEIGHT_QUOTE_TWEET = 120;  // Quote tweet embed card
+const HEIGHT_METRICS = 60;       // Engagement metrics bar
+const HEIGHT_DATE = 40;          // Timestamp line
+
+/**
+ * Estimate canvas height based on tweet content and visibility options.
+ * Satori requires explicit dimensions — this avoids clipping or excess whitespace.
+ */
+function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate }) {
+  const textLength = tweet.text?.length || 0;
+  const hasMedia = !hideMedia && ((tweet.photos?.length > 0) || (tweet.mediaDetails?.length > 0));
+  const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
+
+  return (
+    HEIGHT_HEADER + (padding * 2) +
+    Math.ceil(textLength / CHARS_PER_LINE) * HEIGHT_PER_TEXT_LINE +
+    (hasMedia ? HEIGHT_MEDIA : 0) +
+    (hasQuoteTweet ? HEIGHT_QUOTE_TWEET : 0) +
+    (showMetrics ? HEIGHT_METRICS : 0) +
+    (hideDate ? 0 : HEIGHT_DATE)
+  );
+}
+
+// ============================================================================
 // RENDERING
 // ============================================================================
 
@@ -204,17 +236,7 @@ export async function renderTweetToImage(tweet, options = {}) {
   // Load fonts (cached after first call)
   const fonts = await loadFonts();
 
-  // Calculate approximate height based on content
-  const textLength = tweet.text?.length || 0;
-  const hasMedia = !hideMedia && ((tweet.photos && tweet.photos.length > 0) || (tweet.mediaDetails && tweet.mediaDetails.length > 0));
-  const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
-  const baseHeight = 140 + (padding * 2);
-  const textHeight = Math.ceil(textLength / 45) * 28;
-  const mediaHeight = hasMedia ? 320 : 0;
-  const quoteTweetHeight = hasQuoteTweet ? 120 : 0;
-  const metricsHeight = showMetrics ? 60 : 0;
-  const dateHeight = hideDate ? 0 : 40;
-  const calculatedHeight = baseHeight + textHeight + mediaHeight + quoteTweetHeight + metricsHeight + dateHeight;
+  const calculatedHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate });
 
   // Apply scale
   const scaledWidth = (width + padding * 2) * scale;
