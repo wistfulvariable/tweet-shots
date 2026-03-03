@@ -59,7 +59,7 @@ All API errors follow this JSON structure:
 
 - `error` — Always present. Human-readable, actionable message.
 - `code` — Always present. Machine-readable error code for programmatic handling.
-- `requestId` — Present on 500 errors when request ID middleware is active. Users can reference this when contacting support.
+- `requestId` — Present on error responses from middleware (authenticate 401s, billing-guard 429s) and all 500s (error-handler, sendRouteError). Populated from `req.id` when available. Users can reference this when contacting support.
 - `details` — Present only on validation errors (VALIDATION_ERROR). Array of per-field issues.
 
 ## Error Code Reference
@@ -116,6 +116,12 @@ All API errors follow this JSON structure:
 | `WEBHOOK_NOT_CONFIGURED` | Webhook secret not set | Webhook endpoint not configured |
 | `MISSING_SIGNATURE` | No stripe-signature header | Missing stripe-signature header |
 | `WEBHOOK_FAILED` | Signature/processing error | Webhook signature verification failed |
+
+### Demo (429)
+| Code | Trigger | Message |
+|---|---|---|
+| `DEMO_RATE_LIMITED` | Demo IP rate limit (5/min) | Demo rate limit reached. Sign up for an API key for higher limits. |
+| `DEMO_SCREENSHOT_FAILED` | Demo render/fetch error (varies) | Varies by root cause (via sendRouteError) |
 
 ### Internal (500)
 | Code | Trigger | Message |

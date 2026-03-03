@@ -59,6 +59,7 @@ tweet-shots/
 │   │   ├── tweet.mjs            # GET /tweet/:id
 │   │   ├── admin.mjs            # Admin key CRUD
 │   │   ├── billing.mjs          # Stripe checkout/portal/signup/webhook
+│   │   ├── demo.mjs             # GET /demo/screenshot/:tweetIdOrUrl (public, IP-limited)
 │   │   ├── health.mjs           # /health, /pricing, /docs
 │   │   └── landing.mjs          # GET / (landing page)
 │   ├── services/
@@ -104,6 +105,7 @@ tweet-shots/
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
 - Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `sendRouteError(res, err, code, logger)` which maps `AppError` to its `statusCode` and plain `Error` to 500 with generic message. Always pass `logger` so 500s get logged server-side.
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
+- Include `...(req.id && { requestId: req.id })` in all middleware error JSON responses — enables support correlation. Route handlers get this automatically via `sendRouteError()` and the global error handler.
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
@@ -131,7 +133,7 @@ Authenticated routes apply middleware in this order — **do not reorder**:
 - `billingGuard` calls `trackAndEnforce()`, sets `X-Credits-*` response headers, fails open on error
 - `validate` runs Zod schema against `req.body` or `req.query`, sets `req.validated`
 
-Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin routes use `X-Admin-Key` header comparison only (no Firestore lookup).
+Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin routes use `X-Admin-Key` header comparison only (no Firestore lookup). Demo route (`/demo/screenshot/:tweetIdOrUrl`) uses IP-based rate limiting only (no auth, no billing).
 
 ---
 
@@ -221,7 +223,7 @@ gcloud run deploy tweet-shots-api \
 - Dependency injection: route modules receive middleware/services as constructor args
 - pino for structured logging (pretty in dev, JSON in prod)
 - Zod schemas for all request validation
-- Error responses: `{ error: string, code: "SCREAMING_SNAKE_CASE" }`
+- Error responses: `{ error: string, code: "SCREAMING_SNAKE_CASE", requestId?: string }` — see `docs/ERROR_MESSAGES.md` for full style guide
 - `options = {}` destructuring with defaults in every function signature
 
 ---
