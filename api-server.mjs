@@ -412,13 +412,24 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API info (no auth)
+// Landing page
 app.get('/', (req, res) => {
+  // Serve landing page for browsers, JSON for API clients
+  const acceptsHtml = req.headers.accept?.includes('text/html');
+  
+  if (acceptsHtml) {
+    const landingPath = path.join(__dirname, 'landing.html');
+    if (fs.existsSync(landingPath)) {
+      return res.sendFile(landingPath);
+    }
+  }
+  
   res.json({
     name: 'tweet-shots API',
     version: '1.0.0',
     description: 'Generate beautiful tweet screenshots',
     docs: '/docs',
+    pricing: '/pricing',
     endpoints: {
       'GET /screenshot/:tweetId': 'Generate screenshot (returns image)',
       'POST /screenshot': 'Generate screenshot with options',
@@ -667,6 +678,90 @@ app.get('/admin/usage', adminAuth, (req, res) => {
     ...data,
   }));
   res.json({ stats });
+});
+
+// ============================================================================
+// BILLING ROUTES (Stripe integration - requires STRIPE_SECRET_KEY)
+// ============================================================================
+
+// Pricing info (public)
+app.get('/pricing', (req, res) => {
+  res.json({
+    plans: [
+      { 
+        tier: 'free', 
+        price: 0, 
+        credits: 50, 
+        features: ['All 4 themes', 'PNG output', 'Basic dimensions', 'Community support'] 
+      },
+      { 
+        tier: 'pro', 
+        price: 9, 
+        credits: 1000, 
+        features: ['Everything in Free', 'SVG output', 'All gradients', 'Thread capture', 'AI translation', 'Priority support'] 
+      },
+      { 
+        tier: 'business', 
+        price: 49, 
+        credits: 10000, 
+        features: ['Everything in Pro', 'Custom branding', 'PDF export', 'Batch processing', 'Dedicated support', 'SLA guarantee'] 
+      },
+    ],
+    currency: 'USD',
+    billingCycle: 'monthly',
+  });
+});
+
+// Free signup (get API key instantly)
+app.post('/billing/signup', async (req, res) => {
+  const { email, name } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email required' });
+  }
+  
+  // Generate free tier API key
+  const apiKey = `ts_free_${uuidv4().replace(/-/g, '').slice(0, 24)}`;
+  
+  apiKeys[apiKey] = {
+    name: name || email,
+    email,
+    tier: 'free',
+    created: new Date().toISOString(),
+    active: true,
+  };
+  
+  saveJSON(CONFIG.apiKeysFile, apiKeys);
+  
+  res.json({
+    success: true,
+    apiKey,
+    tier: 'free',
+    credits: 50,
+    message: 'Your API key is ready! Save it somewhere safe.',
+  });
+});
+
+// Usage stats for current key
+app.get('/billing/usage', authenticate, (req, res) => {
+  const keyData = req.keyData;
+  const usageData = usage[req.apiKey] || { total: 0, monthly: {} };
+  
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthlyUsage = usageData.monthly[monthKey] || 0;
+  
+  const limits = { free: 50, pro: 1000, business: 10000 };
+  const limit = limits[keyData.tier] || 50;
+  
+  res.json({
+    tier: keyData.tier,
+    used: monthlyUsage,
+    limit,
+    remaining: Math.max(0, limit - monthlyUsage),
+    total: usageData.total,
+    resetDate: new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString(),
+  });
 });
 
 // ============================================================================
