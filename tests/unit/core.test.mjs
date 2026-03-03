@@ -445,7 +445,7 @@ describe('fetchThread', () => {
     expect(result[0].text).toBe('my reply');
   });
 
-  it('stops walking when fetchTweet throws', async () => {
+  it('stops walking silently on 404 (parent deleted)', async () => {
     const child = { text: 'child', user: { screen_name: 'user1' }, parent: { id_str: '50' } };
 
     let callCount = 0;
@@ -455,8 +455,30 @@ describe('fetchThread', () => {
       return mockFetchResponse({}, { ok: false, status: 404, statusText: 'Not Found' });
     });
 
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = await fetchThread('100');
     expect(result).toHaveLength(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('logs warning and stops walking on non-404 error (e.g., 429 rate limit)', async () => {
+    const child = { text: 'child', user: { screen_name: 'user1' }, parent: { id_str: '50' } };
+
+    let callCount = 0;
+    globalThis.fetch = vi.fn(async () => {
+      callCount++;
+      if (callCount === 1) return mockFetchResponse(child);
+      return mockFetchResponse({}, { ok: false, status: 429, statusText: 'Too Many Requests' });
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await fetchThread('100');
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe('child');
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toContain('Thread walking halted');
+    warnSpy.mockRestore();
   });
 
   it('returns tweets in chronological order (parents first)', async () => {

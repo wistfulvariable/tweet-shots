@@ -309,6 +309,69 @@ describe('worker error recovery', () => {
     expect(createdWorkers.length).toBe(initialCount);
   });
 
+  it('rejects with timeout error when render exceeds 30s', async () => {
+    // Worker that never responds — simulates a hung render
+    const hungWorker = new MockWorker();
+    hungWorker.postMessage = function (msg) { this.messages.push(msg); };
+    workerFactory = () => hungWorker;
+
+    vi.useFakeTimers();
+    const pool = createRenderPool({ size: 1, logger: mockLogger });
+
+    const renderPromise = pool.render({ text: 'test' }, {});
+
+    // Advance past the 30s timeout
+    vi.advanceTimersByTime(30_000);
+
+    await expect(renderPromise).rejects.toThrow('Render timed out after 30s');
+
+    vi.useRealTimers();
+    await pool.shutdown();
+  });
+
+  it('clears timeout on successful render (no spurious rejection)', async () => {
+    const pool = createRenderPool({ size: 1, logger: mockLogger });
+
+    vi.useFakeTimers();
+    const renderPromise = pool.render({ text: 'test' }, {});
+
+    // Let the auto-resolve worker respond
+    vi.advanceTimersByTime(10);
+
+    const result = await renderPromise;
+    expect(result.contentType).toBe('image/png');
+
+    // Advance well past timeout — should NOT throw
+    vi.advanceTimersByTime(60_000);
+
+    vi.useRealTimers();
+    await pool.shutdown();
+  });
+
+  it('removes queued task from queue on timeout', async () => {
+    // Worker that never responds — keeps it busy
+    const busyWorker = new MockWorker();
+    busyWorker.postMessage = function (msg) { this.messages.push(msg); };
+    workerFactory = () => busyWorker;
+
+    vi.useFakeTimers();
+    const pool = createRenderPool({ size: 1, logger: mockLogger });
+
+    // First task dispatched to the only worker (never resolves)
+    pool.render({ text: 'first' }, {}).catch(() => {});
+
+    // Second task gets queued
+    const task2Promise = pool.render({ text: 'second' }, {});
+
+    // Advance past timeout — both should reject
+    vi.advanceTimersByTime(30_000);
+
+    await expect(task2Promise).rejects.toThrow('Render timed out after 30s');
+
+    vi.useRealTimers();
+    await pool.shutdown();
+  });
+
   it('handles result.data as Uint8Array with buffer property', async () => {
     const customWorker = new MockWorker();
     customWorker.postMessage = function (msg) {

@@ -96,7 +96,12 @@ export async function fetchThread(tweetId) {
         } else {
           break;
         }
-      } catch {
+      } catch (err) {
+        // 404 = parent deleted/unavailable — silently end chain
+        // Other errors (429, 502) = transient — log so truncation is visible
+        if (!(err instanceof AppError && err.statusCode === 404)) {
+          console.warn(`Thread walking halted: ${err.message || err}`);
+        }
         break;
       }
     }

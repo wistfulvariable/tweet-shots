@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKER_PATH = path.join(__dirname, 'render-worker.mjs');
+const RENDER_TIMEOUT_MS = 30_000;
 
 /**
  * @param {object} [options]
@@ -110,6 +111,7 @@ export function createRenderPool({ size, logger } = {}) {
 
   /**
    * Render a tweet to image via the worker pool.
+   * Rejects with timeout error if render exceeds RENDER_TIMEOUT_MS.
    * @param {object} tweet - Tweet data object
    * @param {object} options - Render options
    * @returns {Promise<{ data: Buffer, contentType: string, format: string }>}
@@ -122,11 +124,35 @@ export function createRenderPool({ size, logger } = {}) {
     const id = taskIdCounter++;
 
     return new Promise((resolve, reject) => {
-      const task = { id, tweet, options, resolve, reject };
+      let settled = false;
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        pending.delete(id);
+        const qi = queue.findIndex(t => t.id === id);
+        if (qi !== -1) queue.splice(qi, 1);
+        reject(new Error('Render timed out after 30s'));
+      }, RENDER_TIMEOUT_MS);
+
+      const task = {
+        id, tweet, options,
+        resolve(result) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(result);
+        },
+        reject(err) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        },
+      };
 
       if (idle.length > 0) {
-        const worker = idle.shift();
-        dispatch(worker, task);
+        dispatch(idle.shift(), task);
       } else {
         queue.push(task);
       }
