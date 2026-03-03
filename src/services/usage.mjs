@@ -12,6 +12,12 @@
 import { usageCollection, FieldValue } from './firestore.mjs';
 import { TIERS } from '../config.mjs';
 
+/** Format current UTC date as 'YYYY-MM' for monthly usage bucketing. */
+function getCurrentMonth() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 /**
  * Track usage AND enforce monthly credit limit in one call.
  * Uses Firestore FieldValue.increment() for safe concurrent writes.
@@ -21,8 +27,7 @@ import { TIERS } from '../config.mjs';
  * @returns {{ allowed: boolean, remaining: number, limit: number, tier: string, error?: string }}
  */
 export async function trackAndEnforce(keyString, tier) {
-  const now = new Date();
-  const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = getCurrentMonth();
   const limit = TIERS[tier]?.monthlyCredits ?? TIERS.free.monthlyCredits;
 
   const usageRef = usageCollection().doc(keyString);
@@ -91,8 +96,7 @@ export async function getUsageStats(keyString, tier) {
   }
 
   const data = doc.data();
-  const now = new Date();
-  const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = getCurrentMonth();
 
   // If stored month differs from current month, usage is effectively 0
   const used = data.currentMonth === currentMonth ? data.currentMonthCount : 0;
