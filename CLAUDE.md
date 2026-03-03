@@ -103,6 +103,7 @@ tweet-shots/
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
+- Use HTML attributes for `<img>` width/height (`width="80"`) — satori-html parses them as strings, satori 0.24+ rejects non-numeric values. Use CSS style instead: `style="width: 80px; height: 80px;"`
 - Render images directly from remote URLs in HTML — must convert to data URIs first
 - Block the event loop with synchronous rendering — use the worker thread pool
 - Bypass Firestore for data storage — no local JSON files
