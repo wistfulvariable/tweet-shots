@@ -6,8 +6,9 @@
     "tweet-shots": "./tweet-shots.mjs"
   },
   "dependencies": {
-    "satori": "^0.12.0",
     "@resvg/resvg-js": "^2.6.0",
+    "pdfkit": "^0.17.2",
+    "satori": "^0.12.0",
     "satori-html": "^0.3.2"
   }
 }

@@ -5,6 +5,7 @@ import { Resvg } from '@resvg/resvg-js';
 import { html } from 'satori-html';
 import fs from 'fs';
 import path from 'path';
+import PDFDocument from 'pdfkit';
 
 // ============================================================================
 // CONFIGURATION
@@ -104,6 +105,196 @@ async function fetchTweet(tweetId) {
   }
   
   return data;
+}
+
+// Fetch a thread (conversation) starting from a tweet
+async function fetchThread(tweetId) {
+  const tweets = [];
+  let currentId = tweetId;
+  
+  // First, get the initial tweet
+  const initialTweet = await fetchTweet(tweetId);
+  
+  // Check if this tweet is part of a thread (has parent)
+  if (initialTweet.parent) {
+    // Walk up to find the thread start
+    const parents = [];
+    let parentTweet = initialTweet;
+    while (parentTweet.parent) {
+      try {
+        const parent = await fetchTweet(parentTweet.parent.id_str);
+        // Only include if same author (thread vs reply)
+        if (parent.user?.screen_name === initialTweet.user?.screen_name) {
+          parents.unshift(parent);
+          parentTweet = parent;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+    tweets.push(...parents);
+  }
+  
+  tweets.push(initialTweet);
+  
+  // Check for continuation (thread continues after this tweet)
+  // Note: Syndication API doesn't directly expose thread continuation
+  // This is a best-effort approach
+  
+  return tweets;
+}
+
+// ============================================================================
+// AI TRANSLATION
+// ============================================================================
+
+async function translateText(text, targetLang = 'en') {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn('OPENAI_API_KEY not set, skipping translation');
+    return text;
+  }
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a translator. Translate the following text to ${targetLang}. Preserve emojis, @mentions, #hashtags, and URLs exactly as they are. Return only the translated text, nothing else.`
+          },
+          { role: 'user', content: text }
+        ],
+        temperature: 0.3,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Translation API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || text;
+  } catch (e) {
+    console.error('Translation failed:', e.message);
+    return text;
+  }
+}
+
+// ============================================================================
+// BATCH PROCESSING
+// ============================================================================
+
+async function processBatch(urls, options, outputDir = '.') {
+  const results = [];
+  
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i].trim();
+    if (!url || url.startsWith('#')) continue; // Skip empty lines and comments
+    
+    try {
+      console.log(`[${i + 1}/${urls.length}] Processing: ${url}`);
+      const tweetId = extractTweetId(url);
+      const tweet = await fetchTweet(tweetId);
+      
+      // Apply translation if requested
+      if (options.translate) {
+        tweet.text = await translateText(tweet.text, options.translate);
+      }
+      
+      const result = await renderTweetToImage(tweet, options);
+      
+      const outputPath = path.join(outputDir, `tweet-${tweetId}.${result.format}`);
+      fs.writeFileSync(outputPath, result.data);
+      
+      results.push({ url, tweetId, outputPath, success: true });
+      console.log(`  ✓ Saved to ${outputPath}`);
+      
+      // Small delay to avoid rate limiting
+      if (i < urls.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } catch (e) {
+      results.push({ url, success: false, error: e.message });
+      console.error(`  ✗ Error: ${e.message}`);
+    }
+  }
+  
+  return results;
+}
+
+// ============================================================================
+// PDF GENERATION
+// ============================================================================
+
+async function generatePDF(images, outputPath, options = {}) {
+  const { title = 'Tweet Thread', author = '' } = options;
+  
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ autoFirstPage: false });
+    const stream = fs.createWriteStream(outputPath);
+    
+    doc.pipe(stream);
+    
+    // Add metadata
+    doc.info.Title = title;
+    if (author) doc.info.Author = author;
+    doc.info.Creator = 'tweet-shots';
+    
+    // Add each image as a page
+    for (const imgBuffer of images) {
+      // Get image dimensions
+      const img = doc.openImage(imgBuffer);
+      
+      // Create page sized to image (with some padding)
+      const padding = 40;
+      doc.addPage({
+        size: [img.width + padding * 2, img.height + padding * 2],
+        margin: 0,
+      });
+      
+      doc.image(imgBuffer, padding, padding, {
+        width: img.width,
+        height: img.height,
+      });
+    }
+    
+    doc.end();
+    
+    stream.on('finish', () => resolve(outputPath));
+    stream.on('error', reject);
+  });
+}
+
+// ============================================================================
+// LOGO/BRANDING OVERLAY
+// ============================================================================
+
+function addLogoToHtml(baseHtml, logoUrl, position = 'bottom-right', size = 40) {
+  const positions = {
+    'top-left': 'top: 10px; left: 10px;',
+    'top-right': 'top: 10px; right: 10px;',
+    'bottom-left': 'bottom: 10px; left: 10px;',
+    'bottom-right': 'bottom: 10px; right: 10px;',
+  };
+  
+  const posStyle = positions[position] || positions['bottom-right'];
+  
+  const logoHtml = `
+    <img src="${logoUrl}" 
+         style="position: absolute; ${posStyle} width: ${size}px; height: ${size}px; border-radius: 8px; opacity: 0.9;" />
+  `;
+  
+  // Insert logo before closing div
+  return baseHtml.replace(/<\/div>\s*$/, `${logoHtml}</div>`);
 }
 
 // ============================================================================
@@ -501,6 +692,9 @@ async function renderTweetToImage(tweet, options = {}) {
     linkColor = null,
     padding = 20,
     borderRadius = 16,
+    logo = null,
+    logoPosition = 'bottom-right',
+    logoSize = 40,
   } = options;
   
   // Pre-fetch profile image and convert to base64
@@ -556,7 +750,13 @@ async function renderTweetToImage(tweet, options = {}) {
     }
   }
   
-  const htmlContent = generateTweetHtml(tweet, theme, { 
+  // Pre-fetch logo if provided
+  let logoBase64 = null;
+  if (logo) {
+    logoBase64 = await fetchImageAsBase64(logo);
+  }
+  
+  let htmlContent = generateTweetHtml(tweet, theme, { 
     showMetrics, 
     width,
     padding,
@@ -572,6 +772,12 @@ async function renderTweetToImage(tweet, options = {}) {
     linkColor,
     borderRadius,
   });
+  
+  // Add logo if provided
+  if (logoBase64) {
+    htmlContent = addLogoToHtml(htmlContent, logoBase64, logoPosition, logoSize);
+  }
+  
   const markup = html(htmlContent);
   
   // Load fonts
@@ -627,6 +833,8 @@ tweet-shots - Generate beautiful tweet screenshots
 
 Usage:
   tweet-shots <tweet-url-or-id> [options]
+  tweet-shots --batch <file>    Process multiple URLs from file
+  tweet-shots --thread <url>    Capture entire thread
 
 Basic Options:
   -o, --output <file>      Output file path (default: tweet-<id>.png)
@@ -637,6 +845,16 @@ Basic Options:
   -j, --json               Output tweet JSON data
   --scale <n>              Scale factor: 1, 2, or 3 (default: 1)
   -h, --help               Show this help
+
+Advanced Features:
+  --batch <file>           Process multiple URLs (one per line)
+  --batch-dir <dir>        Output directory for batch (default: .)
+  --thread                 Capture entire thread as multiple images
+  --thread-pdf             Export thread as single PDF
+  --translate <lang>       Translate tweet text (requires OPENAI_API_KEY)
+  --logo <url>             Add logo/watermark to image
+  --logo-position <pos>    Logo position: top-left, top-right, bottom-left, bottom-right
+  --logo-size <px>         Logo size in pixels (default: 40)
 
 Hide/Show Options:
   --no-metrics             Hide engagement metrics
@@ -666,12 +884,27 @@ Dimension Presets:
   facebook          1200x630 (horizontal)
   youtube           1280x720 (16:9)
 
+Translation Languages:
+  en, es, fr, de, it, pt, zh, ja, ko, ar, hi, ru, etc.
+
 Examples:
+  # Basic usage
   tweet-shots https://x.com/karpathy/status/1617979122625712128
-  tweet-shots 1617979122625712128 -t light -d instagramFeed
-  tweet-shots <url> --bg-gradient ocean --no-shadow
-  tweet-shots <url> --bg-color "#1a1a2e" --text-color "#eee"
-  tweet-shots <url> -d tiktok --scale 2 -o story.png
+  
+  # Instagram-ready with gradient
+  tweet-shots <url> -d instagramFeed --bg-gradient ocean
+  
+  # Batch process from file
+  tweet-shots --batch urls.txt --batch-dir ./output -t dark
+  
+  # Capture thread as PDF
+  tweet-shots --thread <url> --thread-pdf -o thread.pdf
+  
+  # Translate to Spanish with branding
+  tweet-shots <url> --translate es --logo https://example.com/logo.png
+  
+  # Minimal style for quotes
+  tweet-shots <url> --no-metrics --no-date --no-shadow
 `);
 }
 
@@ -689,7 +922,7 @@ async function main() {
     output: null,
     theme: 'dark',
     dimension: 'auto',
-    width: null, // null means use dimension preset
+    width: null,
     format: 'png',
     jsonOnly: false,
     scale: 1,
@@ -708,6 +941,15 @@ async function main() {
     linkColor: null,
     padding: 20,
     borderRadius: 16,
+    // Advanced features
+    batchFile: null,
+    batchDir: '.',
+    thread: false,
+    threadPdf: false,
+    translate: null,
+    logo: null,
+    logoPosition: 'bottom-right',
+    logoSize: 40,
   };
   
   for (let i = 0; i < args.length; i++) {
@@ -753,6 +995,23 @@ async function main() {
       options.format = 'svg';
     } else if (arg === '-j' || arg === '--json') {
       options.jsonOnly = true;
+    } else if (arg === '--batch') {
+      options.batchFile = args[++i];
+    } else if (arg === '--batch-dir') {
+      options.batchDir = args[++i];
+    } else if (arg === '--thread') {
+      options.thread = true;
+    } else if (arg === '--thread-pdf') {
+      options.thread = true;
+      options.threadPdf = true;
+    } else if (arg === '--translate') {
+      options.translate = args[++i];
+    } else if (arg === '--logo') {
+      options.logo = args[++i];
+    } else if (arg === '--logo-position') {
+      options.logoPosition = args[++i];
+    } else if (arg === '--logo-size') {
+      options.logoSize = parseInt(args[++i], 10);
     } else if (!arg.startsWith('-')) {
       options.input = arg;
     }
@@ -773,48 +1032,130 @@ async function main() {
   const output = options.output;
   const theme = options.theme;
   
-  if (!input) {
-    console.error('Error: No tweet URL or ID provided');
-    printUsage();
-    process.exit(1);
-  }
+  // Prepare render options
+  const renderOpts = {
+    theme,
+    width,
+    showMetrics,
+    format,
+    scale: options.scale,
+    hideMedia: options.hideMedia,
+    hideVerified: options.hideVerified,
+    hideDate: options.hideDate,
+    hideQuoteTweet: options.hideQuoteTweet,
+    hideShadow: options.hideShadow,
+    backgroundColor: options.backgroundColor,
+    backgroundGradient: options.backgroundGradient,
+    backgroundImage: options.backgroundImage,
+    textColor: options.textColor,
+    linkColor: options.linkColor,
+    padding: options.padding,
+    borderRadius: options.borderRadius,
+    logo: options.logo,
+    logoPosition: options.logoPosition,
+    logoSize: options.logoSize,
+    translate: options.translate,
+  };
   
   try {
-    // Extract tweet ID
+    // =========== BATCH PROCESSING ===========
+    if (options.batchFile) {
+      console.log(`Batch processing from ${options.batchFile}...`);
+      
+      if (!fs.existsSync(options.batchFile)) {
+        throw new Error(`Batch file not found: ${options.batchFile}`);
+      }
+      
+      const urls = fs.readFileSync(options.batchFile, 'utf-8').split('\n').filter(l => l.trim());
+      console.log(`Found ${urls.length} URLs to process`);
+      
+      // Create output directory if needed
+      if (options.batchDir !== '.' && !fs.existsSync(options.batchDir)) {
+        fs.mkdirSync(options.batchDir, { recursive: true });
+      }
+      
+      const results = await processBatch(urls, renderOpts, options.batchDir);
+      
+      const successful = results.filter(r => r.success).length;
+      console.log(`\n✓ Batch complete: ${successful}/${results.length} succeeded`);
+      return;
+    }
+    
+    // =========== THREAD PROCESSING ===========
+    if (options.thread && input) {
+      const tweetId = extractTweetId(input);
+      console.log(`Fetching thread starting from ${tweetId}...`);
+      
+      const tweets = await fetchThread(tweetId);
+      console.log(`Found ${tweets.length} tweets in thread`);
+      
+      const images = [];
+      
+      for (let i = 0; i < tweets.length; i++) {
+        let tweet = tweets[i];
+        console.log(`[${i + 1}/${tweets.length}] Rendering tweet...`);
+        
+        // Apply translation if requested
+        if (options.translate) {
+          console.log(`  Translating to ${options.translate}...`);
+          tweet.text = await translateText(tweet.text, options.translate);
+        }
+        
+        const result = await renderTweetToImage(tweet, renderOpts);
+        images.push(result.data);
+        
+        // Save individual image if not PDF-only
+        if (!options.threadPdf || options.output?.endsWith('.png')) {
+          const imgPath = output 
+            ? output.replace(/\.\w+$/, `-${i + 1}.png`)
+            : `thread-${tweetId}-${i + 1}.png`;
+          fs.writeFileSync(imgPath, result.data);
+          console.log(`  ✓ Saved ${imgPath}`);
+        }
+      }
+      
+      // Generate PDF if requested
+      if (options.threadPdf) {
+        const pdfPath = output || `thread-${tweetId}.pdf`;
+        console.log(`Generating PDF: ${pdfPath}`);
+        await generatePDF(images, pdfPath, {
+          title: `Thread by @${tweets[0]?.user?.screen_name}`,
+          author: tweets[0]?.user?.name,
+        });
+        console.log(`✓ PDF saved to ${pdfPath}`);
+      }
+      
+      return;
+    }
+    
+    // =========== SINGLE TWEET ===========
+    if (!input) {
+      console.error('Error: No tweet URL or ID provided');
+      printUsage();
+      process.exit(1);
+    }
+    
     const tweetId = extractTweetId(input);
     console.log(`Fetching tweet ${tweetId}...`);
     
-    // Fetch tweet data
-    const tweet = await fetchTweet(tweetId);
+    let tweet = await fetchTweet(tweetId);
     
     if (jsonOnly) {
       console.log(JSON.stringify(tweet, null, 2));
       return;
     }
     
+    // Apply translation if requested
+    if (options.translate) {
+      console.log(`Translating to ${options.translate}...`);
+      tweet.text = await translateText(tweet.text, options.translate);
+    }
+    
     console.log(`Tweet by @${tweet.user?.screen_name}: "${tweet.text?.substring(0, 50)}..."`);
     console.log(`Rendering with theme: ${theme}, dimension: ${options.dimension}`);
     
     // Render to image
-    const result = await renderTweetToImage(tweet, {
-      theme,
-      width,
-      showMetrics,
-      format,
-      scale: options.scale,
-      hideMedia: options.hideMedia,
-      hideVerified: options.hideVerified,
-      hideDate: options.hideDate,
-      hideQuoteTweet: options.hideQuoteTweet,
-      hideShadow: options.hideShadow,
-      backgroundColor: options.backgroundColor,
-      backgroundGradient: options.backgroundGradient,
-      backgroundImage: options.backgroundImage,
-      textColor: options.textColor,
-      linkColor: options.linkColor,
-      padding: options.padding,
-      borderRadius: options.borderRadius,
-    });
+    const result = await renderTweetToImage(tweet, renderOpts);
     
     // Determine output path
     const ext = result.format;
