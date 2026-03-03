@@ -2,6 +2,12 @@
  * Shared test fixtures for unit and integration tests.
  */
 
+/** Returns YYYY-MM for the current UTC month. Use this instead of hardcoded months. */
+export function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export const TEST_CONFIG = {
   PORT: 3001,
   HOST: '127.0.0.1',

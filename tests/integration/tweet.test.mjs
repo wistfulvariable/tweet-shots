@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
-import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET } from '../helpers/test-fixtures.mjs';
+import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ beforeEach(() => {
   // Seed API key and usage
   mock.collections.apiKeys._store.set(MOCK_API_KEY, { ...MOCK_KEY_DATA });
   mock.collections.usage._store.set(MOCK_API_KEY, {
-    total: 0, currentMonth: '2024-01', currentMonthCount: 0, lastUsed: null,
+    total: 0, currentMonth: currentMonth(), currentMonthCount: 0, lastUsed: null,
   });
 });
 

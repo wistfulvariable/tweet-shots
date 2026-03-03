@@ -303,7 +303,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_123',
       customer: 'cus_update',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       items: { data: [{ price: { id: 'price_pro_123' } }] },
     };
 
@@ -330,7 +330,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_biz',
       customer: 'cus_biz',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       items: { data: [{ price: { id: 'price_biz_456' } }] },
     };
 
@@ -351,7 +351,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_inactive',
       customer: 'cus_inactive',
       status: 'past_due',
-      current_period_end: Math.floor(Date.now() / 1000),
+      current_period_end: 1700000000,
       items: { data: [{ price: { id: 'price_pro_123' } }] },
     };
 
@@ -372,7 +372,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_unknown',
       customer: 'cus_unknown',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       items: { data: [{ price: { id: 'price_unknown_999' } }] },
     };
 
@@ -410,7 +410,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_store_123',
       customer: 'cus_substore',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       items: { data: [{ price: { id: 'price_pro_123' } }] },
     };
 
@@ -435,7 +435,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_nokey',
       customer: 'cus_nokey',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       items: { data: [{ price: { id: 'price_pro_123' } }] },
     };
 
@@ -456,7 +456,7 @@ describe('handleSubscriptionUpdate', () => {
       id: 'sub_noitems',
       customer: 'cus_noitems',
       status: 'active',
-      current_period_end: Math.floor(Date.now() / 1000) + 86400,
+      current_period_end: 1700000000 + 86400,
       // No items field
     };
 
@@ -595,7 +595,7 @@ describe('handleWebhook', () => {
           id: 'sub_webhook',
           customer: 'cus_webhook',
           status: 'active',
-          current_period_end: Math.floor(Date.now() / 1000) + 86400,
+          current_period_end: 1700000000 + 86400,
           items: { data: [{ price: { id: 'price_pro_123' } }] },
         },
       },
@@ -621,7 +621,7 @@ describe('handleWebhook', () => {
           id: 'sub_wh_update',
           customer: 'cus_wh_update',
           status: 'active',
-          current_period_end: Math.floor(Date.now() / 1000) + 86400,
+          current_period_end: 1700000000 + 86400,
           items: { data: [{ price: { id: 'price_biz_456' } }] },
         },
       },
