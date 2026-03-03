@@ -39,6 +39,7 @@ export const screenshotQuerySchema = z.object({
   hideDate: boolString,
   hideVerified: boolString,
   hideShadow: boolString,
+  hideQuoteTweet: boolString,
   padding: z.coerce.number().int().min(0).max(100).default(20),
   radius: z.coerce.number().int().min(0).max(100).default(16),
 });

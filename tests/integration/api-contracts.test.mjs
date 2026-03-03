@@ -729,7 +729,7 @@ describe('Contract: POST /admin/keys', () => {
       },
       body: JSON.stringify({ tier: 'pro', name: 'Contract Test Key' }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expectJsonContentType(res);
 
     const body = await res.json();
@@ -749,7 +749,7 @@ describe('Contract: POST /admin/keys', () => {
       },
       body: JSON.stringify({}),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
 
     const body = await res.json();
     expect(body.tier).toBe('free');
