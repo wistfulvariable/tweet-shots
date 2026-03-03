@@ -1,0 +1,132 @@
+# Error Messages Style Guide
+
+## Voice & Tone
+
+tweet-shots error messages are:
+- **Specific**: Tell the user exactly what went wrong
+- **Actionable**: Always include a next step (fix it, retry, or get help)
+- **Blame-free**: Never say "you" or imply user fault
+- **Consistent**: Same formality level across all endpoints
+- **Safe**: Never expose internal details (DB errors, stack traces, third-party service names)
+
+## Message Structure Template
+
+```
+[What happened] + [Why, if relevant] + [What to do next]
+```
+
+Examples:
+- "Tweet not found or is no longer available" (what happened + implicit "check the ID")
+- "Monthly credit limit of 50 screenshots reached for the free tier. Upgrade at /billing/checkout for more credits, or wait until next month." (what + why + two options)
+- "Authentication service is temporarily unavailable. Please try again later." (what + action)
+
+## Words to Avoid
+
+| Avoid | Use Instead |
+|---|---|
+| "Error:" prefix | Start directly with the description |
+| "You" / "Your input" | Passive voice or describe the issue |
+| "Invalid" alone | Explain what's expected |
+| "Failed" alone | Describe what happened and what to do |
+| Internal service names (Stripe, Firestore, Satori) | Generic descriptions ("billing", "data", "rendering") |
+| HTTP status codes in messages | Describe the condition instead |
+| "Something went wrong" | Be specific about what failed |
+
+## Standard Phrases
+
+| Situation | Phrase |
+|---|---|
+| Service temporarily down | "...is temporarily unavailable. Please try again later." |
+| Rate limited | "Please wait [N] seconds before retrying." or "Please try again in [N] minutes." |
+| Missing required field | "...required. Include it in [where]." |
+| Not found | "...not found. It may have been [reason]." |
+| Billing unavailable | "Billing is not available at this time." |
+| Generic 500 | "An unexpected error occurred. Please try again later." |
+| Upgrade nudge | "Upgrade at /billing/checkout for more credits." |
+
+## Error Response Format
+
+All API errors follow this JSON structure:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "SCREAMING_SNAKE_CASE",
+  "requestId": "uuid-for-support-correlation",
+  "details": [{ "field": "name", "message": "..." }]
+}
+```
+
+- `error` — Always present. Human-readable, actionable message.
+- `code` — Always present. Machine-readable error code for programmatic handling.
+- `requestId` — Present on 500 errors when request ID middleware is active. Users can reference this when contacting support.
+- `details` — Present only on validation errors (VALIDATION_ERROR). Array of per-field issues.
+
+## Error Code Reference
+
+### Authentication (401)
+| Code | Trigger | Message |
+|---|---|---|
+| `MISSING_API_KEY` | No API key in header or query | API key required. Include it in the X-API-KEY header or apiKey query parameter. |
+| `INVALID_API_KEY` | Key not found or revoked | Invalid or revoked API key. Sign up at /billing/signup for a new key. |
+| `AUTH_ERROR` | Firestore lookup failed | Authentication service is temporarily unavailable. Please try again later. |
+
+### Authorization (403)
+| Code | Trigger | Message |
+|---|---|---|
+| `ADMIN_DENIED` | Missing or wrong X-Admin-Key | Admin access required. Provide a valid X-Admin-Key header. |
+
+### Validation (400)
+| Code | Trigger | Message |
+|---|---|---|
+| `VALIDATION_ERROR` | Zod schema validation failed | Request validation failed. Check the details field for specific issues. |
+
+### Rate Limiting (429)
+| Code | Trigger | Message |
+|---|---|---|
+| `RATE_LIMITED` | Per-tier rate limit exceeded | Rate limit exceeded. Please wait 60 seconds before retrying. Check the Retry-After header for details. |
+| `RATE_LIMITED` | Signup rate limit exceeded | Too many signup attempts. Please try again in 15 minutes. |
+| `RATE_LIMITED` | Billing rate limit exceeded | Too many billing requests. Please try again in 15 minutes. |
+| `MONTHLY_LIMIT_EXCEEDED` | Monthly credits exhausted | Monthly credit limit of {N} screenshots reached for the {tier} tier. Upgrade at /billing/checkout for more credits, or wait until next month. |
+
+### Not Found (404)
+| Code | Trigger | Message |
+|---|---|---|
+| `SCREENSHOT_FAILED` / `FETCH_FAILED` | Tweet ID not found | Tweet not found or is no longer available |
+| `KEY_NOT_FOUND` | Admin revoke of nonexistent key | API key not found. It may have already been revoked. |
+
+### Billing (5xx)
+| Code | Trigger | Message |
+|---|---|---|
+| `BILLING_NOT_CONFIGURED` | Stripe not set up (503) | Billing is not available at this time. |
+| `SIGNUP_FAILED` | Signup error (500) | Unable to complete signup at this time. Please try again later. |
+| `CHECKOUT_FAILED` | Checkout session error (500) | Unable to start checkout. Please verify your email and try again. |
+| `PORTAL_FAILED` | Portal session error (500) | Unable to open billing portal. Please verify your email and try again. |
+| `USAGE_STATS_FAILED` | Usage query error (500) | Unable to retrieve usage data at this time. Please try again later. |
+
+### Rendering
+| Code | Trigger | Message |
+|---|---|---|
+| `SCREENSHOT_FAILED` | Render/fetch error (varies) | Varies by root cause (tweet not found, rate limited, or generic 500) |
+| `URL_NOT_CONFIGURED` | URL response without GCS (503) | URL response mode is not available. Use "image" or "base64" response type instead. |
+
+### Webhook
+| Code | Trigger | Message |
+|---|---|---|
+| `WEBHOOK_NOT_CONFIGURED` | Webhook secret not set | Webhook endpoint not configured |
+| `MISSING_SIGNATURE` | No stripe-signature header | Missing stripe-signature header |
+| `WEBHOOK_FAILED` | Signature/processing error | Webhook signature verification failed |
+
+### Internal (500)
+| Code | Trigger | Message |
+|---|---|---|
+| `INTERNAL_ERROR` | Unhandled error (global handler) | An unexpected error occurred. Please try again later. |
+| `STREAM_ERROR` | Request body stream error | Request body could not be read. Please retry. |
+
+## Admin-Specific Errors (500)
+| Code | Trigger | Message |
+|---|---|---|
+| `KEY_CREATE_FAILED` | Key creation error | Unable to create API key. Please try again. |
+| `KEY_LIST_FAILED` | Key listing error | Unable to retrieve API keys. Please try again. |
+| `KEY_REVOKE_FAILED` | Key revocation error | Unable to revoke API key. Please try again. |
+| `USAGE_STATS_FAILED` | Usage stats error | Unable to retrieve usage statistics. Please try again. |

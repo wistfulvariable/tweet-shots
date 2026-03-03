@@ -23,12 +23,12 @@ export function adminRoutes({ config, logger }) {
   router.use((req, res, next) => {
     const adminKey = req.headers['x-admin-key'];
     if (!adminKey || typeof adminKey !== 'string') {
-      return res.status(403).json({ error: 'Admin access denied', code: 'ADMIN_DENIED' });
+      return res.status(403).json({ error: 'Admin access required. Provide a valid X-Admin-Key header.', code: 'ADMIN_DENIED' });
     }
     const a = Buffer.from(adminKey);
     const b = Buffer.from(config.ADMIN_KEY);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      return res.status(403).json({ error: 'Admin access denied', code: 'ADMIN_DENIED' });
+      return res.status(403).json({ error: 'Admin access required. Provide a valid X-Admin-Key header.', code: 'ADMIN_DENIED' });
     }
     next();
   });
@@ -42,8 +42,8 @@ export function adminRoutes({ config, logger }) {
       logger.info({ tier, name: result.name }, 'Admin created API key');
       res.status(201).json({ success: true, apiKey: result.keyString, tier: result.tier, name: result.name });
     } catch (err) {
-      logger.error({ err }, 'Admin key creation failed');
-      res.status(500).json({ error: 'Failed to create key', code: 'KEY_CREATE_FAILED' });
+      logger.error({ err, tier: req.validated?.tier }, 'Admin key creation failed');
+      res.status(500).json({ error: 'Unable to create API key. Please try again.', code: 'KEY_CREATE_FAILED' });
     }
   });
 
@@ -54,7 +54,7 @@ export function adminRoutes({ config, logger }) {
       res.json({ keys });
     } catch (err) {
       logger.error({ err }, 'Admin key listing failed');
-      res.status(500).json({ error: 'Failed to list keys', code: 'KEY_LIST_FAILED' });
+      res.status(500).json({ error: 'Unable to retrieve API keys. Please try again.', code: 'KEY_LIST_FAILED' });
     }
   });
 
@@ -63,14 +63,14 @@ export function adminRoutes({ config, logger }) {
     try {
       const revoked = await revokeApiKey(req.params.key);
       if (!revoked) {
-        return res.status(404).json({ error: 'Key not found', code: 'KEY_NOT_FOUND' });
+        return res.status(404).json({ error: 'API key not found. It may have already been revoked.', code: 'KEY_NOT_FOUND' });
       }
 
       logger.info({ key: req.params.key.slice(0, 12) + '...' }, 'Admin revoked API key');
       res.json({ success: true });
     } catch (err) {
-      logger.error({ err }, 'Admin key revocation failed');
-      res.status(500).json({ error: 'Failed to revoke key', code: 'KEY_REVOKE_FAILED' });
+      logger.error({ err, key: req.params.key?.slice(0, 12) + '...' }, 'Admin key revocation failed');
+      res.status(500).json({ error: 'Unable to revoke API key. Please try again.', code: 'KEY_REVOKE_FAILED' });
     }
   });
 
@@ -87,7 +87,7 @@ export function adminRoutes({ config, logger }) {
       res.json({ stats });
     } catch (err) {
       logger.error({ err }, 'Admin usage stats failed');
-      res.status(500).json({ error: 'Failed to get usage stats', code: 'USAGE_STATS_FAILED' });
+      res.status(500).json({ error: 'Unable to retrieve usage statistics. Please try again.', code: 'USAGE_STATS_FAILED' });
     }
   });
 

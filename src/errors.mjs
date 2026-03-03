@@ -25,8 +25,11 @@ export function sendRouteError(res, err, code, logger) {
   if (status >= 500 && logger) {
     logger.error({ err, code }, 'Internal error in route handler');
   }
-  res.status(status).json({
-    error: status >= 500 ? 'Internal server error' : err.message,
+  const body = {
+    error: status >= 500 ? 'An unexpected error occurred. Please try again later.' : err.message,
     code,
-  });
+  };
+  const reqId = res.req?.id;
+  if (reqId) body.requestId = reqId;
+  res.status(status).json(body);
 }

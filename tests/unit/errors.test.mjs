@@ -73,7 +73,7 @@ describe('sendRouteError', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Internal server error',
+      error: 'An unexpected error occurred. Please try again later.',
       code: 'SCREENSHOT_FAILED',
     });
   });
@@ -86,7 +86,7 @@ describe('sendRouteError', () => {
 
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Internal server error',
+      error: 'An unexpected error occurred. Please try again later.',
       code: 'RENDER_FAILED',
     });
   });

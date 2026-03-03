@@ -124,7 +124,7 @@ describe('applyRateLimit', () => {
     expect(blocked.status).toBe(429);
 
     const body = await blocked.json();
-    expect(body.error).toBe('Rate limit exceeded');
+    expect(body.error).toBe('Rate limit exceeded. Please wait 60 seconds before retrying. Check the Retry-After header for details.');
     expect(body.code).toBe('RATE_LIMITED');
   });
 

@@ -5,7 +5,10 @@
 
 export function errorHandler(logger) {
   return (err, req, res, _next) => {
-    logger.error({ err, method: req.method, path: req.path }, 'Unhandled error');
-    res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
+    const reqId = req.id || req.headers['x-request-id'];
+    logger.error({ err, method: req.method, path: req.path, reqId }, 'Unhandled error');
+    const body = { error: 'An unexpected error occurred. Please try again later.', code: 'INTERNAL_ERROR' };
+    if (reqId) body.requestId = reqId;
+    res.status(500).json(body);
   };
 }

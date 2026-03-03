@@ -42,7 +42,7 @@ export async function fetchImageAsBase64(url) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`Image fetch failed (${response.status}):`, url);
+      console.error(`Image pre-fetch failed: HTTP ${response.status} for ${url.substring(0, 80)}`);
       return null;
     }
     const buffer = await response.arrayBuffer();
@@ -50,7 +50,7 @@ export async function fetchImageAsBase64(url) {
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     return `data:${contentType};base64,${base64}`;
   } catch (e) {
-    console.error('Failed to fetch image:', url, e.message);
+    console.error(`Image pre-fetch error for ${url.substring(0, 80)}: ${e.message}`);
     return null;
   }
 }
@@ -122,7 +122,7 @@ export async function loadFonts() {
         fonts.push({ name: 'Inter', data: ab, weight, style: 'normal' });
       }
     } catch (e) {
-      console.error(`Failed to read bundled font ${file}:`, e.message);
+      console.error(`Font loading: failed to read bundled font file=${file}: ${e.message}`);
     }
   }
 
@@ -141,12 +141,12 @@ export async function loadFonts() {
         fonts.push({ name: 'Inter', data: await boldResponse.arrayBuffer(), weight: 700, style: 'normal' });
       }
     } catch (e) {
-      console.error('Failed to load fonts:', e.message);
+      console.error(`Font loading: network font fetch failed (bundled fonts missing): ${e.message}`);
     }
   }
 
   if (fonts.length === 0) {
-    throw new Error('Failed to load any fonts. At least one font is required.');
+    throw new Error('No fonts available: bundled fonts missing from fonts/ directory and network fallback failed. Check deployment includes fonts/Inter-Regular.woff and fonts/Inter-Bold.woff.');
   }
 
   _cachedFonts = fonts;

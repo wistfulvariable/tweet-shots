@@ -147,11 +147,11 @@ describe('extractTweetId', () => {
   });
 
   it('throws for non-URL non-numeric string', () => {
-    expect(() => extractTweetId('not-a-tweet')).toThrow('Could not extract tweet ID');
+    expect(() => extractTweetId('not-a-tweet')).toThrow('Invalid tweet URL or ID. Please provide a numeric tweet ID or a full twitter.com/x.com URL.');
   });
 
   it('throws for URL without status ID', () => {
-    expect(() => extractTweetId('https://twitter.com/user')).toThrow('Could not extract tweet ID');
+    expect(() => extractTweetId('https://twitter.com/user')).toThrow('Invalid tweet URL or ID. Please provide a numeric tweet ID or a full twitter.com/x.com URL.');
   });
 
   it('handles very long numeric IDs (19+ digits)', () => {
@@ -352,7 +352,7 @@ describe('fetchTweet', () => {
   it('throws on non-ok HTTP response', async () => {
     globalThis.fetch = vi.fn(async () => mockFetchResponse({}, { ok: false, status: 404, statusText: 'Not Found' }));
 
-    await expect(fetchTweet('999')).rejects.toThrow('Failed to fetch tweet: 404 Not Found');
+    await expect(fetchTweet('999')).rejects.toThrow('Tweet not found or is no longer available');
   });
 
   it('throws when data.text is falsy', async () => {
@@ -477,7 +477,7 @@ describe('fetchThread', () => {
     expect(result).toHaveLength(1);
     expect(result[0].text).toBe('child');
     expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy.mock.calls[0][0]).toContain('Thread walking halted');
+    expect(warnSpy.mock.calls[0][0]).toContain('Thread walk halted');
     warnSpy.mockRestore();
   });
 

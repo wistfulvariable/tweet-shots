@@ -526,7 +526,7 @@ describe('Contract: POST /screenshot', () => {
     TEST_CONFIG.GCS_BUCKET = undefined;
     try {
       const res = await post({ tweetId: '1234567890', response: 'url' });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(503);
 
       const body = await res.json();
       expectErrorShape(body, 'URL_NOT_CONFIGURED');
@@ -542,7 +542,7 @@ describe('Contract: POST /screenshot', () => {
 
     const body = await res.json();
     expectErrorShape(body, 'SCREENSHOT_FAILED');
-    expect(body.error).toBe('Internal server error');
+    expect(body.error).toBe('An unexpected error occurred. Please try again later.');
   });
 });
 

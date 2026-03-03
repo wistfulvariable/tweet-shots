@@ -113,7 +113,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         if (responseType === 'url') {
           const bucket = config.GCS_BUCKET;
           if (!bucket) {
-            return res.status(400).json({ error: 'URL response not configured', code: 'URL_NOT_CONFIGURED' });
+            return res.status(503).json({ error: 'URL response mode is not available. Use "image" or "base64" response type instead.', code: 'URL_NOT_CONFIGURED' });
           }
 
           const filename = `screenshots/${tweetId}-${Date.now()}.${result.format}`;
@@ -134,7 +134,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.set('X-Tweet-Author', tweet.user?.screen_name || 'unknown');
         res.send(result.data);
       } catch (err) {
-        logger.error({ err }, 'POST screenshot failed');
+        logger.error({ err, tweetId: req.validated?.tweetId, tweetUrl: req.validated?.tweetUrl }, 'POST screenshot failed');
         sendRouteError(res, err, 'SCREENSHOT_FAILED');
       }
     }

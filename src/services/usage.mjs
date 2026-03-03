@@ -64,7 +64,7 @@ export async function trackAndEnforce(keyString, tier) {
       remaining: 0,
       limit,
       tier,
-      error: 'Monthly credit limit reached. Upgrade your plan for more credits.',
+      error: `Monthly credit limit of ${limit} screenshots reached for the ${tier} tier. Upgrade at /billing/checkout for more credits, or wait until next month.`,
     };
   }
 

@@ -29,7 +29,9 @@ export function extractTweetId(input) {
     return match[1];
   }
 
-  throw new AppError(`Could not extract tweet ID from: ${input}`);
+  throw new AppError(
+    'Invalid tweet URL or ID. Please provide a numeric tweet ID or a full twitter.com/x.com URL.',
+  );
 }
 
 // ============================================================================
@@ -49,10 +51,14 @@ export async function fetchTweet(tweetId) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    // Map upstream status to appropriate client-facing status:
-    // 404 → tweet not found, 429 → rate limited, anything else → bad gateway
-    const status = response.status === 404 ? 404 : response.status === 429 ? 429 : 502;
-    throw new AppError(`Failed to fetch tweet: ${response.status} ${response.statusText}`, status);
+    // Map upstream status to client-facing error — never expose raw HTTP details
+    if (response.status === 404) {
+      throw new AppError('Tweet not found or is no longer available', 404);
+    }
+    if (response.status === 429) {
+      throw new AppError('Twitter rate limit reached. Please try again in a few minutes.', 429);
+    }
+    throw new AppError('Unable to retrieve tweet from Twitter at this time. Please try again later.', 502);
   }
 
   const data = await response.json();
@@ -100,7 +106,7 @@ export async function fetchThread(tweetId) {
         // 404 = parent deleted/unavailable — silently end chain
         // Other errors (429, 502) = transient — log so truncation is visible
         if (!(err instanceof AppError && err.statusCode === 404)) {
-          console.warn(`Thread walking halted: ${err.message || err}`);
+          console.warn(`Thread walk halted at parent=${parentTweet.parent?.id_str}: ${err.message || err}`);
         }
         break;
       }

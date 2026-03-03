@@ -14,7 +14,7 @@ const limiters = Object.fromEntries(
     rateLimit({
       windowMs: 60_000,
       max: config.rateLimit,
-      message: { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
+      message: { error: 'Rate limit exceeded. Please wait 60 seconds before retrying. Check the Retry-After header for details.', code: 'RATE_LIMITED' },
       keyGenerator: (req) => req.apiKey,
       standardHeaders: true,
       legacyHeaders: false,
@@ -40,7 +40,7 @@ export function signupLimiter() {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
-    message: { error: 'Too many signups from this IP, try again later', code: 'RATE_LIMITED' },
+    message: { error: 'Too many signup attempts. Please try again in 15 minutes.', code: 'RATE_LIMITED' },
   });
 }
 
@@ -52,6 +52,20 @@ export function billingLimiter() {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
-    message: { error: 'Too many billing requests from this IP, try again later', code: 'RATE_LIMITED' },
+    message: { error: 'Too many billing requests. Please try again in 15 minutes.', code: 'RATE_LIMITED' },
+  });
+}
+
+/**
+ * IP-based rate limiter for the public demo endpoint.
+ * 5 requests per minute per IP.
+ */
+export function demoLimiter() {
+  return rateLimit({
+    windowMs: 60_000,
+    max: 5,
+    message: { error: 'Demo rate limit reached. Sign up for an API key for higher limits.', code: 'DEMO_RATE_LIMITED' },
+    standardHeaders: true,
+    legacyHeaders: false,
   });
 }

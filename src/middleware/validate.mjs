@@ -16,7 +16,7 @@ export function validate(schema, source = 'body') {
         message: i.message,
       }));
       return res.status(400).json({
-        error: 'Validation failed',
+        error: 'Request validation failed. Check the details field for specific issues.',
         code: 'VALIDATION_ERROR',
         details: errors,
       });

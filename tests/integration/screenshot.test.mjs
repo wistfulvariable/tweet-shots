@@ -320,7 +320,7 @@ describe('POST /screenshot', () => {
     TEST_CONFIG.GCS_BUCKET = undefined;
     try {
       const res = await postScreenshot({ tweetId: '1234567890', response: 'url' });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(503);
 
       const body = await res.json();
       expect(body.code).toBe('URL_NOT_CONFIGURED');
@@ -374,7 +374,7 @@ describe('POST /screenshot', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.code).toBe('SCREENSHOT_FAILED');
-    expect(body.error).toBe('Internal server error');
+    expect(body.error).toBe('An unexpected error occurred. Please try again later.');
   });
 
   it('handles dimension presets', async () => {

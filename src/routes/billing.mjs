@@ -72,8 +72,8 @@ export function billingRoutes({ authenticate, config, logger }) {
           message: 'Your API key is ready! Save it somewhere safe.',
         });
       } catch (err) {
-        logger.error({ err }, 'Signup failed');
-        res.status(500).json({ error: 'Signup failed', code: 'SIGNUP_FAILED' });
+        logger.error({ err, email: req.validated?.email }, 'Signup failed');
+        res.status(500).json({ error: 'Unable to complete signup at this time. Please try again later.', code: 'SIGNUP_FAILED' });
       }
     }
   );
@@ -86,7 +86,7 @@ export function billingRoutes({ authenticate, config, logger }) {
     async (req, res) => {
       if (!stripe) {
         return res.status(503).json({
-          error: 'Stripe billing is not configured',
+          error: 'Billing is not available at this time.',
           code: 'BILLING_NOT_CONFIGURED',
         });
       }
@@ -103,8 +103,8 @@ export function billingRoutes({ authenticate, config, logger }) {
         );
         res.json({ url: session.url, sessionId: session.id });
       } catch (err) {
-        logger.error({ err }, 'Checkout session creation failed');
-        res.status(400).json({ error: 'Checkout session creation failed', code: 'CHECKOUT_FAILED' });
+        logger.error({ err, email: req.validated?.email, tier: req.validated?.tier }, 'Checkout session creation failed');
+        res.status(500).json({ error: 'Unable to start checkout. Please verify your email and try again.', code: 'CHECKOUT_FAILED' });
       }
     }
   );
@@ -117,7 +117,7 @@ export function billingRoutes({ authenticate, config, logger }) {
     async (req, res) => {
       if (!stripe) {
         return res.status(503).json({
-          error: 'Stripe billing is not configured',
+          error: 'Billing is not available at this time.',
           code: 'BILLING_NOT_CONFIGURED',
         });
       }
@@ -131,8 +131,8 @@ export function billingRoutes({ authenticate, config, logger }) {
         );
         res.json({ url: session.url });
       } catch (err) {
-        logger.error({ err }, 'Portal session creation failed');
-        res.status(400).json({ error: 'Portal session creation failed', code: 'PORTAL_FAILED' });
+        logger.error({ err, email: req.validated?.email }, 'Portal session creation failed');
+        res.status(500).json({ error: 'Unable to open billing portal. Please verify your email and try again.', code: 'PORTAL_FAILED' });
       }
     }
   );
@@ -143,15 +143,15 @@ export function billingRoutes({ authenticate, config, logger }) {
       const stats = await getUsageStats(req.apiKey, req.keyData.tier);
       res.json(stats);
     } catch (err) {
-      logger.error({ err }, 'Usage stats fetch failed');
-      res.status(500).json({ error: 'Failed to get usage stats', code: 'USAGE_STATS_FAILED' });
+      logger.error({ err, apiKey: req.apiKey?.slice(0, 12) + '...' }, 'Usage stats fetch failed');
+      res.status(500).json({ error: 'Unable to retrieve usage data at this time. Please try again later.', code: 'USAGE_STATS_FAILED' });
     }
   });
 
   // ─── POST /webhook/stripe — Stripe webhook handler ────────────────
   router.post('/webhook/stripe', async (req, res) => {
     if (!stripe || !config.STRIPE_WEBHOOK_SECRET) {
-      return res.status(400).json({ error: 'Webhook not configured', code: 'WEBHOOK_NOT_CONFIGURED' });
+      return res.status(400).json({ error: 'Webhook endpoint not configured', code: 'WEBHOOK_NOT_CONFIGURED' });
     }
 
     const sig = req.headers['stripe-signature'];
@@ -164,8 +164,8 @@ export function billingRoutes({ authenticate, config, logger }) {
       await handleWebhook(config, event, logger);
       res.json({ received: true });
     } catch (err) {
-      logger.error({ err }, 'Webhook processing failed');
-      res.status(400).json({ error: 'Webhook processing failed', code: 'WEBHOOK_FAILED' });
+      logger.error({ err, eventType: req.body?.type }, 'Webhook processing failed');
+      res.status(400).json({ error: 'Webhook signature verification failed', code: 'WEBHOOK_FAILED' });
     }
   });
 
