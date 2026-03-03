@@ -92,6 +92,22 @@ tweet-shots/
 - Block the event loop with synchronous rendering — use the worker thread pool
 - Bypass Firestore for data storage — no local JSON files
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
+- Create express-rate-limit instances inside request handlers — pre-create at module load
+
+---
+
+## Request Flow (Middleware Chain)
+
+Authenticated routes apply middleware in this order — **do not reorder**:
+
+`authenticate` → `applyRateLimit` → `billingGuard` → `validate(schema)` → handler
+
+- `authenticate` attaches `req.apiKey` + `req.keyData` (required by all downstream middleware)
+- `applyRateLimit` reads `req.keyData.tier` (must run after auth)
+- `billingGuard` calls `trackAndEnforce()`, sets `X-Credits-*` response headers, fails open on error
+- `validate` runs Zod schema against `req.body` or `req.query`, sets `req.validated`
+
+Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin routes use `X-Admin-Key` header comparison only (no Firestore lookup).
 
 ---
 
@@ -204,7 +220,19 @@ gcloud run deploy tweet-shots-api \
 | Layer | Loaded | What goes here |
 |---|---|---|
 | **CLAUDE.md** | Every conversation | Rules preventing mistakes on ANY task |
-| **MEMORY.md** | Every conversation | Index + current state |
+| **MEMORY.md** | Every conversation | Cross-session index + learned patterns |
 | **.claude/memory/*.md** | On demand | Feature-specific deep dives |
-| **API.md / README.md** | Human reference | API reference, CLI usage |
 | **Inline comments** | When code is read | Non-obvious "why" explanations |
+
+Rule: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEMORY.md. One feature only → sub-memory. Single line → inline comment.
+
+**Topic files** (load when working on that area):
+
+| File | When to load |
+|---|---|
+| `testing.md` | Writing or fixing tests |
+| `rendering-pipeline.md` | Touching core.mjs, Satori, Resvg, fonts, workers |
+| `billing-stripe.md` | Stripe integration, webhook handling, tier changes |
+| `data-model.md` | Firestore schemas, queries, usage tracking |
+| `api-endpoints.md` | Adding/modifying API routes, request/response shapes |
+| `deployment.md` | Docker, Cloud Run, Secret Manager, CI/CD |

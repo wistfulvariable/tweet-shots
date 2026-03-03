@@ -1,107 +1,67 @@
 # Deployment
 
-## systemd (Linux — Production)
+## Docker (Multi-Stage Build)
 
-Service file: `tweet-shots-api.service`
+`Dockerfile` uses two stages:
+1. **deps** — `node:20-slim`, `npm ci --omit=dev`
+2. **production** — `node:20-slim`, installs `libfontconfig1` (Resvg needs it), runs as non-root `app` user
 
-```bash
-# Deploy
-sudo cp -r . /opt/tweet-shots
-sudo cp tweet-shots-api.service /etc/systemd/system/
-
-# Edit env vars (set ADMIN_KEY at minimum)
-sudo nano /etc/systemd/system/tweet-shots-api.service
-
-# Start
-sudo systemctl daemon-reload
-sudo systemctl enable tweet-shots-api
-sudo systemctl start tweet-shots-api
-
-# Logs
-journalctl -u tweet-shots-api -f
-```
-
-Service runs as `www-data` with:
-- `NoNewPrivileges=true`
-- `PrivateTmp=true`
-- `ProtectSystem=strict`
-- `ProtectHome=true`
-- `ReadWritePaths=/opt/tweet-shots`
-
-**Required:** Set `ADMIN_KEY` in the service file before first start. The placeholder is `your-secure-admin-key-here`.
-
-## Docker
-
-No Dockerfile in repo. Documented example in API.md:
-```dockerfile
-FROM node:20-slim
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-EXPOSE 3000
-CMD ["node", "api-server.mjs"]
-```
-
-Pass env vars via `docker run -e ADMIN_KEY=... -e STRIPE_SECRET_KEY=...`
-
-## Environment Setup Checklist
-
-```
-ADMIN_KEY                  Required — rotate from default
-STRIPE_SECRET_KEY          Required for billing
-STRIPE_PRICE_PRO           Required for Pro subscription checkout
-STRIPE_PRICE_BUSINESS      Required for Business subscription checkout
-STRIPE_WEBHOOK_SECRET      Required for secure webhook processing
-OPENAI_API_KEY             Optional — enables CLI translation feature
-PUBLIC_URL                 Optional — enables "url" response type in API
-OUTPUT_DIR                 Optional — defaults to ./output
-PORT                       Optional — defaults to 3000
-```
-
-## Data File Permissions
-
-If running as `www-data`, ensure `/opt/tweet-shots` is writable:
-```bash
-sudo chown -R www-data:www-data /opt/tweet-shots
-```
-
-Files written at runtime:
-- `api-keys.json` — created on first signup if missing
-- `usage.json` — created on first tracked request
-- `customers.json` — created on first Stripe customer
-- `subscriptions.json` — created on first subscription
-- `output/` directory — created on first URL-response request
-
-## Health Check
+Copied files: `package.json`, `core.mjs`, `tweet-shots.mjs`, `landing.html`, `fonts/`, `src/`.
 
 ```bash
-curl http://localhost:3000/health
-# → {"status":"ok","timestamp":"..."}
+docker build -t tweet-shots .
+docker run -p 8080:8080 -e ADMIN_KEY=<secret> tweet-shots
 ```
 
-Suitable for load balancer health checks.
+Production image exposes port 8080, `NODE_ENV=production`.
 
-## Test Key
+## Cloud Run
 
-On first startup with empty `api-keys.json`:
+```bash
+gcloud run deploy tweet-shots-api \
+  --image <tag> --region us-central1 --allow-unauthenticated \
+  --port 8080 --memory 1Gi --cpu 2
 ```
-Test API key created: ts_free_test123
-```
-**Remove or disable this key in production** — it's hardcoded and publicly documented.
+
+- **Service URL:** `https://tweet-shots-api-1084185199991.us-central1.run.app`
+- **GCP Project:** `tweet-shots-api`
+- **Region:** `us-central1` (same as Firestore)
+- Worker pool size adapts to available CPUs on the Cloud Run instance
+
+## Secret Manager
+
+| Secret | Purpose |
+|---|---|
+| `ADMIN_KEY` | Admin endpoint auth (min 16 chars) |
+| `STRIPE_SECRET_KEY` | Stripe API (needs at least one version) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `STRIPE_PRICE_PRO` | Stripe Price ID for Pro tier |
+| `STRIPE_PRICE_BUSINESS` | Stripe Price ID for Business tier |
+
+Secrets are mapped to env vars in the Cloud Run service config.
+
+## GCS Storage
+
+- **Bucket:** `tweet-shots-screenshots`
+- **Path pattern:** `screenshots/<tweetId>-<timestamp>.<format>`
+- **Cache-Control:** `public, max-age=31536000` (1 year)
+- Used by `url` response type in `POST /screenshot`
+
+## Firestore
+
+- Auto-detected via ADC on Cloud Run (no explicit project ID needed)
+- Region: `us-central1`
+- Collections: `apiKeys`, `usage`, `customers`, `subscriptions`
+
+## Graceful Shutdown
+
+Server handles `SIGTERM` and `SIGINT`:
+1. Stop accepting new connections
+2. Shut down worker pool (`renderPool.shutdown()`)
+3. Force exit after 10s if connections don't close
 
 ## Stripe Webhook
 
-Register endpoint in Stripe Dashboard:
-```
-POST https://your-domain.com/webhook/stripe
-```
-Events to enable:
-- `checkout.session.completed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
+Register in Stripe Dashboard: `POST https://<domain>/webhook/stripe`
 
-**Note:** `addBillingRoutes(app)` in `stripe-billing.mjs` must be called from `api-server.mjs` for the webhook endpoint to exist.
+Events to enable: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`.

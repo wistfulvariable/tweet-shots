@@ -6,11 +6,11 @@
 GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 ```
 
-- `token` is a random integer 0–999999, required in the URL but not validated by Twitter
+- `token` is a random integer 0-999999, required but not validated by Twitter
 - No API key or auth required
 - Designed for Twitter embed widgets, not official public API
 
-## Response Shape (key fields used)
+## Response Shape (key fields)
 
 ```json
 {
@@ -24,12 +24,12 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
     "verified": false
   },
   "entities": {
-    "urls": [{ "url": "https://t.co/xxx", "display_url": "example.com/...", "expanded_url": "..." }],
+    "urls": [{ "url": "https://t.co/xxx", "display_url": "...", "expanded_url": "..." }],
     "user_mentions": [{ "screen_name": "username" }],
     "hashtags": [{ "text": "hashtag" }],
     "media": [{ "url": "https://t.co/xxx" }]
   },
-  "mediaDetails": [{ "media_url_https": "https://pbs.twimg.com/.../photo.jpg", "type": "photo|video" }],
+  "mediaDetails": [{ "media_url_https": "https://pbs.twimg.com/...", "type": "photo|video" }],
   "photos": [{ "url": "https://pbs.twimg.com/..." }],
   "conversation_count": 12,
   "retweet_count": 34,
@@ -43,35 +43,28 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 
 ## Field Notes
 
-- `text` contains raw t.co short URLs for all links and media — strip media URLs before rendering
-- Profile image URL ends in `_normal` for 48x48; replace with `_400x400` for higher quality
-- `is_blue_verified` = Twitter Blue subscriber checkmark; `verified` = legacy checkmark
-- `mediaDetails` is the primary media source; `photos` is a fallback array format
-- Videos appear in `mediaDetails` with `type: "video"` but only thumbnail URL is available
-- `views_count` may be absent; `ext_views.count` is the fallback
-- `parent` field exists when a tweet is a reply; used for thread walking
+- `text` contains raw t.co short URLs — strip `entities.media` URLs before rendering
+- Profile image: replace `_normal` with `_400x400` for high-res
+- `is_blue_verified` = Twitter Blue; `verified` = legacy checkmark
+- `mediaDetails` is primary media source; `photos` is fallback
+- Videos: only thumbnail URL available (`type: "video"`)
+- `views_count` may be absent; `ext_views.count` is fallback
+- `parent.id_str` exists on replies — used for thread walking
 
 ## Known Limitations
 
 - Private accounts → 404 or empty response
 - Deleted tweets → 404 or `{ text: null }`
 - Some older tweets (pre-2010) may not be available
-- Polls: response has no renderable poll structure
-- Thread continuation: `parent.id_str` exists but no forward links
-- Rate limits: permissive for embed widget use; unofficial limits unclear
+- Polls: no renderable structure in response
+- Thread: `parent.id_str` for backward walk only, no forward links
+- Rate limits: permissive but unofficial limits unclear
 
-## Error Handling in Code
+## Error Handling (core.mjs)
 
 ```js
-// tweet-shots.mjs:96-107
-const response = await fetch(url);
-if (!response.ok) {
-  throw new Error(`Failed to fetch tweet: ${response.status} ${response.statusText}`);
-}
-const data = await response.json();
-if (!data.text) {
-  throw new Error('Tweet not found or unavailable');
-}
+if (!response.ok) throw new Error(`Failed to fetch tweet: ${response.status}`);
+if (!data.text) throw new Error('Tweet not found or unavailable');
 ```
 
-Both CLI and API server use identical fetch logic with `!data.text` as the availability check.
+Both CLI and API use `fetchTweet()` from `core.mjs` with `!data.text` as availability check.

@@ -4,23 +4,23 @@ tweet-shots: CLI + REST API for generating tweet screenshots via Satori/Resvg (n
 
 ## Current State
 
-- 7 commits on master; most recent: Stripe billing + landing page + production deploy
-- No test files exist (zero test coverage)
-- `stripe-billing.mjs` is disconnected — Stripe billing not active in API server
-- API keys and sensitive data committed to git (needs gitignore fix)
-- Known live keys: `ts_free_test123` (test), `ts_free_6d2407...` (test@example.com)
-- Server: http://localhost:3000 (development)
+- **Architecture:** Modular Express app with Firestore, Cloud Run deployment (rewrite complete)
+- **Deployment:** `https://tweet-shots-api-1084185199991.us-central1.run.app`
+- **Tests:** 224 tests passing (8 unit + 4 integration test files)
+- **GCP:** Project `tweet-shots-api`, Firestore + GCS in `us-central1`
+- **Test API Key:** `ts_free_3958a9cac86343c5b62d0c2e7d928302`
 
 ## Topic Files
 
 | File | When to load |
 |---|---|
-| rendering.md | Modifying image generation, Satori layout, themes, fonts, height calc |
-| api-routes.md | Adding/modifying API endpoints, middleware, auth, rate limits |
-| billing.md | Stripe integration, tier system, disconnected billing module |
-| data-storage.md | JSON file schema, API key formats, usage tracking |
-| security.md | Security issues, auth details, vulnerability findings |
-| feature-inventory.md | CLI features, API features, rendering options, unsupported features |
-| pitfalls.md | Code duplication, behavioral quirks, edge cases, gotchas |
-| deployment.md | systemd, Docker, env vars, Stripe webhook setup |
+| testing.md | Writing or fixing tests |
+| rendering-pipeline.md | Touching core.mjs, Satori, Resvg, fonts, workers |
+| billing-stripe.md | Stripe integration, webhook handling, tier changes |
+| data-model.md | Firestore schemas, queries, usage tracking |
+| api-endpoints.md | Adding/modifying API routes, request/response shapes |
+| deployment.md | Docker, Cloud Run, Secret Manager, CI/CD |
+| pitfalls.md | Active gotchas and known limitations |
+| security.md | Auth boundaries, input validation, accepted risks |
+| feature-inventory.md | CLI/API features, rendering options, unsupported features |
 | twitter-api.md | Syndication API, tweet data shapes, known limitations |
