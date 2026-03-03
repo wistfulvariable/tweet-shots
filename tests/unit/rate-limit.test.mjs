@@ -5,7 +5,7 @@
 
 import { describe, it, expect, afterAll } from 'vitest';
 import express from 'express';
-import { applyRateLimit, signupLimiter } from '../../src/middleware/rate-limit.mjs';
+import { applyRateLimit, signupLimiter, billingLimiter } from '../../src/middleware/rate-limit.mjs';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -167,5 +167,41 @@ describe('signupLimiter', () => {
 
     const res = await fetch(`${baseUrl}/signup`, { method: 'POST' });
     expect(res.status).toBe(200);
+  });
+});
+
+// ─── billingLimiter ─────────────────────────────────────────────────────────
+
+describe('billingLimiter', () => {
+  it('returns a middleware function', () => {
+    const limiter = billingLimiter();
+    expect(typeof limiter).toBe('function');
+  });
+
+  it('allows first request through', async () => {
+    const baseUrl = await startApp((app) => {
+      app.post('/checkout', billingLimiter(), (req, res) => res.json({ ok: true }));
+    });
+
+    const res = await fetch(`${baseUrl}/checkout`, { method: 'POST' });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 429 when billing limit (10 req/15min) is exhausted', async () => {
+    const baseUrl = await startApp((app) => {
+      app.post('/checkout', billingLimiter(), (req, res) => res.json({ ok: true }));
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const res = await fetch(`${baseUrl}/checkout`, { method: 'POST' });
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await fetch(`${baseUrl}/checkout`, { method: 'POST' });
+    expect(blocked.status).toBe(429);
+
+    const body = await blocked.json();
+    expect(body.error).toContain('Too many billing requests');
+    expect(body.code).toBe('RATE_LIMITED');
   });
 });

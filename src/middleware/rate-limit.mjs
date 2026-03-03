@@ -43,3 +43,15 @@ export function signupLimiter() {
     message: { error: 'Too many signups from this IP, try again later', code: 'RATE_LIMITED' },
   });
 }
+
+/**
+ * IP-based rate limiter for billing endpoints (checkout, portal).
+ * 10 requests per 15 minutes per IP.
+ */
+export function billingLimiter() {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many billing requests from this IP, try again later', code: 'RATE_LIMITED' },
+  });
+}

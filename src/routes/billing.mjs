@@ -15,7 +15,7 @@ import { createApiKey } from '../services/api-keys.mjs';
 import { getUsageStats } from '../services/usage.mjs';
 import { signupSchema, checkoutSchema, portalSchema } from '../schemas/request-schemas.mjs';
 import { validate } from '../middleware/validate.mjs';
-import { signupLimiter } from '../middleware/rate-limit.mjs';
+import { signupLimiter, billingLimiter } from '../middleware/rate-limit.mjs';
 
 /**
  * @param {object} deps
@@ -26,6 +26,7 @@ import { signupLimiter } from '../middleware/rate-limit.mjs';
 export function billingRoutes({ authenticate, config, logger }) {
   const router = Router();
   const stripe = createStripeClient(config);
+  const billingRateLimit = billingLimiter();
 
   // ─── POST /billing/signup — free tier, no Stripe needed ───────────
   router.post(
@@ -67,6 +68,7 @@ export function billingRoutes({ authenticate, config, logger }) {
   // ─── POST /billing/checkout — create Stripe checkout session ──────
   router.post(
     '/billing/checkout',
+    billingRateLimit,
     validate(checkoutSchema, 'body'),
     async (req, res) => {
       if (!stripe) {
@@ -97,6 +99,7 @@ export function billingRoutes({ authenticate, config, logger }) {
   // ─── POST /billing/portal — Stripe customer portal ────────────────
   router.post(
     '/billing/portal',
+    billingRateLimit,
     validate(portalSchema, 'body'),
     async (req, res) => {
       if (!stripe) {
