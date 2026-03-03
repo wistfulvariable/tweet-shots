@@ -10,14 +10,15 @@
 
 | Metric | Value |
 |---|---|
-| **Total dependencies** | 492 unique (18 direct, 474 transitive) |
+| **Total dependencies** | 489 unique (18 direct, 471 transitive) |
 | **Dependencies with known vulnerabilities** | 0 (npm audit clean) |
-| **Dependencies 1+ major versions behind** | 2 (express 4→5, satori 0.12→0.24) |
+| **Dependencies 1+ major versions behind** | 0 (all upgraded) |
 | **Potentially abandoned dependencies** | 1 (satori-html — last release Dec 2022) |
 | **License risks found** | 0 (all MIT/Apache-2.0/ISC/BSD/MPL-2.0) |
-| **Upgrades applied** | 4 |
+| **Upgrades applied** | 7 |
 | **Dependencies removed** | 1 (uuid → native crypto.randomUUID()) |
-| **Net package reduction** | 39 unique packages removed (531→492) |
+| **Infrastructure added** | Dependabot for automated dependency PRs |
+| **Net package reduction** | 42 unique packages removed (531→489) |
 
 ---
 
@@ -59,7 +60,7 @@ npm audit: found 0 vulnerabilities
 
 | Package | Notes |
 |---|---|
-| satori@0.12.2 | Core rendering engine (Vercel). MPL-2.0 is file-level copyleft — modifications to MPL-licensed source files must be shared, but using it as a library does not infect your code. |
+| satori@0.24.1 | Core rendering engine (Vercel). MPL-2.0 is file-level copyleft — modifications to MPL-licensed source files must be shared, but using it as a library does not infect your code. |
 | @resvg/resvg-js@2.6.2 | SVG→PNG converter. Same MPL-2.0 terms. |
 | @resvg/resvg-js-win32-x64-msvc@2.6.2 | Platform binary for resvg. |
 
@@ -73,12 +74,14 @@ npm audit: found 0 vulnerabilities
 
 | Package | Current | Latest | Gap | Last Published | Health |
 |---|---|---|---|---|---|
-| satori | 0.12.2 | 0.24.1 | 12 minor (pre-1.0) | Feb 2026 | Active (Vercel) |
-| express | 4.22.1 | 5.2.1 | 1 major | Dec 2025 | Active (Express TC) |
+| ~~satori~~ | ~~0.12.2~~ | ~~0.24.1~~ | ~~Upgraded~~ | — | **Upgraded** |
+| ~~express~~ | ~~4.22.1~~ | ~~5.2.1~~ | ~~Upgraded~~ | — | **Upgraded** |
 | ~~uuid~~ | ~~9.0.1~~ | ~~13.0.0~~ | ~~Removed~~ | — | **Replaced with native** |
 | ~~helmet~~ | ~~7.2.0~~ | ~~8.1.0~~ | ~~Upgraded~~ | — | **Upgraded** |
 | ~~express-rate-limit~~ | ~~7.5.1~~ | ~~8.2.1~~ | ~~Upgraded~~ | — | **Upgraded** |
 | ~~pdfkit~~ | ~~0.15.2~~ | ~~0.17.2~~ | ~~Upgraded~~ | — | **Upgraded** |
+
+**All direct dependencies are now at their latest versions.** Zero outdated packages reported by `npm outdated`.
 
 ### All Other Direct Dependencies — Current
 
@@ -88,11 +91,13 @@ npm audit: found 0 vulnerabilities
 | @google-cloud/storage | 7.19.0 | 7.19.0 | Current |
 | @resvg/resvg-js | 2.6.2 | 2.6.2 | Current |
 | cors | 2.8.6 | 2.8.6 | Current |
-| helmet | 8.1.0 | 8.1.0 | Current (upgraded) |
+| express | 5.2.1 | 5.2.1 | Current (upgraded) |
 | express-rate-limit | 8.2.1 | 8.2.1 | Current (upgraded) |
+| helmet | 8.1.0 | 8.1.0 | Current (upgraded) |
 | pdfkit | 0.17.2 | 0.17.2 | Current (upgraded) |
 | pino | 10.3.1 | 10.3.1 | Current |
 | pino-pretty | 13.1.3 | 13.1.3 | Current |
+| satori | 0.24.1 | 0.24.1 | Current (upgraded) |
 | satori-html | 0.3.2 | 0.3.2 | Current (but unmaintained) |
 | stripe | 20.4.0 | 20.4.0 | Current |
 | zod | 4.3.6 | 4.3.6 | Current |
@@ -116,6 +121,8 @@ npm audit: found 0 vulnerabilities
 | pdfkit | 0.15.2 | 0.17.2 | Minor | Yes (390/390) |
 | helmet | 7.2.0 | 8.1.0 | Major | Yes (390/390) |
 | express-rate-limit | 7.5.1 | 8.2.1 | Major | Yes (390/390) |
+| express | 4.22.1 | 5.2.1 | Major | Yes (390/390) |
+| satori | 0.12.2 | 0.24.1 | 12 minor (pre-1.0) | Yes (390/390) |
 
 ### Details
 
@@ -139,33 +146,23 @@ npm audit: found 0 vulnerabilities
 - Added `draft-8` standard headers support
 - Requires Node 16+ (project uses 20+)
 
+**express 4.22.1 → 5.2.1:**
+- `req.query` now read-only, `req.param()` removed, stricter route matching, automatic async error forwarding
+- Codebase scan found zero incompatible patterns — no code changes required
+- All middleware (helmet, cors, express-rate-limit) confirmed compatible with Express 5
+- Node 18+ required (project uses 20+)
+
+**satori 0.12.2 → 0.24.1:**
+- 12 minor versions of CSS rendering improvements: text-indent, object-fit/position, text-shadow, text-decoration-skip-ink
+- ~10% core performance improvement (v0.21.0)
+- Pre-1.0 semver means any minor can contain breaking changes — visual regression testing recommended
+- All 390 unit/integration tests pass; production visual verification recommended
+
 ---
 
 ## 6. Major Upgrades Needed (Not Applied)
 
-### express 4.22.1 → 5.2.1
-
-| Attribute | Value |
-|---|---|
-| **Breaking changes** | `req.query` read-only, `req.param()` removed, stricter route matching, Node 18+ |
-| **Code impact** | Any mutation of `req.query`, any use of `req.param()`, route patterns using Express 4's looser syntax |
-| **Estimated effort** | Moderate (1-2 hours with testing) |
-| **Priority** | Low — Express 4 still receives security patches |
-| **Blockers** | Verify `express-rate-limit@8` compatibility with Express 5 (should work) |
-| **Notes** | Official migration guide + codemods available at expressjs.com/en/guide/migrating-5.html |
-
-### satori 0.12.2 → 0.24.1
-
-| Attribute | Value |
-|---|---|
-| **Breaking changes** | Pre-1.0 semver — any minor can break. 12 minor versions of rendering changes |
-| **Code impact** | Core rendering output may look different. Tweet screenshots could change visually |
-| **Estimated effort** | Significant (requires visual regression testing across tweet types) |
-| **Priority** | Medium — rendering improvements and bug fixes are valuable |
-| **Blockers** | Need visual regression test infrastructure (before/after screenshot comparison) |
-| **Notes** | Test with: text-only, media, quoted tweets, threads, RTL text, emoji-heavy, long tweets |
-
-**Suggested upgrade order:** Express 5 first (smaller blast radius), then satori (needs dedicated visual testing session).
+All major upgrades have been applied. No remaining outdated dependencies.
 
 ---
 
@@ -223,10 +220,11 @@ npm audit: found 0 vulnerabilities
 
 | # | Recommendation | Impact | Risk if Ignored | Worth Doing? | Details |
 |---|---|---|---|---|---|
-| 1 | Upgrade satori (with visual testing) | Rendering improvements, bug fixes across 12 minor versions | Medium — missing CSS fixes and rendering improvements | Yes | Requires building a visual regression test suite first. Render reference tweets before/after and pixel-diff. Budget a dedicated session. |
-| 2 | Migrate to Express 5 | Modern routing, security defaults, active major version | Low — Express 4 still patched | Probably | Official codemods available. Main risks: `req.query` mutation and route pattern changes. Test thoroughly. |
-| 3 | Set up Dependabot or Renovate | Automated PR creation for dependency updates | Low — manual audits work but don't scale | Yes | Enable Dependabot in GitHub repo settings. Group patch/minor updates, require CI passing before merge. Eliminates need for manual audit runs for routine updates. |
+| 1 | ~~Upgrade satori~~ | ~~Rendering improvements~~ | — | **DONE** | Upgraded 0.12.2→0.24.1. All tests pass. Visual regression testing of production screenshots recommended. |
+| 2 | ~~Migrate to Express 5~~ | ~~Modern routing~~ | — | **DONE** | Upgraded 4.22.1→5.2.1. Zero code changes needed. |
+| 3 | ~~Set up Dependabot~~ | ~~Automated PRs~~ | — | **DONE** | `.github/dependabot.yml` added with weekly npm + GitHub Actions checks. |
 | 4 | Monitor pdfkit for crypto-js removal | Eliminates abandoned transitive dependency | Low — crypto-js 4.2.0 has no active CVEs and vulnerable code path isn't used | Only if time allows | Check pdfkit releases periodically. Upgrade when `@noble/ciphers` replacement ships. |
+| 5 | Verify satori visual output in production | Confirms rendering quality after 12-version jump | Low — tests pass but pixel output may differ | Yes | Render a set of reference tweets (text-only, media, quoted, emoji-heavy, RTL) and compare before/after. |
 
 ### Dependency Addition Policy (Suggested)
 
@@ -256,13 +254,13 @@ Before adding a new dependency, require:
 | 2 | @google-cloud/storage | 7.19.0 | Runtime | Apache-2.0 | `src/services/storage.mjs` | Cloud Storage uploads |
 | 3 | @resvg/resvg-js | 2.6.2 | Runtime | MPL-2.0 | `core.mjs` | SVG→PNG conversion |
 | 4 | cors | 2.8.6 | Runtime | MIT | `src/server.mjs` | CORS middleware |
-| 5 | express | 4.22.1 | Runtime | MIT | `src/server.mjs` + routes | Web framework |
+| 5 | express | 5.2.1 | Runtime | MIT | `src/server.mjs` + routes | Web framework |
 | 6 | express-rate-limit | 8.2.1 | Runtime | MIT | `src/middleware/rate-limit.mjs` | Per-tier rate limiting |
 | 7 | helmet | 8.1.0 | Runtime | MIT | `src/server.mjs` | HTTP security headers |
 | 8 | pdfkit | 0.17.2 | Runtime | MIT | `core.mjs` | PDF generation |
 | 9 | pino | 10.3.1 | Runtime | MIT | `src/logger.mjs` | Structured logging |
 | 10 | pino-pretty | 13.1.3 | Runtime | MIT | `src/logger.mjs` (transport) | Dev log formatting |
-| 11 | satori | 0.12.2 | Runtime | MPL-2.0 | `core.mjs` | HTML/CSS→SVG rendering |
+| 11 | satori | 0.24.1 | Runtime | MPL-2.0 | `core.mjs` | HTML/CSS→SVG rendering |
 | 12 | satori-html | 0.3.2 | Runtime | MIT | `core.mjs` | HTML→VDOM for Satori |
 | 13 | stripe | 20.4.0 | Runtime | MIT | `src/services/stripe.mjs` | Billing/subscriptions |
 | 14 | zod | 4.3.6 | Runtime | MIT | `src/config.mjs`, `src/schemas/` | Schema validation |
@@ -278,4 +276,7 @@ Before adding a new dependency, require:
 795f309 chore: bump pdfkit from 0.15.2 to 0.17.2
 f226812 chore: upgrade helmet from 7.2.0 to 8.1.0
 cf6d839 chore: upgrade express-rate-limit from 7.5.1 to 8.2.1
+d3b442b chore: migrate from Express 4 to Express 5
+620aa62 chore: add Dependabot for automated dependency updates
+b6fa57d chore: upgrade satori from 0.12.2 to 0.24.1
 ```
