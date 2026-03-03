@@ -35,11 +35,12 @@ The tweet-shots API demonstrates a **strong foundational security posture** with
 
 ### Security CI/CD Assessment
 
-**No CI/CD pipeline exists.** No GitHub Actions, Cloud Build, GitLab CI, pre-commit hooks, or Husky configuration. All security scanning is manual. This means:
-- No automated secret detection on commits
-- No dependency vulnerability blocking on PRs
-- No SAST scanning before deploy
-- No container image scanning before push
+**RESOLVED:** GitHub Actions CI pipeline added (`.github/workflows/ci.yml`) with three jobs:
+- **test:** `npm ci` + `npm audit --audit-level=high` + `npm test` (blocks PRs on high+ CVEs or test failures)
+- **secrets-scan:** gitleaks against full git history (blocks PRs with leaked secrets)
+- **lint-security:** eslint with `eslint-plugin-security` rules (warns on unsafe patterns)
+
+**Remaining gap:** No container image scanning (trivy/grype). Recommended as a future addition.
 
 ---
 
@@ -52,6 +53,8 @@ The tweet-shots API demonstrates a **strong foundational security posture** with
 | 3 | Admin key tracked in git | Critical | `.admin-key` | `git rm --cached .admin-key` | 390/390 | Manual review |
 | 4 | Missing `.npmrc` security config | Low | (new file) | Added `.npmrc` with `audit=true`, `save-exact=true` | 390/390 | Manual review |
 | 5 | Incomplete `.gitignore` patterns | Low | `.gitignore` | Added `.env*`, `*.pem`, `*.key`, `*.p12`, credential patterns | 390/390 | Manual review |
+| 6 | Admin key in git history (CRIT-1) | Critical | Secret Manager | Rotated key, disabled old version, redeployed Cloud Run | Verified via curl | Manual review |
+| 7 | No CI/CD security tooling | High | (new files) | Added GitHub Actions pipeline: tests + npm audit + gitleaks + eslint-plugin-security | 390/390 | Manual review |
 
 ### Fix Details
 
@@ -79,19 +82,17 @@ The tweet-shots API demonstrates a **strong foundational security posture** with
 
 ## 4. Critical Findings (Unfixed)
 
-### CRIT-1: Admin Key Remains in Git History
+### CRIT-1: Admin Key Was in Git History — NOW RESOLVED
 
-- **Severity:** Critical
+- **Severity:** Critical (resolved)
 - **Location:** `.admin-key` in git commit `63a84d0d`
-- **Description:** The admin key `ts_admin_b148f0328cd1baa6fb40c6ff8d9a10a1` was committed to the repository before the `.gitignore` rule existed. While the file is now untracked (Fix #3), the key remains in git history and can be extracted by anyone with repository access.
-- **Impact:** Full admin access to the API — create/revoke API keys, view all usage data. If the repository is or has ever been public, consider this key compromised.
-- **Proof:** `git log --all -p -- .admin-key` shows the key in commit `63a84d0d652701523c53526248bea82eb39cdd4c`.
-- **Recommendation:**
-  1. **Rotate the admin key immediately** in GCP Secret Manager
-  2. **Rewrite git history** using `git filter-repo` or BFG Repo-Cleaner to remove `.admin-key` from all commits
-  3. Force-push the cleaned history (coordinate with any collaborators)
-- **Why It Wasn't Fixed:** Key rotation requires production access and Secret Manager updates. History rewriting is destructive and requires user coordination.
-- **Effort:** Moderate (30 minutes for rotation + history rewrite)
+- **Description:** The admin key `ts_admin_b148f0...` was committed to the repository before the `.gitignore` rule existed.
+- **Resolution:**
+  1. Key rotated in GCP Secret Manager (old version 1 disabled, new version 2 created)
+  2. Cloud Run redeployed to pick up new key
+  3. Verified old key returns 403, new key returns 200
+  4. `.admin-key` untracked from git index
+- **Remaining action:** Git history still contains the old key. Since it's been rotated, this is now informational. Consider rewriting history with `git filter-repo` or BFG Repo-Cleaner when convenient.
 - **Detected By:** Manual review (git history search)
 
 ---
