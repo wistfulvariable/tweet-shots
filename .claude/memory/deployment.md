@@ -6,7 +6,7 @@
 1. **deps** — `node:20-slim`, `npm ci --omit=dev`
 2. **production** — `node:20-slim`, installs `libfontconfig1` (Resvg needs it), runs as non-root `app` user
 
-Copied files: `package.json`, `core.mjs`, `tweet-shots.mjs`, `landing.html`, `fonts/`, `src/`.
+Copied files: `package.json`, `core.mjs`, `tweet-fetch.mjs`, `tweet-html.mjs`, `tweet-render.mjs`, `tweet-utils.mjs`, `tweet-shots.mjs`, `landing.html`, `fonts/`, `src/`. Each root `.mjs` file must be COPY'd explicitly.
 
 ```bash
 docker build -t tweet-shots .
@@ -19,8 +19,8 @@ Production image exposes port 8080, `NODE_ENV=production`.
 
 ```bash
 gcloud run deploy tweet-shots-api \
-  --image <tag> --region us-central1 --allow-unauthenticated \
-  --port 8080 --memory 1Gi --cpu 2
+  --source . --region us-central1 --allow-unauthenticated \
+  --port 8080 --memory 1Gi --cpu 2 --project tweet-shots-api
 ```
 
 - **Service URL:** `https://tweet-shots-api-1084185199991.us-central1.run.app`

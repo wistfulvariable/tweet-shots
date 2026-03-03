@@ -1,0 +1,5 @@
+[allowlist]
+  description = "Known false positives"
+
+  # Landing page curl example uses placeholder "your-api-key" — not a real secret
+  regexes = ['''your-api-key''']

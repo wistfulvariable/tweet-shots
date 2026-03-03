@@ -103,7 +103,7 @@ app.use(screenshotRoutes({
 }));
 ```
 
-Mock `core.mjs` re-exports (`extractTweetId` from `tweet-fetch.mjs`, `fetchTweet` from `tweet-fetch.mjs`, `renderTweetToImage` from `tweet-render.mjs`) and `storage.mjs` (`upload`). Tests mock via `vi.mock('../../core.mjs', ...)` since route modules import from `core.mjs`. Seed `apiKeys` and `usage` mock stores in `beforeEach`. Re-set mock implementations after `vi.clearAllMocks()`.
+Mock the direct sub-module imports: `vi.mock('../../tweet-fetch.mjs', ...)` for `extractTweetId`/`fetchTweet`, `vi.mock('../../tweet-render.mjs', ...)` for `renderTweetToImage`, and `vi.mock('../../src/services/storage.mjs', ...)` for `upload`. Route modules import from sub-modules directly (not `core.mjs`). Seed `apiKeys` and `usage` mock stores in `beforeEach`. Re-set mock implementations after `vi.clearAllMocks()`.
 
 ## Pitfalls
 
