@@ -100,7 +100,6 @@ const {
   formatDate,
   formatNumber,
   generateTweetHtml,
-  addLogoToHtml,
   renderTweetToImage,
   THEMES,
   DIMENSIONS,
@@ -240,48 +239,6 @@ describe('formatNumber', () => {
 
   it('returns plain number for 999', () => {
     expect(formatNumber(999)).toBe('999');
-  });
-});
-
-// ─── addLogoToHtml ───────────────────────────────────────────────────────────
-
-describe('addLogoToHtml', () => {
-  const sampleHtml = '<div style="display: flex;">content</div>';
-
-  it('inserts logo img before closing </div>', () => {
-    const result = addLogoToHtml(sampleHtml, 'https://example.com/logo.png');
-    expect(result).toContain('img');
-    expect(result).toContain('https://example.com/logo.png');
-    expect(result).toContain('</div>');
-  });
-
-  it('uses bottom-right as default position', () => {
-    const result = addLogoToHtml(sampleHtml, 'logo.png');
-    expect(result).toContain('bottom: 10px');
-    expect(result).toContain('right: 10px');
-  });
-
-  it('uses provided position', () => {
-    const result = addLogoToHtml(sampleHtml, 'logo.png', 'top-left');
-    expect(result).toContain('top: 10px');
-    expect(result).toContain('left: 10px');
-  });
-
-  it('falls back to bottom-right for invalid position', () => {
-    const result = addLogoToHtml(sampleHtml, 'logo.png', 'center');
-    expect(result).toContain('bottom: 10px');
-    expect(result).toContain('right: 10px');
-  });
-
-  it('applies custom size', () => {
-    const result = addLogoToHtml(sampleHtml, 'logo.png', 'bottom-right', 80);
-    expect(result).toContain('width: 80px');
-    expect(result).toContain('height: 80px');
-  });
-
-  it('uses position: absolute (known broken in Satori)', () => {
-    const result = addLogoToHtml(sampleHtml, 'logo.png');
-    expect(result).toContain('position: absolute');
   });
 });
 
