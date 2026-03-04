@@ -4,9 +4,9 @@
 
 - **Single tweet** — `tweet-shots <url-or-id> [options]`
 - **Batch** — `--batch <file>` reads URLs from text file, 500ms delay between, `--batch-dir` for output
-- **Thread** — `--thread` walks parent chain (same author only), `--thread-pdf` for PDF export
+- **Thread** — `--thread` walks parent chain (same author only), renders as single image with connector lines; `--thread-pdf` for PDF export
 - **Translation** — `--translate <lang>` via GPT-4o-mini (requires `OPENAI_API_KEY`)
-- **Logo** — `--logo <url>` with position/size options (**broken** — Satori doesn't support `position: absolute`)
+- **Logo/watermark** — `--logo <url>` with position (top/bottom) + size options; renders as flex row (not position:absolute)
 - **PDF** — Thread images combined via pdfkit, one page per tweet
 - **JSON** — `-j`/`--json` outputs raw tweet data
 
@@ -41,11 +41,19 @@
 | format | `png` | png, svg |
 | scale | `1` | 1, 2, 3 |
 | gradient | — | sunset, ocean, forest, fire, midnight, sky, candy, peach |
+| gradientFrom | — | Hex color (custom gradient start; takes priority over named gradient) |
+| gradientTo | — | Hex color (custom gradient end) |
+| gradientAngle | `135` | 0-360 degrees |
 | backgroundColor | — | Hex color |
 | textColor | — | Hex color |
 | linkColor | — | Hex color |
 | padding | `20` | 0-100 |
 | borderRadius | `16` | 0-100 |
+| frame | — | `phone` (renders card inside dark phone mockup chrome) |
+| logo | — | URL to image file (watermark; requires auth route — not available on demo) |
+| logoPosition | `bottom` | top, bottom |
+| logoSize | `80` | 20-200 px |
+| thread | `false` | Render full thread as single image (via `renderThreadToImage()`) |
 | hideMetrics | `false` | Show/hide engagement stats |
 | hideMedia | `false` | Show/hide images |
 | hideDate | `false` | Show/hide timestamp |
@@ -57,17 +65,14 @@
 | fontUrl | — | URL to custom font file (.ttf/.woff/.otf) |
 | fontBoldUrl | — | URL to custom bold font file (optional) |
 
-## Font & Emoji Support
+## Notes
 
-- **Emoji** — Twemoji SVGs fetched from CDN (jsdelivr), LRU cached per-worker (500 max)
-- **Multilingual** — 13 bundled Noto Sans fonts, lazy-loaded from disk when Satori detects non-Latin text
-- **Supported scripts:** Japanese, Korean, Chinese (Simplified + Traditional), Thai, Arabic, Hebrew, Bengali, Tamil, Malayalam, Telugu, Devanagari, Kannada
-- **Latin:** Inter Regular + Bold (always loaded)
-- **Custom fonts** — `fontUrl` fetches a font at render time (10s timeout), replaces Inter. `fontBoldUrl` optional (regular used for bold if omitted). Falls back to Inter silently on fetch failure. Not available on demo route.
+**Multi-image grid:** 1–4 photos auto-laid out. Heights: 1=280px, 2=220px, 3–4=160px. No option needed — driven by `mediaDetails` count.
+
+**Font/emoji:** Emoji via Twemoji CDN (LRU cached, 500/worker). Multilingual via 13 bundled Noto Sans fonts (JP/KR/ZH/TH/AR/HE/etc). `fontUrl` fetches custom font per-request (10s timeout, not cached); not on demo route.
 
 ## Not Supported
 
 - Twitter polls (no renderable structure in syndication API)
 - Videos as video (static thumbnail only)
-- Thread forward-walking (syndication API limitation)
-- Multiple images per tweet (only first rendered)
+- Thread forward-walking (syndication API limitation — parent chain only)

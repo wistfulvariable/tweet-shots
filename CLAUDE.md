@@ -246,17 +246,6 @@ gcloud run deploy tweet-shots-api \
 
 ---
 
-## Twitter Syndication API
-
-- Endpoint: `https://cdn.syndication.twimg.com/tweet-result?id=<id>&token=<random>`
-- Token is a random integer 0–999999 (required but not validated by Twitter)
-- Returns `{ text, user, entities, mediaDetails, photos, quoted_tweet, ... }`
-- Unavailable for: private accounts, deleted tweets, some older tweets
-- Videos: appear as static thumbnail in `mediaDetails[0].media_url_https`
-- The API does **not** expose thread continuation — thread walking is best-effort via `parent.id_str`
-
----
-
 ## Documentation Hierarchy
 
 | Layer | Loaded | What goes here |
@@ -282,3 +271,4 @@ Rule: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEM
 | `security.md` | Auth boundaries, input validation, accepted risks |
 | `feature-inventory.md` | CLI/API features, rendering options, unsupported |
 | `twitter-api.md` | Syndication API, tweet data shapes, limitations |
+| `debugging.md` | Rendering failures, font/emoji issues, auth/config diagnosis |

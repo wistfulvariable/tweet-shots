@@ -10,17 +10,9 @@ textHeight = Math.ceil(textLength / 45) * 28  // assumes ~45 chars/line
 
 No fallback or retry mechanism exists.
 
-## Logo Overlay Does Not Render
-
-`addLogoToHtml()` in `tweet-html.mjs` uses `position: absolute`, which Satori does not support. The logo/watermark feature is broken in rendered output. CLI `--logo` flag accepts the argument but the logo won't appear.
-
 ## Thread Walking Only Goes Backward
 
 `fetchThread()` walks `parent.id_str` chain upward to find the thread start. Cannot discover tweets posted **after** the entry tweet. Syndication API limitation — no fix available.
-
-## Only First Media Image Rendered
-
-`generateTweetHtml()` only uses `mediaDetails[0]` or `photos[0]`. Multi-image tweets show only the first photo.
 
 ## Date Formatting Is Locale-Dependent
 
@@ -33,7 +25,7 @@ Quote tweet: HTML-decode first (Twitter sends pre-encoded), then truncate to 200
 
 ## Satori loadAdditionalAsset — Emoji and Font Fallback
 
-`loadAdditionalAsset` now delegates to `fetchEmoji` (emoji→Twemoji SVG from CDN, 5s timeout, LRU cached) and `loadLanguageFont` (script→Noto Sans from disk, cached per-process). If CDN is unavailable, emoji gracefully degrades to empty boxes. If a font file is missing from `fonts/`, that script renders as tofu. Font files must be present in Docker image (Dockerfile COPYs `fonts/` directory).
+`loadAdditionalAsset` delegates to `fetchEmoji` (emoji→Twemoji SVG from CDN, 5s timeout, LRU cached) and `loadLanguageFont` (script→Noto Sans from disk, cached per-process). If CDN is unavailable, emoji gracefully degrades to empty boxes. If a font file is missing from `fonts/`, that script renders as tofu. Font files must be present in Docker image (Dockerfile COPYs `fonts/` directory).
 
 ## Boolean Query Param Naming Inversion
 
@@ -42,3 +34,11 @@ GET `/screenshot` uses `hideMetrics=true` → internally maps to `showMetrics: f
 ## TweetId in URL Must Be Decoded
 
 `GET /screenshot/:tweetIdOrUrl` calls `decodeURIComponent()` before `extractTweetId`. Full tweet URLs passed as path params must be URL-encoded by the client.
+
+## Phone Frame Height Math
+
+Phone frame adds `PHONE_CHROME.notch (40) + PHONE_CHROME.homeBar (28) + PHONE_CHROME.border*2 (20)` px to canvas height. If you change the inner card layout, re-check total canvas height calculation in `renderTweetToImage()`.
+
+## Custom Font Not Cached
+
+`fontUrl` fonts are fetched fresh on every request (10s timeout). High-traffic endpoints or slow font CDNs will add latency proportional to font file size. Fallback to Inter is silent — no error surfaced to caller.
