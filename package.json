@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "test:render": "vitest run tests/integration/real-render.test.mjs"
+    "test:render": "vitest run tests/integration/real-render.test.mjs",
+    "deploy": "gcloud builds submit --config cloudbuild.yaml --project tweet-shots-api ."
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.3.0",

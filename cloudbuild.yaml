@@ -1,0 +1,23 @@
+steps:
+  # Build with Kaniko (Docker layer caching)
+  - name: gcr.io/kaniko-project/executor:latest
+    args:
+      - --destination=us-central1-docker.pkg.dev/tweet-shots-api/cloud-run-source-deploy/tweet-shots-api:$BUILD_ID
+      - --cache=true
+      - --cache-ttl=168h
+
+  # Deploy to Cloud Run
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - tweet-shots-api
+      - --image=us-central1-docker.pkg.dev/tweet-shots-api/cloud-run-source-deploy/tweet-shots-api:$BUILD_ID
+      - --region=us-central1
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=1Gi
+      - --cpu=2
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -10,7 +10,7 @@ tweet-shots: CLI + REST API for generating tweet screenshots via Satori/Resvg (n
 - **GCP:** Project `tweet-shots-api`, Firestore + GCS in `us-central1`
 - **CI:** GitHub Actions — tests + npm audit + gitleaks + eslint-plugin-security
 - **Test API Key:** `ts_free_3958a9cac86343c5b62d0c2e7d928302`
-- **Deploy:** `gcloud run deploy tweet-shots-api --source . --region us-central1 --allow-unauthenticated --port 8080 --memory 1Gi --cpu 2 --project tweet-shots-api`
+- **Deploy:** `npm run deploy` — Kaniko build with layer caching via `cloudbuild.yaml`, then Cloud Run deploy
 
 ## Topic Files
 

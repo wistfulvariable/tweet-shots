@@ -17,15 +17,19 @@ Production image exposes port 8080, `NODE_ENV=production`.
 
 ## Cloud Run
 
+Deploy via Kaniko (Docker layer caching) + Cloud Run:
+
 ```bash
-gcloud run deploy tweet-shots-api \
-  --source . --region us-central1 --allow-unauthenticated \
-  --port 8080 --memory 1Gi --cpu 2 --project tweet-shots-api
+npm run deploy
+# Runs: gcloud builds submit --config cloudbuild.yaml --project tweet-shots-api .
 ```
+
+`cloudbuild.yaml` uses Kaniko with `--cache=true` (168h TTL) to cache Docker layers in Artifact Registry. Only changed layers rebuild — source-only deploys skip `npm ci`, `apt-get`, and font copying.
 
 - **Service URL:** `https://tweet-shots-api-1084185199991.us-central1.run.app`
 - **GCP Project:** `tweet-shots-api`
 - **Region:** `us-central1` (same as Firestore)
+- **Image repo:** `us-central1-docker.pkg.dev/tweet-shots-api/cloud-run-source-deploy/tweet-shots-api`
 - Worker pool size adapts to available CPUs on the Cloud Run instance
 
 ## Secret Manager

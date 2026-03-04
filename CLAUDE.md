@@ -227,10 +227,8 @@ node tweet-shots.mjs <tweet-url-or-id> [options]
 docker build -t tweet-shots .
 docker run -p 8080:8080 -e ADMIN_KEY=<secret> tweet-shots
 
-# Cloud Run (source deploy — builds Docker image automatically)
-gcloud run deploy tweet-shots-api \
-  --source . --region us-central1 --allow-unauthenticated \
-  --port 8080 --memory 1Gi --cpu 2 --project tweet-shots-api
+# Cloud Run (Kaniko build with layer caching + deploy)
+npm run deploy
 ```
 
 ---
