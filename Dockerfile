@@ -35,6 +35,8 @@ COPY landing.html ./
 COPY landing.js ./
 COPY docs.html ./
 COPY docs.js ./
+COPY dashboard.js ./
+COPY signup.js ./
 COPY llm-docs.txt ./
 COPY favicon.svg ./
 COPY fonts/ ./fonts/

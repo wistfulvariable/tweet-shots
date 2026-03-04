@@ -9,10 +9,15 @@
  */
 
 import { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { getOrLinkUser, getDashboardData } from '../services/dashboard.mjs';
 import { createStripeClient, createCheckoutSession, createPortalSession } from '../services/stripe.mjs';
 import { sendRouteError } from '../errors.mjs';
 import { dashboardLimiter } from '../middleware/rate-limit.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DASHBOARD_JS_PATH = path.resolve(__dirname, '../../dashboard.js');
 
 /**
  * @param {object} deps
@@ -28,6 +33,12 @@ export function dashboardRoutes({ firebaseAuth, config, logger }) {
   // ─── GET /dashboard — serve the dashboard HTML page ────────────────
   router.get('/dashboard', (req, res) => {
     res.type('html').send(renderDashboardPage(config));
+  });
+
+  // ─── GET /dashboard.js — serve external dashboard script ──────────
+  router.get('/dashboard.js', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(DASHBOARD_JS_PATH);
   });
 
   // ─── All API routes require Firebase auth ──────────────────────────
@@ -200,7 +211,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* Not configured */
 .not-configured { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .not-configured h2 { color: var(--text); margin-bottom: 12px; }
+
+/* Focus indicators (WCAG 2.1 AA) */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 `;
+
+function escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function renderDashboardPage(config) {
   const firebaseApiKey = config.FIREBASE_WEB_API_KEY;
@@ -213,6 +231,8 @@ function renderDashboardPage(config) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - tweet-shots API</title>
+${firebaseConfigured ? `<meta name="firebase-api-key" content="${escapeAttr(firebaseApiKey)}">
+<meta name="firebase-auth-domain" content="${escapeAttr(firebaseAuthDomain)}">` : ''}
 <style>${PAGE_STYLE}</style>
 </head>
 <body>
@@ -301,219 +321,7 @@ function renderDashboardPage(config) {
 ${firebaseConfigured ? `
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script>
-(function() {
-  'use strict';
-
-  firebase.initializeApp({
-    apiKey: ${JSON.stringify(firebaseApiKey)},
-    authDomain: ${JSON.stringify(firebaseAuthDomain)},
-    projectId: 'tweet-shots-api',
-  });
-
-  var auth = firebase.auth();
-  var provider = new firebase.auth.GoogleAuthProvider();
-
-  // DOM refs
-  var authLoading = document.getElementById('auth-loading');
-  var signInArea = document.getElementById('sign-in-area');
-  var dashboardArea = document.getElementById('dashboard-area');
-  var errorBanner = document.getElementById('error-banner');
-  var googleBtn = document.getElementById('google-sign-in-btn');
-  var signOutBtn = document.getElementById('sign-out-btn');
-  var userAvatar = document.getElementById('user-avatar');
-  var userName = document.getElementById('user-name');
-  var userEmail = document.getElementById('user-email');
-  var tierBadge = document.getElementById('tier-badge');
-  var apiKeyDisplay = document.getElementById('api-key-display');
-  var toggleKeyBtn = document.getElementById('toggle-key-btn');
-  var copyKeyBtn = document.getElementById('copy-key-btn');
-  var usageBarFill = document.getElementById('usage-bar-fill');
-  var usageCount = document.getElementById('usage-count');
-  var usageRemaining = document.getElementById('usage-remaining');
-  var planDetails = document.getElementById('plan-details');
-  var upgradeBtn = document.getElementById('upgrade-btn');
-  var manageBillingBtn = document.getElementById('manage-billing-btn');
-
-  var fullApiKey = '';
-  var keyRevealed = false;
-
-  function showError(msg) {
-    errorBanner.textContent = msg;
-    errorBanner.style.display = 'block';
-    setTimeout(function() { errorBanner.style.display = 'none'; }, 8000);
-  }
-
-  function hideAll() {
-    authLoading.style.display = 'none';
-    signInArea.style.display = 'none';
-    dashboardArea.style.display = 'none';
-  }
-
-  async function getToken() {
-    var user = auth.currentUser;
-    if (!user) return null;
-    return user.getIdToken(false);
-  }
-
-  async function apiCall(method, path, body) {
-    var token = await getToken();
-    if (!token) throw new Error('Not authenticated');
-    var opts = {
-      method: method,
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    };
-    if (body) opts.body = JSON.stringify(body);
-    var res = await fetch(path, opts);
-    var data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    return data;
-  }
-
-  function maskKey(key) {
-    return key.slice(0, 12) + '...' + key.slice(-4);
-  }
-
-  function renderDashboard(data) {
-    fullApiKey = data.apiKey;
-    keyRevealed = false;
-    apiKeyDisplay.textContent = maskKey(data.apiKey);
-    toggleKeyBtn.textContent = 'Show';
-
-    // Tier badge
-    tierBadge.textContent = data.tier;
-    tierBadge.className = 'tier-badge tier-' + data.tier;
-
-    // Usage
-    var used = data.usage.used || 0;
-    var limit = data.usage.limit || 50;
-    var pct = Math.min(100, Math.round((used / limit) * 100));
-    usageBarFill.style.width = pct + '%';
-    usageBarFill.className = 'usage-bar-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warning' : '');
-    usageCount.textContent = used + ' / ' + limit + ' credits used';
-    usageRemaining.textContent = data.usage.remaining + ' remaining';
-
-    // Plan details
-    var td = data.tierDetails;
-    planDetails.textContent = data.tier.charAt(0).toUpperCase() + data.tier.slice(1) + ' plan'
-      + ' — ' + td.rateLimit + ' req/min, ' + td.monthlyCredits + ' credits/mo'
-      + (td.price > 0 ? ', $' + td.price + '/mo' : ', free');
-
-    // Show upgrade if not business
-    if (data.tier !== 'business') {
-      upgradeBtn.style.display = 'inline-block';
-    } else {
-      upgradeBtn.style.display = 'none';
-    }
-
-    // Show manage billing if Stripe customer exists
-    if (data.stripeCustomerId) {
-      manageBillingBtn.style.display = 'inline-block';
-    } else {
-      manageBillingBtn.style.display = 'none';
-    }
-  }
-
-  async function loadDashboard(user) {
-    hideAll();
-    dashboardArea.style.display = 'block';
-
-    // User info
-    userName.textContent = user.displayName || user.email;
-    userEmail.textContent = user.email;
-    if (user.photoURL) {
-      userAvatar.src = user.photoURL;
-      userAvatar.style.display = 'block';
-    }
-
-    try {
-      // Link user (idempotent)
-      await apiCall('POST', '/dashboard/api/link');
-      // Load data
-      var data = await apiCall('GET', '/dashboard/api/data');
-      renderDashboard(data);
-    } catch (err) {
-      showError(err.message);
-    }
-  }
-
-  // Auth state listener
-  auth.onAuthStateChanged(function(user) {
-    hideAll();
-    if (user) {
-      loadDashboard(user);
-    } else {
-      signInArea.style.display = 'block';
-    }
-  });
-
-  // Sign in
-  googleBtn.addEventListener('click', function() {
-    auth.signInWithPopup(provider).catch(function(err) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        showError('Sign-in failed: ' + err.message);
-      }
-    });
-  });
-
-  // Sign out
-  signOutBtn.addEventListener('click', function() {
-    auth.signOut();
-  });
-
-  // Toggle key visibility
-  toggleKeyBtn.addEventListener('click', function() {
-    keyRevealed = !keyRevealed;
-    apiKeyDisplay.textContent = keyRevealed ? fullApiKey : maskKey(fullApiKey);
-    toggleKeyBtn.textContent = keyRevealed ? 'Hide' : 'Show';
-  });
-
-  // Copy key
-  copyKeyBtn.addEventListener('click', function() {
-    navigator.clipboard.writeText(fullApiKey).then(function() {
-      var orig = copyKeyBtn.textContent;
-      copyKeyBtn.textContent = 'Copied!';
-      setTimeout(function() { copyKeyBtn.textContent = orig; }, 2000);
-    });
-  });
-
-  // Upgrade
-  upgradeBtn.addEventListener('click', async function() {
-    try {
-      upgradeBtn.disabled = true;
-      upgradeBtn.textContent = 'Loading...';
-      var data = await apiCall('POST', '/dashboard/api/checkout', { tier: 'pro' });
-      window.location.href = data.url;
-    } catch (err) {
-      showError(err.message);
-      upgradeBtn.disabled = false;
-      upgradeBtn.textContent = 'Upgrade Plan';
-    }
-  });
-
-  // Manage billing
-  manageBillingBtn.addEventListener('click', async function() {
-    try {
-      manageBillingBtn.disabled = true;
-      manageBillingBtn.textContent = 'Loading...';
-      var data = await apiCall('POST', '/dashboard/api/portal');
-      window.location.href = data.url;
-    } catch (err) {
-      showError(err.message);
-      manageBillingBtn.disabled = false;
-      manageBillingBtn.textContent = 'Manage Billing';
-    }
-  });
-
-  // Handle checkout return
-  var params = new URLSearchParams(window.location.search);
-  if (params.get('checkout') === 'success') {
-    history.replaceState(null, '', '/dashboard');
-  } else if (params.get('checkout') === 'cancel') {
-    history.replaceState(null, '', '/dashboard');
-  }
-})();
-</script>
+<script src="/dashboard.js"></script>
 ` : ''}
 </body>
 </html>`;

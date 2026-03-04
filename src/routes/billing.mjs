@@ -4,6 +4,8 @@
  */
 
 import { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   createStripeClient,
   getOrCreateCustomer,
@@ -16,6 +18,9 @@ import { getUsageStats } from '../services/usage.mjs';
 import { signupSchema, checkoutSchema, portalSchema } from '../schemas/request-schemas.mjs';
 import { validate } from '../middleware/validate.mjs';
 import { signupLimiter, billingLimiter } from '../middleware/rate-limit.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SIGNUP_JS_PATH = path.resolve(__dirname, '../../signup.js');
 
 const PAGE_STYLE = `
 :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-secondary: #94a3b8; --accent: #3b82f6; --accent-hover: #2563eb; --border: rgba(255,255,255,0.08); }
@@ -30,12 +35,13 @@ a.link:hover { text-decoration: underline; }
 .btn-primary { background: var(--accent); color: white; }
 .btn-primary:hover { background: var(--accent-hover); }
 input { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1rem; margin-bottom: 12px; }
-input:focus { outline: none; border-color: var(--accent); }
+input:focus { border-color: var(--accent); }
 label { display: block; text-align: left; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px; }
 .key-box { background: var(--bg); border: 1px solid var(--accent); border-radius: 8px; padding: 16px; margin: 16px 0; word-break: break-all; font-family: monospace; font-size: 0.95rem; position: relative; cursor: pointer; }
 .key-box:hover { border-color: var(--accent-hover); }
 .error { color: #ef4444; margin: 12px 0; }
 .hidden { display: none; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 `;
 
 function renderSignupPage() {
@@ -68,57 +74,7 @@ function renderSignupPage() {
   </div>
   <a href="/" class="link" style="margin-top:16px">Back to home</a>
 </div>
-<script>
-(function() {
-  var form = document.getElementById('signup-form');
-  var errorMsg = document.getElementById('error-msg');
-  var successArea = document.getElementById('success-area');
-  var keyBox = document.getElementById('key-box');
-  var copyMsg = document.getElementById('copy-msg');
-  var submitBtn = document.getElementById('submit-btn');
-
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    errorMsg.classList.add('hidden');
-    successArea.classList.add('hidden');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating...';
-
-    try {
-      var res = await fetch('/billing/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: document.getElementById('email').value.trim(),
-          name: document.getElementById('name').value.trim() || undefined,
-        }),
-      });
-      var data = await res.json();
-      if (!res.ok) {
-        errorMsg.textContent = data.error || 'Signup failed. Please try again.';
-        errorMsg.classList.remove('hidden');
-        return;
-      }
-      form.classList.add('hidden');
-      keyBox.textContent = data.apiKey;
-      successArea.classList.remove('hidden');
-    } catch (err) {
-      errorMsg.textContent = 'Network error. Please check your connection and try again.';
-      errorMsg.classList.remove('hidden');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Get API Key';
-    }
-  });
-
-  keyBox.addEventListener('click', function() {
-    navigator.clipboard.writeText(keyBox.textContent).then(function() {
-      copyMsg.textContent = 'Copied!';
-      setTimeout(function() { copyMsg.textContent = 'Click the key to copy it. Save it somewhere safe!'; }, 2000);
-    });
-  });
-})();
-</script>
+<script src="/signup.js"></script>
 </body>
 </html>`;
 }
@@ -157,6 +113,12 @@ export function billingRoutes({ authenticate, config, logger }) {
   // ─── GET /billing/signup — signup form page ─────────────────────────
   router.get('/billing/signup', (req, res) => {
     res.type('html').send(renderSignupPage());
+  });
+
+  // ─── GET /signup.js — serve external signup script ─────────────────
+  router.get('/signup.js', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(SIGNUP_JS_PATH);
   });
 
   // ─── POST /billing/signup — free tier, no Stripe needed ───────────

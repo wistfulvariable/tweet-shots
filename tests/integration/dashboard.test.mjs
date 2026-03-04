@@ -99,7 +99,7 @@ function authHeaders(token = 'valid-token') {
 // ─── GET /dashboard ──────────────────────────────────────────────
 
 describe('GET /dashboard', () => {
-  it('returns HTML page with Firebase SDK script tags', async () => {
+  it('returns HTML page with Firebase SDK and external dashboard.js', async () => {
     const res = await fetch(`${baseUrl}/dashboard`);
 
     expect(res.status).toBe(200);
@@ -111,6 +111,12 @@ describe('GET /dashboard', () => {
     expect(text).toContain('AIzaSyTest123');
     expect(text).toContain('tweet-shots-api.firebaseapp.com');
     expect(text).toContain('Sign in with Google');
+    // Config via meta tags, external JS (CSP-compliant)
+    expect(text).toContain('meta name="firebase-api-key"');
+    expect(text).toContain('meta name="firebase-auth-domain"');
+    expect(text).toContain('src="/dashboard.js"');
+    // No inline script (would violate CSP)
+    expect(text).not.toContain('firebase.initializeApp');
   });
 
   it('does not require authentication', async () => {
@@ -118,6 +124,20 @@ describe('GET /dashboard', () => {
 
     expect(res.status).toBe(200);
     expect(verifyIdToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /dashboard.js', () => {
+  it('returns JavaScript with 24h cache control', async () => {
+    const res = await fetch(`${baseUrl}/dashboard.js`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('javascript');
+    expect(res.headers.get('cache-control')).toBe('public, max-age=86400');
+
+    const text = await res.text();
+    expect(text).toContain('firebase.initializeApp');
+    expect(text).toContain('onAuthStateChanged');
   });
 });
 

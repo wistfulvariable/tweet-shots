@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 
 describe('GET /billing/signup', () => {
-  it('returns HTML signup form page', async () => {
+  it('returns HTML signup form page with external script', async () => {
     const res = await fetch(`${baseUrl}/billing/signup`);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/html');
@@ -68,6 +68,22 @@ describe('GET /billing/signup', () => {
     expect(text).toContain('Get your API key');
     expect(text).toContain('type="email"');
     expect(text).toContain('type="submit"');
+    // External JS (CSP-compliant — no inline script)
+    expect(text).toContain('src="/signup.js"');
+    expect(text).not.toContain("addEventListener('submit'");
+  });
+});
+
+describe('GET /signup.js', () => {
+  it('returns JavaScript with 24h cache control', async () => {
+    const res = await fetch(`${baseUrl}/signup.js`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('javascript');
+    expect(res.headers.get('cache-control')).toBe('public, max-age=86400');
+
+    const text = await res.text();
+    expect(text).toContain('signup-form');
+    expect(text).toContain('fetch');
   });
 });
 
@@ -368,7 +384,8 @@ describe('Billing routes — characterization tests', () => {
     expect(body.used).toBe(10);
     expect(body.remaining).toBe(40);
     expect(body.limit).toBe(50);
-    expect(body.total).toBe(10);
+    expect(body.currentMonth).toBe(currentMonth);
+    expect(body.resetDate).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
   });
 
   it('usage returns 0 used when month has rolled over', async () => {
@@ -387,10 +404,12 @@ describe('Billing routes — characterization tests', () => {
       headers: { 'X-API-KEY': testKey },
     });
     const body = await res.json();
+    const now = new Date();
+    const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
     expect(res.status).toBe(200);
     expect(body.used).toBe(0);
     expect(body.remaining).toBe(50);
-    expect(body.total).toBe(25);
+    expect(body.currentMonth).toBe(expectedMonth);
   });
 
   it('usage response includes all expected fields', async () => {
@@ -410,7 +429,8 @@ describe('Billing routes — characterization tests', () => {
       used: expect.any(Number),
       limit: expect.any(Number),
       remaining: expect.any(Number),
-      total: expect.any(Number),
+      currentMonth: expect.any(String),
+      resetDate: expect.any(String),
     }));
   });
 
