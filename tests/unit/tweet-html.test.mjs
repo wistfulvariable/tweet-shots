@@ -356,8 +356,8 @@ describe('generateThreadHtml', () => {
   it('handles single-tweet thread (no connector line)', () => {
     const html = generateThreadHtml([threadTweets[0]], 'dark', {});
     // For a single-tweet thread, there should be no connector lines
-    // The connector is a 2px wide div with flex:1
-    expect(html).not.toContain('flex: 1');
+    // The connector is a 2px wide vertical line between tweets
+    expect(html).not.toContain('width: 2px');
     expect(html).toContain('First tweet in thread');
   });
 });

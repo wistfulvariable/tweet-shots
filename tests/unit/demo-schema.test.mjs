@@ -466,6 +466,7 @@ describe('demoQuerySchema', () => {
         showUrl: true,
         padding: 30,
         radius: 8,
+        thread: false,
       });
     });
   });
