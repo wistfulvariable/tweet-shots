@@ -105,9 +105,7 @@
     .demo-card {
       max-width: 1100px;
       margin: 0 auto;
-      background: rgba(30, 41, 59, 0.5);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(30, 41, 59, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 20px;
       overflow: hidden;
@@ -627,7 +625,70 @@
       color: var(--accent);
       text-decoration: none;
     }
-    
+
+    /* Nav */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.97);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 0 20px;
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--text);
+      text-decoration: none;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .nav-signin {
+      padding: 7px 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-signin:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
     @media (max-width: 768px) {
       .hero h1 { font-size: 2.5rem; }
       .price-card.featured { transform: none; }
@@ -638,6 +699,18 @@
   </style>
 </head>
 <body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">tweet-shots</a>
+      <div class="nav-links">
+        <a href="#demo" class="nav-link">Demo</a>
+        <a href="/docs" class="nav-link">Docs</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+        <a href="/dashboard" class="nav-signin">Sign In</a>
+      </div>
+    </div>
+  </nav>
+
   <section class="hero">
     <div class="container">
       <h1>tweet-shots</h1>
