@@ -27,9 +27,12 @@ COPY core.mjs ./
 COPY tweet-fetch.mjs ./
 COPY tweet-html.mjs ./
 COPY tweet-render.mjs ./
+COPY tweet-emoji.mjs ./
+COPY tweet-fonts.mjs ./
 COPY tweet-utils.mjs ./
 COPY tweet-shots.mjs ./
 COPY landing.html ./
+COPY favicon.svg ./
 COPY fonts/ ./fonts/
 COPY src/ ./src/
 

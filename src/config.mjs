@@ -22,6 +22,10 @@ const envSchema = z.object({
   // GCP
   GCS_BUCKET: z.string().default('tweet-shots-screenshots'),
 
+  // Firebase (optional — dashboard disabled without these)
+  FIREBASE_WEB_API_KEY: z.string().optional(),
+  FIREBASE_AUTH_DOMAIN: z.string().optional(),
+
   // Optional features
   OPENAI_API_KEY: z.string().optional(),
 });
@@ -44,9 +48,12 @@ export function loadConfig() {
  * Combines rate limits (per-minute), monthly credits, and pricing.
  */
 export const TIERS = Object.freeze({
-  free:     { rateLimit: 10,   monthlyCredits: 50,    price: 0  },
-  pro:      { rateLimit: 100,  monthlyCredits: 1000,  price: 9  },
-  business: { rateLimit: 1000, monthlyCredits: 10000, price: 49 },
+  free:     { rateLimit: 10,   monthlyCredits: 50,    price: 0,  batchLimit: 10  },
+  pro:      { rateLimit: 100,  monthlyCredits: 1000,  price: 9,  batchLimit: 100 },
+  business: { rateLimit: 1000, monthlyCredits: 10000, price: 49, batchLimit: 500 },
 });
+
+/** Max concurrent renders within a single batch request. */
+export const BATCH_CONCURRENCY = 5;
 
 export const VALID_TIERS = Object.keys(TIERS);

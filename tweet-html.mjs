@@ -204,13 +204,15 @@ function buildQuoteTweetHtml(quotedTweet, colors, finalColors) {
   const qtMediaUrl = getFirstMediaUrl(quotedTweet);
   if (qtMediaUrl) {
     qtMediaHtml = `
-      <img src="${qtMediaUrl}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-left: auto;" />
+      <div style="display: flex; width: 80px; height: 80px; flex-shrink: 0; border-radius: 8px; overflow: hidden; margin-left: auto;">
+        <img src="${qtMediaUrl}" style="width: 80px; height: 80px; object-fit: cover;" />
+      </div>
     `;
   }
 
   return `
     <div style="display: flex; flex-direction: row; margin-top: 12px; padding: 12px; border: 1px solid ${colors.border}; border-radius: 16px; gap: 12px;">
-      <div style="display: flex; flex-direction: column; flex: 1;">
+      <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
         <div style="display: flex; align-items: center; gap: 6px;">
           <img src="${qtProfilePic}" style="width: 20px; height: 20px; border-radius: 50%;" />
           <span style="font-weight: 700; font-size: 13px; color: ${finalColors.text};">${qtUserName}</span>
@@ -302,6 +304,11 @@ export function addLogoToHtml(baseHtml, logoUrl, position = 'bottom-right', size
 // HTML TEMPLATE GENERATION
 // ============================================================================
 
+// Padding around the tweet card when displayed on a gradient/canvas background
+export const GRADIENT_FRAME_PADDING = 40;
+
+const FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
 export function generateTweetHtml(tweet, theme, options = {}) {
   const colors = THEMES[theme] || THEMES.dark;
   const {
@@ -313,6 +320,8 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     hideDate = false,
     hideQuoteTweet = false,
     hideShadow = false,
+    showUrl = false,
+    tweetId = null,
     backgroundColor = null,
     backgroundImage = null,
     backgroundGradient = null,
@@ -320,6 +329,9 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     textSecondaryColor = null,
     linkColor = null,
     borderRadius = 16,
+    // Canvas dimensions for centering within fixed-size output (e.g. dimension presets)
+    canvasWidth = null,
+    canvasHeight = null,
   } = options;
 
   // Override colors if custom colors provided
@@ -331,15 +343,18 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     bg: backgroundColor || colors.bg,
   };
 
-  // Background style
-  let bgStyle = `background: ${finalColors.bg};`;
-  if (backgroundGradient && GRADIENTS[backgroundGradient]) {
-    bgStyle = `background: ${GRADIENTS[backgroundGradient]};`;
-  } else if (backgroundImage) {
-    bgStyle = `background: url(${backgroundImage}) center/cover no-repeat;`;
-  }
+  // Determine if we need a two-layer structure (gradient frame or dimension centering)
+  const hasGradientFrame = !!(backgroundGradient && GRADIENTS[backgroundGradient]) || !!backgroundImage;
+  const hasCanvasDimensions = !!(canvasWidth && canvasHeight);
+  const needsWrapper = hasGradientFrame || hasCanvasDimensions;
 
-  const shadow = hideShadow ? '' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  // Card always gets a solid background (gradient goes on outer wrapper)
+  const cardBg = finalColors.bg;
+
+  // Stronger shadow when card floats on a gradient/canvas
+  const shadow = hideShadow ? '' : (needsWrapper
+    ? 'box-shadow: 0 8px 32px rgba(0,0,0,0.35);'
+    : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);');
 
   const userName = tweet.user?.name || 'Unknown';
   const userHandle = tweet.user?.screen_name || 'unknown';
@@ -351,6 +366,13 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   const verifiedBadge = isVerified ? verifiedBadgeSvg(finalColors.link, 18) : '';
 
   const metricsHtml = showMetrics ? buildMetricsHtml(tweet, colors) : '';
+
+  const tweetUrl = `https://x.com/${userHandle}/status/${tweetId}`;
+  const urlHtml = (showUrl && tweetId) ? `
+    <div style="display: flex; margin-top: 12px; font-size: 13px; color: ${finalColors.textSecondary};">
+      ${tweetUrl}
+    </div>
+  ` : '';
 
   // Handle media (photos from mediaDetails or photos array)
   let mediaHtml = '';
@@ -378,9 +400,8 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   const finalQuoteTweetHtml = hideQuoteTweet ? '' : quoteTweetHtml;
   const finalVerifiedBadge = hideVerified ? '' : verifiedBadge;
 
-  return `
-    <div style="display: flex; flex-direction: column; padding: ${padding}px; ${bgStyle} border-radius: ${borderRadius}px; width: ${width}px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; ${shadow}">
-      <!-- Header: Profile pic + name -->
+  // Build the tweet card content (shared between wrapper and standalone modes)
+  const cardContent = `
       <div style="display: flex; align-items: center; gap: 12px;">
         <img src="${profilePic}" style="width: 48px; height: 48px; border-radius: 50%;" />
         <div style="display: flex; flex-direction: column;">
@@ -390,30 +411,49 @@ export function generateTweetHtml(tweet, theme, options = {}) {
           </div>
           <span style="font-size: 15px; color: ${finalColors.textSecondary};">@${userHandle}</span>
         </div>
-        <!-- X logo -->
         <div style="display: flex; margin-left: auto;">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="${finalColors.text}">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
           </svg>
         </div>
       </div>
-
-      <!-- Tweet text -->
       <div style="display: flex; flex-direction: column; margin-top: 12px; font-size: 17px; line-height: 1.5; color: ${finalColors.text};">
         ${tweetText}
       </div>
-
-      <!-- Media -->
       ${finalMediaHtml}
-
-      <!-- Quote Tweet -->
       ${finalQuoteTweetHtml}
-
-      <!-- Timestamp -->
       ${dateHtml}
-
-      <!-- Metrics -->
       ${metricsHtml}
+      ${urlHtml}
+  `;
+
+  if (needsWrapper) {
+    // Two-layer: outer canvas/gradient + inner card with solid bg
+    let outerBg;
+    if (backgroundGradient && GRADIENTS[backgroundGradient]) {
+      outerBg = GRADIENTS[backgroundGradient];
+    } else if (backgroundImage) {
+      outerBg = `url(${backgroundImage}) center/cover no-repeat`;
+    } else {
+      outerBg = cardBg; // Dimension preset without gradient — same bg color
+    }
+
+    const wrapperW = canvasWidth || (width + padding * 2 + GRADIENT_FRAME_PADDING * 2);
+    const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
+
+    return `
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${FONT_FAMILY};">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+        ${cardContent}
+      </div>
+    </div>
+    `;
+  }
+
+  // Standard single-layer card (no gradient, no fixed dimensions)
+  return `
+    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${FONT_FAMILY}; ${shadow}">
+      ${cardContent}
     </div>
   `;
 }

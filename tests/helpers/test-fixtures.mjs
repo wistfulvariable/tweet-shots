@@ -61,3 +61,33 @@ export const MOCK_PRO_KEY_DATA = {
 };
 
 export const MOCK_PRO_API_KEY = 'ts_pro_abcdef1234567890abcdef12';
+
+export const MOCK_BUSINESS_KEY_DATA = {
+  tier: 'business',
+  name: 'Business Key',
+  email: 'business@example.com',
+  active: true,
+  created: '2024-01-01T00:00:00.000Z',
+};
+
+export const MOCK_BUSINESS_API_KEY = 'ts_business_abcdef1234567890abcdef12';
+
+/** Firebase mock user (as attached to req.firebaseUser by middleware) */
+export const MOCK_FIREBASE_USER = {
+  uid: 'firebase-uid-abc123',
+  email: 'test@example.com',
+  name: 'Test User',
+  emailVerified: true,
+  picture: 'https://lh3.googleusercontent.com/photo.jpg',
+};
+
+/** Firebase decoded ID token (as returned by verifyIdToken) */
+export const MOCK_FIREBASE_TOKEN = {
+  uid: 'firebase-uid-abc123',
+  email: 'test@example.com',
+  name: 'Test User',
+  email_verified: true,
+  picture: 'https://lh3.googleusercontent.com/photo.jpg',
+  aud: 'tweet-shots-api',
+  iss: 'https://securetoken.google.com/tweet-shots-api',
+};

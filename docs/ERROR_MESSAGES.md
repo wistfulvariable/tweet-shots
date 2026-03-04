@@ -59,7 +59,7 @@ All API errors follow this JSON structure:
 
 - `error` — Always present. Human-readable, actionable message.
 - `code` — Always present. Machine-readable error code for programmatic handling.
-- `requestId` — Present on error responses from middleware (authenticate 401s, billing-guard 429s) and all 500s (error-handler, sendRouteError). Populated from `req.id` when available. Users can reference this when contacting support.
+- `requestId` — Present on error responses from middleware (authenticate 401s, validation 400s, billing-guard 429s) and all 500s (error-handler, sendRouteError). Populated from `req.id` when available. Users can reference this when contacting support.
 - `details` — Present only on validation errors (VALIDATION_ERROR). Array of per-field issues.
 
 ## Error Code Reference
@@ -111,6 +111,20 @@ All API errors follow this JSON structure:
 | `RENDER_TIMEOUT` | Render exceeds dynamic timeout (504) | This tweet took too long to render. Tweets with many large images may exceed the time limit. Try setting hideMedia=true or using a different tweet. |
 | `URL_NOT_CONFIGURED` | URL response without GCS (503) | URL response mode is not available. Use "image" or "base64" response type instead. |
 
+### Batch (400 / 429)
+| Code | Trigger | Message |
+|---|---|---|
+| `BATCH_LIMIT_EXCEEDED` | Batch size exceeds tier limit (400) | Batch size {N} exceeds the limit of {M} for the {tier} tier. Reduce the number of URLs or upgrade at /billing/checkout. |
+| `MONTHLY_LIMIT_EXCEEDED` | Not enough credits for batch (429) | Batch of {N} screenshots would exceed the monthly credit limit. {R} credits remaining for the {tier} tier. Reduce the batch size or upgrade at /billing/checkout. |
+| `BATCH_SCREENSHOT_FAILED` | Unexpected batch processing error (500) | An unexpected error occurred. Please try again later. |
+
+Per-item error codes in the results array:
+| Code | Trigger | Message |
+|---|---|---|
+| `RENDER_FAILED` | Individual tweet render/fetch failed | Varies per root cause (tweet not found, or generic rendering failed) |
+| `RENDER_TIMEOUT` | Individual tweet render timeout | This tweet took too long to render. |
+| `URL_NOT_CONFIGURED` | URL response without GCS | URL response mode is not available. |
+
 ### Webhook
 | Code | Trigger | Message |
 |---|---|---|
@@ -121,8 +135,8 @@ All API errors follow this JSON structure:
 ### Demo (429 / 504)
 | Code | Trigger | Message |
 |---|---|---|
-| `DEMO_RATE_LIMITED` | Demo IP rate limit (5/min) | Demo rate limit reached. Sign up for an API key for higher limits. |
-| `DEMO_RENDER_TIMEOUT` | Demo render exceeds dynamic timeout (504) | This tweet took too long to render. Tweets with many large images may exceed the time limit. Try checking "Hide media" or using a different tweet. |
+| `DEMO_RATE_LIMITED` | Demo IP rate limit (5/min) | Demo rate limit reached (5 requests/min). Sign up for an API key at /billing/signup for higher limits. |
+| `RENDER_TIMEOUT` | Demo render exceeds dynamic timeout (504) | This tweet took too long to render. Tweets with many large images may exceed the time limit. Try checking "Hide media" or using a different tweet. |
 | `DEMO_SCREENSHOT_FAILED` | Demo render/fetch error (varies) | Varies by root cause (via sendRouteError) |
 
 ### Internal (500)

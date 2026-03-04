@@ -51,6 +51,21 @@ vi.mock('fs', async (importOriginal) => {
   };
 });
 
+// Mock tweet-emoji.mjs (CDN fetch not needed in unit tests)
+vi.mock('../../tweet-emoji.mjs', () => ({
+  fetchEmoji: vi.fn(async () => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='),
+  emojiToCodepoint: vi.fn((emoji) => '1f600'),
+  clearEmojiCache: vi.fn(),
+  getEmojiCacheSize: vi.fn(() => 0),
+}));
+
+// Mock tweet-fonts.mjs (no disk I/O in unit tests)
+vi.mock('../../tweet-fonts.mjs', () => ({
+  loadLanguageFont: vi.fn(() => undefined),
+  getSupportedLanguages: vi.fn(() => ['ja-JP', 'ko-KR', 'zh-CN']),
+  clearFontCache: vi.fn(),
+}));
+
 // Mock pdfkit
 vi.mock('pdfkit', () => {
   const EventEmitter = require('events');
@@ -884,6 +899,37 @@ describe('generateTweetHtml', () => {
     });
     expect(result).toContain('#aabbcc');
   });
+
+  it('shows tweet URL when showUrl is true and tweetId is provided', () => {
+    const tweet = cloneTweet();
+    const result = generateTweetHtml(tweet, 'dark', {
+      showUrl: true,
+      tweetId: '1234567890',
+    });
+    expect(result).toContain('https://x.com/testuser/status/1234567890');
+  });
+
+  it('omits tweet URL when showUrl is false (default)', () => {
+    const tweet = cloneTweet();
+    const result = generateTweetHtml(tweet, 'dark');
+    expect(result).not.toContain('https://x.com/');
+  });
+
+  it('omits tweet URL when showUrl is true but tweetId is missing', () => {
+    const tweet = cloneTweet();
+    const result = generateTweetHtml(tweet, 'dark', { showUrl: true });
+    expect(result).not.toContain('https://x.com/');
+  });
+
+  it('uses the tweet user handle in the URL', () => {
+    const tweet = cloneTweet();
+    tweet.user.screen_name = 'testuser123';
+    const result = generateTweetHtml(tweet, 'dark', {
+      showUrl: true,
+      tweetId: '9876543210',
+    });
+    expect(result).toContain('https://x.com/testuser123/status/9876543210');
+  });
 });
 
 // ─── loadFonts ───────────────────────────────────────────────────────────────
@@ -975,21 +1021,28 @@ describe('renderTweetToImage', () => {
     expect(Buffer.isBuffer(result.data)).toBe(true);
   });
 
-  it('pre-fetches profile image to base64', async () => {
+  it('pre-fetches profile image without mutating tweet', async () => {
     const tweet = cloneTweet();
     const originalProfileUrl = tweet.user.profile_image_url_https;
     await renderTweetToImage(tweet);
-    // After rendering, the tweet object is mutated — profile URL replaced with data URI
-    expect(tweet.user.profile_image_url_https).not.toBe(originalProfileUrl);
-    expect(tweet.user.profile_image_url_https).toMatch(/^data:/);
+    // Tweet object is NOT mutated — base64 is injected into VDOM, not tweet
+    expect(tweet.user.profile_image_url_https).toBe(originalProfileUrl);
+    // But the profile image was still fetched
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    expect(fetchCalls.some(u => u.includes('profile_images'))).toBe(true);
   });
 
-  it('pre-fetches media images to base64', async () => {
+  it('pre-fetches media images without mutating tweet', async () => {
     const tweet = cloneTweet({
       mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/test.jpg' }],
     });
+    const originalUrl = tweet.mediaDetails[0].media_url_https;
     await renderTweetToImage(tweet);
-    expect(tweet.mediaDetails[0].media_url_https).toMatch(/^data:/);
+    // Tweet object is NOT mutated
+    expect(tweet.mediaDetails[0].media_url_https).toBe(originalUrl);
+    // But the media image was still fetched
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    expect(fetchCalls.some(u => u.includes('pbs.twimg.com/media/test.jpg'))).toBe(true);
   });
 
   it('requests small Twitter CDN size for narrow widths', async () => {
@@ -1032,15 +1085,15 @@ describe('renderTweetToImage', () => {
     const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
     const imageCalls = fetchCalls.filter(u => u.includes('twimg.com'));
     expect(imageCalls.length).toBe(5);
-    // All images should be converted to base64
-    expect(tweet.user.profile_image_url_https).toMatch(/^data:/);
-    expect(tweet.mediaDetails[0].media_url_https).toMatch(/^data:/);
-    expect(tweet.mediaDetails[1].media_url_https).toMatch(/^data:/);
-    expect(tweet.photos[0].url).toMatch(/^data:/);
-    expect(tweet.photos[1].url).toMatch(/^data:/);
+    // Tweet object is NOT mutated (base64 injected into VDOM, not tweet)
+    expect(tweet.user.profile_image_url_https).not.toMatch(/^data:/);
+    expect(tweet.mediaDetails[0].media_url_https).not.toMatch(/^data:/);
+    expect(tweet.mediaDetails[1].media_url_https).not.toMatch(/^data:/);
+    expect(tweet.photos[0].url).not.toMatch(/^data:/);
+    expect(tweet.photos[1].url).not.toMatch(/^data:/);
   });
 
-  it('pre-fetches quote tweet images', async () => {
+  it('pre-fetches quote tweet images without mutating tweet', async () => {
     const tweet = cloneTweet({
       quoted_tweet: {
         text: 'quoted',
@@ -1051,8 +1104,13 @@ describe('renderTweetToImage', () => {
         },
       },
     });
+    const originalUrl = tweet.quoted_tweet.user.profile_image_url_https;
     await renderTweetToImage(tweet);
-    expect(tweet.quoted_tweet.user.profile_image_url_https).toMatch(/^data:/);
+    // Tweet object is NOT mutated
+    expect(tweet.quoted_tweet.user.profile_image_url_https).toBe(originalUrl);
+    // But the quote tweet profile image was still fetched
+    const fetchCalls = globalThis.fetch.mock.calls.map(c => c[0]);
+    expect(fetchCalls.some(u => u.includes('pbs.twimg.com/qt.jpg'))).toBe(true);
   });
 
   it('calls satori with appropriate dimensions', async () => {
@@ -1077,14 +1135,52 @@ describe('renderTweetToImage', () => {
     );
   });
 
-  it('passes loadAdditionalAsset that returns undefined', async () => {
+  it('passes loadAdditionalAsset that handles emoji and language codes', async () => {
     const tweet = cloneTweet();
     await renderTweetToImage(tweet);
     const satoriCall = satori.mock.calls[0];
     const options = satoriCall[1];
     expect(options.loadAdditionalAsset).toBeDefined();
-    const result = await options.loadAdditionalAsset('emoji', '🎉');
-    expect(result).toBeUndefined();
+    expect(typeof options.loadAdditionalAsset).toBe('function');
+
+    // Emoji: delegates to fetchEmoji (mocked)
+    const emojiResult = await options.loadAdditionalAsset('emoji', '🎉');
+    expect(emojiResult).toMatch(/^data:image\/svg\+xml;base64,/);
+
+    // Language code: delegates to loadLanguageFont (mocked → undefined)
+    const langResult = await options.loadAdditionalAsset('ja-JP', 'テスト');
+    expect(langResult).toBeUndefined();
+  });
+
+  it('passes VDOM object (not string) to satori after HTML parsing', async () => {
+    const tweet = cloneTweet({
+      mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/test.jpg' }],
+    });
+    await renderTweetToImage(tweet);
+    // satori receives a VDOM object (from satori-html), not an HTML string
+    const vdom = satori.mock.calls[0][0];
+    expect(typeof vdom).toBe('object');
+    expect(vdom.type).toBeDefined();
+    expect(vdom.props).toBeDefined();
+  });
+
+  it('does not mutate tweet when rendering with quote tweet media', async () => {
+    const tweet = cloneTweet({
+      mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/main.jpg' }],
+      quoted_tweet: {
+        text: 'quoted',
+        user: { name: 'Qt', screen_name: 'qt', profile_image_url_https: 'https://pbs.twimg.com/qt_profile.jpg' },
+        mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/qt_media.jpg' }],
+      },
+    });
+    const originalMainUrl = tweet.mediaDetails[0].media_url_https;
+    const originalQtProfileUrl = tweet.quoted_tweet.user.profile_image_url_https;
+    const originalQtMediaUrl = tweet.quoted_tweet.mediaDetails[0].media_url_https;
+    await renderTweetToImage(tweet);
+    // None of the tweet URLs should be mutated
+    expect(tweet.mediaDetails[0].media_url_https).toBe(originalMainUrl);
+    expect(tweet.quoted_tweet.user.profile_image_url_https).toBe(originalQtProfileUrl);
+    expect(tweet.quoted_tweet.mediaDetails[0].media_url_https).toBe(originalQtMediaUrl);
   });
 });
 

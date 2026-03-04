@@ -33,7 +33,7 @@ Basic Options:
   -w, --width <px>         Width in pixels (default: 550, overrides dimension)
   --svg                    Output SVG instead of PNG
   -j, --json               Output tweet JSON data
-  --scale <n>              Scale factor: 1, 2, or 3 (default: 1)
+  --scale <n>              Scale factor: 1, 2, or 3 (default: 2)
   -h, --help               Show this help
 
 Advanced Features:
@@ -53,6 +53,7 @@ Hide/Show Options:
   --no-date                Hide timestamp
   --no-quote               Hide quote tweet
   --no-shadow              Hide shadow effect
+  --show-url               Show tweet URL at bottom of image
 
 Styling Options:
   --bg-color <hex>         Background color (e.g., #ff0000)
@@ -112,7 +113,7 @@ function parseArgs(args) {
     width: null,
     format: 'png',
     jsonOnly: false,
-    scale: 1,
+    scale: 2,
     // Hide/show
     showMetrics: true,
     hideMedia: false,
@@ -120,6 +121,7 @@ function parseArgs(args) {
     hideDate: false,
     hideQuoteTweet: false,
     hideShadow: false,
+    showUrl: false,
     // Styling
     backgroundColor: null,
     backgroundGradient: null,
@@ -171,6 +173,7 @@ function parseArgs(args) {
     '--no-date': ['hideDate', true],
     '--no-quote': ['hideQuoteTweet', true],
     '--no-shadow': ['hideShadow', true],
+    '--show-url': ['showUrl', true],
     '--svg': ['format', 'svg'],
     '-j': ['jsonOnly', true], '--json': ['jsonOnly', true],
     '--thread': ['thread', true],
@@ -194,11 +197,15 @@ function parseArgs(args) {
     }
   }
 
-  // Apply dimension preset if no explicit width
-  if (!options.width && DIMENSIONS[options.dimension]) {
-    options.width = DIMENSIONS[options.dimension].width;
+  // Apply dimension preset
+  const dim = DIMENSIONS[options.dimension];
+  if (dim?.height) {
+    // Fixed-dimension preset: card stays readable, preset sets canvas size
+    options.canvasWidth = dim.width;
+    options.canvasHeight = dim.height;
+    if (!options.width) options.width = 550; // readable card width
   } else if (!options.width) {
-    options.width = 550;
+    options.width = dim?.width || 550;
   }
 
   return options;
@@ -217,6 +224,7 @@ function buildRenderOptions(options) {
     hideDate: options.hideDate,
     hideQuoteTweet: options.hideQuoteTweet,
     hideShadow: options.hideShadow,
+    showUrl: options.showUrl,
     backgroundColor: options.backgroundColor,
     backgroundGradient: options.backgroundGradient,
     backgroundImage: options.backgroundImage,
@@ -228,6 +236,8 @@ function buildRenderOptions(options) {
     logoPosition: options.logoPosition,
     logoSize: options.logoSize,
     translate: options.translate,
+    canvasWidth: options.canvasWidth || null,
+    canvasHeight: options.canvasHeight || null,
   };
 }
 
@@ -273,7 +283,8 @@ async function handleThread(options, renderOpts) {
       tweet.text = await translateText(tweet.text, options.translate);
     }
 
-    const result = await renderTweetToImage(tweet, renderOpts);
+    const threadTweetId = tweet.id_str || tweetId;
+    const result = await renderTweetToImage(tweet, { ...renderOpts, tweetId: threadTweetId });
     images.push(result.data);
 
     if (!options.threadPdf || options.output?.endsWith('.png')) {
@@ -321,7 +332,7 @@ async function handleSingle(options, renderOpts) {
   console.log(`Tweet by @${tweet.user?.screen_name}: "${tweet.text?.substring(0, 50)}..."`);
   console.log(`Rendering with theme: ${options.theme}, dimension: ${options.dimension}`);
 
-  const result = await renderTweetToImage(tweet, renderOpts);
+  const result = await renderTweetToImage(tweet, { ...renderOpts, tweetId });
 
   const ext = result.format;
   const outputPath = options.output || `tweet-${tweetId}.${ext}`;

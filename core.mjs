@@ -9,6 +9,8 @@
  *   - tweet-fetch.mjs  — extractTweetId, fetchTweet, fetchThread
  *   - tweet-html.mjs   — THEMES, GRADIENTS, generateTweetHtml, addLogoToHtml, formatDate, formatNumber
  *   - tweet-render.mjs — DIMENSIONS, renderTweetToImage, loadFonts, fetchImageAsBase64
+ *   - tweet-emoji.mjs  — emojiToCodepoint, fetchEmoji
+ *   - tweet-fonts.mjs  — loadLanguageFont, getSupportedLanguages
  *   - tweet-utils.mjs  — translateText, processBatch, generatePDF
  */
 
@@ -20,6 +22,12 @@ export { THEMES, GRADIENTS, formatDate, formatNumber, generateTweetHtml, addLogo
 
 // Rendering pipeline
 export { DIMENSIONS, fetchImageAsBase64, loadFonts, renderTweetToImage, countMediaImages } from './tweet-render.mjs';
+
+// Emoji rendering
+export { emojiToCodepoint, fetchEmoji } from './tweet-emoji.mjs';
+
+// Multilingual font loading
+export { loadLanguageFont, getSupportedLanguages } from './tweet-fonts.mjs';
 
 // CLI utilities
 export { translateText, processBatch, generatePDF } from './tweet-utils.mjs';

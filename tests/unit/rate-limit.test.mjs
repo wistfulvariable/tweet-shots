@@ -237,7 +237,7 @@ describe('demoLimiter', () => {
     expect(blocked.status).toBe(429);
 
     const body = await blocked.json();
-    expect(body.error).toBe('Demo rate limit reached. Sign up for an API key for higher limits.');
+    expect(body.error).toBe('Demo rate limit reached (5 requests/min). Sign up for an API key at /billing/signup for higher limits.');
     expect(body.code).toBe('DEMO_RATE_LIMITED');
   });
 

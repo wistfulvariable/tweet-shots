@@ -15,6 +15,7 @@ import { createLogger } from './logger.mjs';
 
 // Middleware
 import { authenticate } from './middleware/authenticate.mjs';
+import { firebaseAuth } from './middleware/firebase-auth.mjs';
 import { applyRateLimit, demoLimiter } from './middleware/rate-limit.mjs';
 import { billingGuard } from './middleware/billing-guard.mjs';
 import { errorHandler } from './middleware/error-handler.mjs';
@@ -27,6 +28,7 @@ import { tweetRoutes } from './routes/tweet.mjs';
 import { adminRoutes } from './routes/admin.mjs';
 import { billingRoutes } from './routes/billing.mjs';
 import { demoRoutes } from './routes/demo.mjs';
+import { dashboardRoutes } from './routes/dashboard.mjs';
 
 // Workers
 import { createRenderPool } from './workers/render-pool.mjs';
@@ -82,6 +84,7 @@ app.use((req, res, next) => {
 // ─── Build dependency-injected middleware ────────────────────────────
 
 const authMiddleware = authenticate(logger);
+const firebaseAuthMiddleware = firebaseAuth(logger);
 const billingMiddleware = billingGuard(logger);
 
 // ─── Mount routes ───────────────────────────────────────────────────
@@ -95,7 +98,14 @@ app.use(demoRoutes({
   logger,
 }));
 
-// Authenticated routes
+// Dashboard (public HTML page + Firebase-authed API)
+app.use(dashboardRoutes({
+  firebaseAuth: firebaseAuthMiddleware,
+  config,
+  logger,
+}));
+
+// Authenticated API routes
 app.use(screenshotRoutes({
   authenticate: authMiddleware,
   applyRateLimit,
@@ -132,6 +142,7 @@ const server = app.listen(config.PORT, config.HOST, () => {
     host: config.HOST,
     env: config.NODE_ENV,
     stripeEnabled: !!config.STRIPE_SECRET_KEY,
+    dashboardEnabled: !!(config.FIREBASE_WEB_API_KEY && config.FIREBASE_AUTH_DOMAIN),
     tiers: Object.keys(TIERS),
   }, 'tweet-shots API started');
 });

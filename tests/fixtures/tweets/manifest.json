@@ -1,0 +1,261 @@
+{
+  "text-only": {
+    "tweetId": "20",
+    "flags": [
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1661201415899951105/azNjKOSH_400x400.jpg": {
+        "file": "723c39951c5dc2a7.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "single-photo": {
+    "tweetId": "266031293945503744",
+    "flags": [
+      "MEDIA(1)",
+      "PHOTOS(1)",
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1329647526807543809/2SGvnHYV_400x400.jpg": {
+        "file": "61583bd9d8222499.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/A7EiDWcCYAAZT1D.jpg?name=small": {
+        "file": "476335f9b674941a.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/A7EiDWcCYAAZT1D.jpg?name=medium": {
+        "file": "2c305456dcf4d87a.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "multi-photo": {
+    "tweetId": "449660889793581056",
+    "flags": [
+      "MEDIA(4)",
+      "PHOTOS(4)",
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/819629543027834886/ax_Bugws_400x400.jpg": {
+        "file": "cccfe6cd3b145109.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EH6yIQAEYvxu.jpg?name=small": {
+        "file": "7a7f9bbf9fb09c50.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EH6yIQAEYvxu.jpg?name=medium": {
+        "file": "ad6fe23832e4fa54.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EHxAIIAE8dtg.jpg?name=small": {
+        "file": "c36d96ce25aabf6b.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EHxAIIAE8dtg.jpg?name=medium": {
+        "file": "63a123bed1cfdc28.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EH3pIYAE4LQn.jpg?name=small": {
+        "file": "8db13eb242f8ea19.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EH3pIYAE4LQn.jpg?name=medium": {
+        "file": "89b9752339842f0a.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EL3DIEAAzGAX.jpg?name=small": {
+        "file": "f9b5769bc5d91190.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/Bj2EL3DIEAAzGAX.jpg?name=medium": {
+        "file": "2243d99c64277a0f.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "with-hashtags": {
+    "tweetId": "440322224407314432",
+    "flags": [
+      "MEDIA(1)",
+      "PHOTOS(1)",
+      "HASHTAGS(1)",
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1909090851592273920/UutmZxGI_400x400.jpg": {
+        "file": "2008a8bb8a43b9ba.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/BhxWutnCEAAtEQ6.jpg?name=small": {
+        "file": "a0bc6a38569d3c6d.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/BhxWutnCEAAtEQ6.jpg?name=medium": {
+        "file": "5ba61ab918fbe196.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "with-mentions": {
+    "tweetId": "1674865731136020505",
+    "flags": [
+      "MENTIONS(1)",
+      "VERIFIED",
+      "HAS_PARENT"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/2008546467615580160/57KcqsTA_400x400.jpg": {
+        "file": "fc10424d7be2a443.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "photo-newlines": {
+    "tweetId": "1349129669258448897",
+    "flags": [
+      "HAS_NEWLINES",
+      "MEDIA(1)",
+      "PHOTOS(1)",
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/2008546467615580160/57KcqsTA_400x400.jpg": {
+        "file": "fc10424d7be2a443.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/ErkSSFgW4AMKude.jpg?name=small": {
+        "file": "33410d038e739a8e.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/ErkSSFgW4AMKude.jpg?name=medium": {
+        "file": "df31f4047518d07f.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "video-tweet": {
+    "tweetId": "1585341984679469056",
+    "flags": [
+      "MEDIA(1)",
+      "VIDEO",
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/2008546467615580160/57KcqsTA_400x400.jpg": {
+        "file": "fc10424d7be2a443.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/ext_tw_video_thumb/1585341912877146112/pu/img/DwJ7wlGIe9iryk6N.jpg": {
+        "file": "49c4008114136f92.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "verified-user": {
+    "tweetId": "1617979122625712128",
+    "flags": [
+      "VERIFIED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg": {
+        "file": "015ee6a03a47e817.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "unverified-user": {
+    "tweetId": "719484841172054016",
+    "flags": [
+      "HAS_NEWLINES",
+      "MEDIA(1)",
+      "PHOTOS(1)",
+      "MENTIONS(1)"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1623225628530016260/SW0HsKjP_400x400.jpg": {
+        "file": "5e40aab3648531aa.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/CfwfpnJWwAEXwe3.jpg?name=small": {
+        "file": "11b97705ddce8d3a.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/CfwfpnJWwAEXwe3.jpg?name=medium": {
+        "file": "74f33311a72ba7d0.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "with-links": {
+    "tweetId": "augmented-from-1617979122625712128",
+    "flags": [
+      "URLS(1)",
+      "AUGMENTED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg": {
+        "file": "015ee6a03a47e817.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "quoted-text": {
+    "tweetId": "augmented-from-1617979122625712128",
+    "flags": [
+      "QUOTED",
+      "AUGMENTED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg": {
+        "file": "015ee6a03a47e817.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "quoted-media": {
+    "tweetId": "augmented-from-1617979122625712128",
+    "flags": [
+      "QUOTED",
+      "QUOTED_MEDIA",
+      "AUGMENTED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg": {
+        "file": "015ee6a03a47e817.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/profile_images/1329647526807543809/2SGvnHYV_400x400.jpg": {
+        "file": "61583bd9d8222499.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/A7EiDWcCYAAZT1D.jpg?name=small": {
+        "file": "476335f9b674941a.bin",
+        "contentType": "image/jpeg"
+      },
+      "https://pbs.twimg.com/media/A7EiDWcCYAAZT1D.jpg?name=medium": {
+        "file": "2c305456dcf4d87a.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  },
+  "long-text": {
+    "tweetId": "augmented-from-1617979122625712128",
+    "flags": [
+      "LONG_TEXT",
+      "HAS_NEWLINES",
+      "AUGMENTED"
+    ],
+    "images": {
+      "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg": {
+        "file": "015ee6a03a47e817.bin",
+        "contentType": "image/jpeg"
+      }
+    }
+  }
+}

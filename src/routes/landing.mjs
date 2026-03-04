@@ -10,9 +10,14 @@ import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LANDING_PATH = path.resolve(__dirname, '../../landing.html');
+const FAVICON_PATH = path.resolve(__dirname, '../../favicon.svg');
 
 export function landingRoutes() {
   const router = Router();
+
+  router.get('/favicon.svg', (req, res) => {
+    res.sendFile(FAVICON_PATH);
+  });
 
   router.get('/', (req, res) => {
     const acceptsHtml = req.headers.accept?.includes('text/html');

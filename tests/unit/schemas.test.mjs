@@ -19,7 +19,7 @@ describe('screenshotQuerySchema', () => {
     expect(result.data.theme).toBe('dark');
     expect(result.data.dimension).toBe('auto');
     expect(result.data.format).toBe('png');
-    expect(result.data.scale).toBe(1);
+    expect(result.data.scale).toBe(2);
     expect(result.data.padding).toBe(20);
     expect(result.data.radius).toBe(16);
   });
@@ -102,6 +102,19 @@ describe('screenshotQuerySchema', () => {
     const result = screenshotQuerySchema.safeParse({ radius: '-5' });
     expect(result.success).toBe(false);
   });
+
+  it('transforms showUrl boolean string to boolean', () => {
+    const result = screenshotQuerySchema.safeParse({ showUrl: 'true' });
+    expect(result.success).toBe(true);
+    expect(result.data.showUrl).toBe(true);
+  });
+
+  it('defaults showUrl to string "false" when omitted (Zod boolString behavior)', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    // Query schemas use boolString which defaults to raw string "false" (Zod .default bypasses .transform)
+    expect(result.data.showUrl).toBe('false');
+  });
 });
 
 describe('screenshotBodySchema', () => {
@@ -125,7 +138,7 @@ describe('screenshotBodySchema', () => {
     expect(result.success).toBe(true);
     expect(result.data.response).toBe('image');
     expect(result.data.theme).toBe('dark');
-    expect(result.data.scale).toBe(1);
+    expect(result.data.scale).toBe(2);
     expect(result.data.hideMetrics).toBe(false);
     expect(result.data.hideMedia).toBe(false);
   });
@@ -151,6 +164,18 @@ describe('screenshotBodySchema', () => {
   it('rejects scale > 3', () => {
     const result = screenshotBodySchema.safeParse({ tweetId: '12345', scale: 10 });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts boolean showUrl', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', showUrl: true });
+    expect(result.success).toBe(true);
+    expect(result.data.showUrl).toBe(true);
+  });
+
+  it('defaults showUrl to false in body schema', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.showUrl).toBe(false);
   });
 });
 

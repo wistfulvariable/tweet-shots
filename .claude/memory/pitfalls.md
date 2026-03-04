@@ -31,9 +31,9 @@ No fallback or retry mechanism exists.
 Main tweet: HTML-escape first, then process entities.
 Quote tweet: HTML-decode first (Twitter sends pre-encoded), then truncate to 200 chars. Different pipeline — intentional but surprising.
 
-## Satori loadAdditionalAsset Returns undefined
+## Satori loadAdditionalAsset — Emoji and Font Fallback
 
-Set to `async () => undefined` to block network requests for emoji/font fallback. Missing emoji render as empty boxes rather than causing timeouts.
+`loadAdditionalAsset` now delegates to `fetchEmoji` (emoji→Twemoji SVG from CDN, 5s timeout, LRU cached) and `loadLanguageFont` (script→Noto Sans from disk, cached per-process). If CDN is unavailable, emoji gracefully degrades to empty boxes. If a font file is missing from `fonts/`, that script renders as tofu. Font files must be present in Docker image (Dockerfile COPYs `fonts/` directory).
 
 ## Boolean Query Param Naming Inversion
 

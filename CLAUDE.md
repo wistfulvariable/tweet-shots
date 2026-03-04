@@ -15,6 +15,7 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | Satori | 0.24 | HTML/CSS → SVG rendering |
 | @resvg/resvg-js | 2.6 | SVG → PNG conversion |
 | satori-html | 0.3 | HTML string → Satori VDOM |
+| Firebase Admin | 13.4 | Server-side ID token verification (dashboard) |
 | Firestore | 8.3 | API keys, usage, customer data |
 | Cloud Storage | 7.19 | Screenshot URL-response hosting |
 | Stripe | 20.4 | Subscription billing |
@@ -36,13 +37,16 @@ tweet-shots/
 ├── core.mjs                     # Re-export hub (backward-compatible entry point)
 ├── tweet-fetch.mjs              # Tweet ID extraction, data fetching, thread walking
 ├── tweet-html.mjs               # HTML template generation, themes, gradients
-├── tweet-render.mjs             # Satori/Resvg rendering pipeline, font loading
+├── tweet-render.mjs             # Satori/Resvg rendering pipeline, image pre-fetch
+├── tweet-emoji.mjs              # Emoji rendering (Twemoji CDN fetch + LRU cache)
+├── tweet-fonts.mjs              # Multilingual font loading (Noto Sans, lazy from disk)
 ├── tweet-utils.mjs              # CLI-only utilities (translation, batch, PDF)
 ├── tweet-shots.mjs              # CLI entry point
 ├── landing.html                 # Landing page with interactive demo (vanilla JS)
-├── fonts/                       # Bundled Inter fonts (no runtime fetch)
-│   ├── Inter-Regular.woff
-│   └── Inter-Bold.woff
+├── fonts/                       # Bundled fonts (Inter + 13 Noto Sans variants)
+│   ├── Inter-Regular.woff       # Latin (always loaded)
+│   ├── Inter-Bold.woff          # Latin bold (always loaded)
+│   └── NotoSans*-Regular.ttf    # JP, SC, TC, KR, Thai, Arabic, Hebrew, etc. (lazy-loaded)
 ├── src/
 │   ├── server.mjs               # Express app entry point
 │   ├── errors.mjs               # AppError class + sendRouteError helper
@@ -50,6 +54,7 @@ tweet-shots/
 │   ├── logger.mjs               # pino structured logging
 │   ├── middleware/
 │   │   ├── authenticate.mjs     # API key auth via Firestore
+│   │   ├── firebase-auth.mjs    # Firebase Bearer token auth (dashboard)
 │   │   ├── rate-limit.mjs       # Per-tier rate limiting
 │   │   ├── billing-guard.mjs    # Monthly credit enforcement (fails open)
 │   │   ├── validate.mjs         # Zod schema validation
@@ -59,11 +64,14 @@ tweet-shots/
 │   │   ├── tweet.mjs            # GET /tweet/:id
 │   │   ├── admin.mjs            # Admin key CRUD
 │   │   ├── billing.mjs          # Stripe checkout/portal/signup/webhook
+│   │   ├── dashboard.mjs        # /dashboard (HTML + API for user dashboard)
 │   │   ├── demo.mjs             # GET /demo/screenshot/:tweetIdOrUrl (public, IP-limited)
 │   │   ├── health.mjs           # /health, /pricing, /docs
 │   │   └── landing.mjs          # GET / (landing page)
 │   ├── services/
 │   │   ├── firestore.mjs        # Firestore client + collection refs
+│   │   ├── firebase-auth.mjs    # Firebase Admin SDK (token verification)
+│   │   ├── dashboard.mjs        # Dashboard business logic (user linking, data)
 │   │   ├── api-keys.mjs         # API key CRUD + findKeyByEmail (unified ts_<tier>_<uuid>)
 │   │   ├── usage.mjs            # Unified tracking + enforcement
 │   │   ├── stripe.mjs           # Stripe customer/subscription mgmt
@@ -82,8 +90,8 @@ tweet-shots/
 ├── audit-reports/               # Test coverage + security audit reports
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (9 tests)
-│   ├── unit/                    # Per-service unit tests (17 files)
-│   ├── integration/             # API endpoint tests (8 files)
+│   ├── unit/                    # Per-service unit tests (21 files)
+│   ├── integration/             # API endpoint tests (9 files)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
@@ -96,22 +104,26 @@ tweet-shots/
 ## Architectural Rules
 
 **DO:**
-- Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time. Use `preFetchAllImages()` in `tweet-render.mjs` which fetches all images in parallel via `Promise.all` and uses `twitterImageUrl()` to request optimally-sized Twitter CDN variants (`?name=small|medium`) based on render width/scale
+- Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time. `preFetchAllImages()` returns a `Map<url, base64>` (does NOT mutate the tweet object). After `satori-html` parses the small HTML, `injectImageSources()` walks the VDOM tree to replace URL `src` values with base64. This avoids satori-html's O(n²) parsing on large base64 strings. Uses `twitterImageUrl()` to request optimally-sized Twitter CDN variants (`?name=small|medium`)
 - Pass `display: flex` on every container element — Satori only supports Flexbox layout
 - Use `extractTweetId()` from `tweet-fetch.mjs` to normalize both URLs and raw IDs — import directly from sub-modules (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs`
 - Use unified `ts_<tier>_<uuid>` format for all API keys (single format everywhere)
-- Call `trackAndEnforce()` via billing-guard middleware on every authenticated request
+- Call `trackAndEnforce()` via billing-guard middleware on every single-item authenticated request
+- Use `checkAndReserveCredits()` for batch requests instead of billingGuard — batch does N-credit validation upfront in the handler (fail-open on Firestore error). Do not add billingGuard to the batch middleware chain
 - Keep API key strings stable across tier changes (only update the tier field)
 - Mount billing routes BEFORE admin routes in `server.mjs` — admin's `router.use()` guard blocks all requests without `X-Admin-Key`, including `/billing/*` paths
 - Throw `AppError` (from `src/errors.mjs`) for client errors in core sub-modules (`tweet-fetch.mjs`, etc.) — route catch blocks use `sendRouteError(res, err, code, logger)` which maps `AppError` to its `statusCode` and plain `Error` to 500 with generic message. Always pass `logger` so 500s get logged server-side.
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 - Include `...(req.id && { requestId: req.id })` in all middleware error JSON responses — enables support correlation. Route handlers get this automatically via `sendRouteError()` and the global error handler.
+- Use `loadAdditionalAsset` in Satori for emoji and multilingual fonts — `tweet-emoji.mjs` fetches Twemoji SVGs from CDN (5s timeout, LRU cache), `tweet-fonts.mjs` lazy-loads bundled Noto Sans from `fonts/`. Both modules are imported by `tweet-render.mjs` and used per-render.
+- When adding new root-level `.mjs` files, add a `COPY` line to the Dockerfile — each root `.mjs` must be explicitly listed (includes `tweet-emoji.mjs`, `tweet-fonts.mjs`)
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
 - Use HTML attributes for `<img>` width/height (`width="80"`) — satori-html parses them as strings, satori 0.24+ rejects non-numeric values. Use CSS style instead: `style="width: 80px; height: 80px;"`
 - Render images directly from remote URLs in HTML — must convert to data URIs first
-- Block the event loop with synchronous rendering — use the worker thread pool (dynamic timeout: 30s base + 5s per media image, max 60s; hung Satori/Resvg renders reject automatically). Timeout errors return 504 with `RENDER_TIMEOUT` / `DEMO_RENDER_TIMEOUT` code
+- Embed base64 data URIs directly in HTML strings passed to `satori-html` — satori-html has O(n²) parse time (100KB=623ms, 200KB=7.5s). Always inject base64 into the VDOM tree post-parse via `injectImageSources()`
+- Block the event loop with synchronous rendering — use the worker thread pool (dynamic timeout: 30s base + 5s per media image, max 60s; hung Satori/Resvg renders reject automatically). Timeout errors return 504 with `RENDER_TIMEOUT` code
 - Bypass Firestore for data storage — no local JSON files
 - Trust downloaded font files without verifying signature bytes (`wOFF` for WOFF1, `00010000` hex for TTF) — Google Fonts URLs expire across versions and silently return HTML 404 pages
 - Create express-rate-limit instances inside request handlers — pre-create at module load
@@ -133,7 +145,9 @@ Authenticated routes apply middleware in this order — **do not reorder**:
 - `billingGuard` calls `trackAndEnforce()`, sets `X-Credits-*` response headers, fails open on error
 - `validate` runs Zod schema against `req.body` or `req.query`, sets `req.validated`
 
-Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin routes use `X-Admin-Key` header comparison only (no Firestore lookup). Demo route (`/demo/screenshot/:tweetIdOrUrl`) uses IP-based rate limiting only (no auth, no billing).
+Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin routes use `X-Admin-Key` header comparison only (no Firestore lookup). Demo route (`/demo/screenshot/:tweetIdOrUrl`) uses IP-based rate limiting only (no auth, no billing). Dashboard API routes (`/dashboard/api/*`) use `dashboardLimiter` (30 req/min/IP) + `firebaseAuth` middleware (Bearer token). GET `/dashboard` serves the HTML page with no auth required.
+
+Batch route (`POST /screenshot/batch`) uses: `authenticate` → `applyRateLimit` → handler. No `billingGuard` or `validate` in chain — the handler detects input format (JSON vs multipart), validates internally, then calls `checkAndReserveCredits()` for N-credit upfront reservation. Fails open on Firestore error.
 
 ---
 
@@ -143,7 +157,7 @@ Public routes (`/`, `/health`, `/pricing`, `/docs`) skip all middleware. Admin r
 |---|---|---|
 | `apiKeys` | `ts_<tier>_<uuid>` | `tier, name, email, active, created` |
 | `usage` | `ts_<tier>_<uuid>` | `total, currentMonth, currentMonthCount, lastUsed` |
-| `customers` | `<email>` | `stripeCustomerId, apiKeyId, tier, name, created` |
+| `customers` | `<email>` | `stripeCustomerId, apiKeyId, tier, name, created, firebaseUid?` |
 | `subscriptions` | `<stripeSubId>` | `email, tier, status, currentPeriodEnd, updated` |
 
 Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
@@ -153,6 +167,8 @@ Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
 ## Auth Model
 
 **API auth:** `X-API-KEY` header or `?apiKey=` query param. Keys validated against Firestore `apiKeys` collection.
+
+**Firebase auth (dashboard):** `Authorization: Bearer <token>` header. Firebase Admin SDK verifies Google ID tokens server-side. Used only for `/dashboard/api/*` routes. Middleware attaches `req.firebaseUser = { uid, email, name, emailVerified, picture }`. Requires `firebase-admin` package + Application Default Credentials on Cloud Run.
 
 **Admin auth:** `X-Admin-Key` header compared to `config.ADMIN_KEY` via `crypto.timingSafeEqual`. Must be at least 16 characters — no default.
 
@@ -181,6 +197,8 @@ Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
 | `STRIPE_PRICE_BUSINESS` | — | For billing | Stripe Price ID for Business |
 | `STRIPE_WEBHOOK_SECRET` | — | For billing | Webhook signature verification |
 | `GCS_BUCKET` | `tweet-shots-screenshots` | For URL response | Cloud Storage bucket |
+| `FIREBASE_WEB_API_KEY` | — | For dashboard | Firebase public web API key |
+| `FIREBASE_AUTH_DOMAIN` | — | For dashboard | Firebase auth domain |
 | `OPENAI_API_KEY` | — | For translation | GPT-4o-mini translation |
 
 ---

@@ -9,7 +9,9 @@ import { html } from 'satori-html';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTweetHtml, addLogoToHtml, getHighResProfileUrl } from './tweet-html.mjs';
+import { generateTweetHtml, addLogoToHtml, getHighResProfileUrl, GRADIENT_FRAME_PADDING } from './tweet-html.mjs';
+import { fetchEmoji } from './tweet-emoji.mjs';
+import { loadLanguageFont } from './tweet-fonts.mjs';
 
 // ============================================================================
 // CONFIGURATION
@@ -95,30 +97,37 @@ export async function fetchImageAsBase64(url) {
 
 /**
  * Pre-fetch all remote images in a tweet (profile, media, quote tweet) in parallel.
- * Replaces URLs with base64 data URIs in-place.
- * @param {object} tweet - Tweet data object (mutated in-place)
+ * Returns a Map of htmlUrl → base64 data URI. Does NOT mutate the tweet object —
+ * images are injected into the Satori VDOM after HTML parsing to avoid satori-html's
+ * O(n²) parsing cost on large base64 strings.
+ * @param {object} tweet - Tweet data object (not mutated)
  * @param {object} [options]
  * @param {'small'|'medium'|'large'} [options.imageSize] - Twitter CDN size variant
+ * @returns {Promise<Map<string, string>>} Map of URL-as-it-appears-in-HTML → base64
  */
 async function preFetchAllImages(tweet, { imageSize } = {}) {
+  const imageMap = new Map();
   const jobs = [];
 
-  // Profile image
+  // Profile image — HTML uses getHighResProfileUrl() which replaces _normal with _400x400
   if (tweet.user?.profile_image_url_https) {
+    const htmlUrl = getHighResProfileUrl(tweet.user);
     jobs.push(
-      fetchImageAsBase64(getHighResProfileUrl(tweet.user))
-        .then(b64 => { if (b64) tweet.user.profile_image_url_https = b64; })
+      fetchImageAsBase64(htmlUrl)
+        .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
     );
   }
 
-  // Media images (mediaDetails + photos)
+  // Media images — HTML uses the raw media_url_https / photo.url;
+  // we fetch an optimally-sized variant but key by the URL that appears in HTML
   if (tweet.mediaDetails) {
     for (const media of tweet.mediaDetails) {
       if (media.media_url_https) {
-        const url = twitterImageUrl(media.media_url_https, imageSize);
+        const htmlUrl = media.media_url_https;
+        const fetchUrl = twitterImageUrl(htmlUrl, imageSize);
         jobs.push(
-          fetchImageAsBase64(url)
-            .then(b64 => { if (b64) media.media_url_https = b64; })
+          fetchImageAsBase64(fetchUrl)
+            .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
         );
       }
     }
@@ -126,10 +135,11 @@ async function preFetchAllImages(tweet, { imageSize } = {}) {
   if (tweet.photos) {
     for (const photo of tweet.photos) {
       if (photo.url) {
-        const url = twitterImageUrl(photo.url, imageSize);
+        const htmlUrl = photo.url;
+        const fetchUrl = twitterImageUrl(htmlUrl, imageSize);
         jobs.push(
-          fetchImageAsBase64(url)
-            .then(b64 => { if (b64) photo.url = b64; })
+          fetchImageAsBase64(fetchUrl)
+            .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
         );
       }
     }
@@ -139,28 +149,51 @@ async function preFetchAllImages(tweet, { imageSize } = {}) {
   if (tweet.quoted_tweet) {
     const qt = tweet.quoted_tweet;
     if (qt.user?.profile_image_url_https) {
+      const htmlUrl = getHighResProfileUrl(qt.user);
       jobs.push(
-        fetchImageAsBase64(getHighResProfileUrl(qt.user))
-          .then(b64 => { if (b64) qt.user.profile_image_url_https = b64; })
+        fetchImageAsBase64(htmlUrl)
+          .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
       );
     }
     if (qt.mediaDetails?.[0]?.media_url_https) {
-      const url = twitterImageUrl(qt.mediaDetails[0].media_url_https, imageSize);
+      const htmlUrl = qt.mediaDetails[0].media_url_https;
+      const fetchUrl = twitterImageUrl(htmlUrl, imageSize);
       jobs.push(
-        fetchImageAsBase64(url)
-          .then(b64 => { if (b64) qt.mediaDetails[0].media_url_https = b64; })
+        fetchImageAsBase64(fetchUrl)
+          .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
       );
     }
     if (qt.photos?.[0]?.url) {
-      const url = twitterImageUrl(qt.photos[0].url, imageSize);
+      const htmlUrl = qt.photos[0].url;
+      const fetchUrl = twitterImageUrl(htmlUrl, imageSize);
       jobs.push(
-        fetchImageAsBase64(url)
-          .then(b64 => { if (b64) qt.photos[0].url = b64; })
+        fetchImageAsBase64(fetchUrl)
+          .then(b64 => { if (b64) imageMap.set(htmlUrl, b64); })
       );
     }
   }
 
   await Promise.all(jobs);
+  return imageMap;
+}
+
+/**
+ * Walk the satori-html VDOM tree and replace image src URLs with base64 data URIs.
+ * This avoids embedding large base64 strings in the HTML that satori-html must parse,
+ * which causes O(n²) parsing time on strings >100KB.
+ * @param {object} node - VDOM node from satori-html
+ * @param {Map<string, string>} imageMap - URL → base64 map from preFetchAllImages
+ */
+function injectImageSources(node, imageMap) {
+  if (!node || typeof node !== 'object') return;
+  if (node.props?.src && imageMap.has(node.props.src)) {
+    node.props.src = imageMap.get(node.props.src);
+  }
+  if (Array.isArray(node.props?.children)) {
+    for (const child of node.props.children) {
+      injectImageSources(child, imageMap);
+    }
+  }
 }
 
 /**
@@ -250,20 +283,22 @@ export async function loadFonts() {
 // HEIGHT ESTIMATION
 // ============================================================================
 
-// Approximate pixel heights for each tweet section (used for Satori canvas sizing)
-const HEIGHT_HEADER = 140;       // Profile pic + name + X logo
-const HEIGHT_PER_TEXT_LINE = 28; // ~28px per line of body text
+// Approximate pixel heights for each tweet section (used for Satori canvas sizing).
+// Tuned to match actual Satori flexbox layout with small safety buffers.
+const HEIGHT_HEADER = 76;        // Profile pic (48) + margin-top to text (12) + buffer (16)
+const HEIGHT_PER_TEXT_LINE = 28; // ~28px per line (17px font * 1.5 line-height + spacing)
 const CHARS_PER_LINE = 45;       // ~45 characters per line at 17px font in 550px width
-const HEIGHT_MEDIA = 320;        // Single media image
-const HEIGHT_QUOTE_TWEET = 120;  // Quote tweet embed card
-const HEIGHT_METRICS = 60;       // Engagement metrics bar
-const HEIGHT_DATE = 40;          // Timestamp line
+const HEIGHT_MEDIA = 300;        // Media image (280) + margin-top (12) + buffer (8)
+const HEIGHT_QUOTE_TWEET = 120;  // Quote tweet embed card (complex layout, keep generous)
+const HEIGHT_METRICS = 56;       // Metrics bar: margin (16) + padding-top (16) + content (20) + buffer (4)
+const HEIGHT_DATE = 40;          // Timestamp: margin (16) + text (20) + buffer (4)
+const HEIGHT_URL = 36;           // Tweet URL: margin (12) + text (14) + buffer (10)
 
 /**
  * Estimate canvas height based on tweet content and visibility options.
  * Satori requires explicit dimensions — this avoids clipping or excess whitespace.
  */
-function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate }) {
+function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl }) {
   const textLength = tweet.text?.length || 0;
   const hasMedia = !hideMedia && ((tweet.photos?.length > 0) || (tweet.mediaDetails?.length > 0));
   const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
@@ -274,7 +309,8 @@ function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetric
     (hasMedia ? HEIGHT_MEDIA : 0) +
     (hasQuoteTweet ? HEIGHT_QUOTE_TWEET : 0) +
     (showMetrics ? HEIGHT_METRICS : 0) +
-    (hideDate ? 0 : HEIGHT_DATE)
+    (hideDate ? 0 : HEIGHT_DATE) +
+    (showUrl ? HEIGHT_URL : 0)
   );
 }
 
@@ -284,8 +320,9 @@ function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetric
 
 /**
  * Render a tweet to a PNG or SVG image.
- * Pre-fetches all remote images to base64, generates HTML, runs through Satori+Resvg.
- * Note: mutates tweet object in-place by replacing image URLs with base64 data URIs.
+ * Pre-fetches all remote images to base64, generates HTML with short URLs,
+ * parses through satori-html, then injects base64 into the VDOM tree.
+ * Does not mutate the tweet object.
  * @param {object} tweet - Tweet data from fetchTweet()
  * @param {object} [options] - Render options (theme, format, scale, etc.)
  * @returns {Promise<{data: Buffer, format: string, contentType: string}>}
@@ -296,7 +333,7 @@ export async function renderTweetToImage(tweet, options = {}) {
     width = 550,
     showMetrics = true,
     format = 'png',
-    scale = 1,
+    scale = 2,
     hideMedia = false,
     hideVerified = false,
     hideDate = false,
@@ -312,17 +349,47 @@ export async function renderTweetToImage(tweet, options = {}) {
     logo = null,
     logoPosition = 'bottom-right',
     logoSize = 40,
+    showUrl = false,
+    tweetId = null,
+    // Canvas dimensions from dimension presets (e.g. instagramFeed 1080x1080)
+    canvasWidth: canvasWidthOverride = null,
+    canvasHeight: canvasHeightOverride = null,
   } = options;
 
-  // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants
+  // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants.
+  // Returns a Map of htmlUrl → base64 (tweet object is NOT mutated).
   const imageSize = pickImageSize(width, scale);
-  await preFetchAllImages(tweet, { imageSize });
+  const imageMap = await preFetchAllImages(tweet, { imageSize });
 
-  // Pre-fetch logo if provided
-  let logoBase64 = null;
+  // Pre-fetch logo — add to imageMap so the VDOM walker injects it
   if (logo) {
-    logoBase64 = await fetchImageAsBase64(logo);
+    const logoBase64 = await fetchImageAsBase64(logo);
+    if (logoBase64) imageMap.set(logo, logoBase64);
   }
+
+  // Determine canvas dimensions based on gradient/dimension requirements
+  const hasGradient = !!(backgroundGradient || backgroundImage);
+  const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
+  const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
+
+  const contentHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl });
+
+  let canvasWidth, canvasHeight;
+  if (hasFixedDimensions) {
+    // Dimension preset: use preset dimensions, ensure content fits
+    canvasWidth = canvasWidthOverride;
+    canvasHeight = Math.max(canvasHeightOverride, contentHeight + gradientPad * 2);
+  } else if (hasGradient) {
+    // Gradient frame: add padding around the card
+    canvasWidth = width + padding * 2 + gradientPad * 2;
+    canvasHeight = contentHeight + gradientPad * 2;
+  } else {
+    // Standard: canvas = card dimensions
+    canvasWidth = width + padding * 2;
+    canvasHeight = contentHeight;
+  }
+
+  const needsWrapper = hasGradient || hasFixedDimensions;
 
   let htmlContent = generateTweetHtml(tweet, theme, {
     showMetrics,
@@ -333,36 +400,45 @@ export async function renderTweetToImage(tweet, options = {}) {
     hideDate,
     hideQuoteTweet,
     hideShadow,
+    showUrl,
+    tweetId,
     backgroundColor,
     backgroundGradient,
     backgroundImage,
     textColor,
     linkColor,
     borderRadius,
+    canvasWidth: needsWrapper ? canvasWidth : null,
+    canvasHeight: needsWrapper ? canvasHeight : null,
   });
 
-  // Add logo if provided
-  if (logoBase64) {
-    htmlContent = addLogoToHtml(htmlContent, logoBase64, logoPosition, logoSize);
+  // Add logo if provided (uses original URL — base64 injected via VDOM walker)
+  if (logo) {
+    htmlContent = addLogoToHtml(htmlContent, logo, logoPosition, logoSize);
   }
 
+  // Parse HTML → VDOM (fast: no base64 in the string, just short URLs)
   const markup = html(htmlContent);
+
+  // Inject base64 images into the VDOM tree (bypasses satori-html's O(n²) parser)
+  injectImageSources(markup, imageMap);
 
   // Load fonts (cached after first call)
   const fonts = await loadFonts();
 
-  const calculatedHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate });
-
   // Apply scale
-  const scaledWidth = (width + padding * 2) * scale;
+  const scaledWidth = canvasWidth * scale;
 
   // Generate SVG with Satori
   const svg = await satori(markup, {
-    width: width + padding * 2,
-    height: calculatedHeight,
+    width: canvasWidth,
+    height: canvasHeight,
     fonts,
-    // Prevent Satori from trying to fetch fallback fonts/emojis from the network
-    loadAdditionalAsset: async () => undefined,
+    // Load emoji SVGs from Twemoji CDN and multilingual fonts from bundled Noto Sans
+    loadAdditionalAsset: async (code, segment) => {
+      if (code === 'emoji') return fetchEmoji(segment);
+      return loadLanguageFont(code);
+    },
   });
 
   if (format === 'svg') {

@@ -15,13 +15,14 @@
 - `express.json()` skipped for webhook path (raw body for signature verification)
 - API key prefix logged on errors (first 12 chars + `...`), never full key
 - Firestore auth via ADC — no embedded credentials
-- Zod validates all inputs before reaching handlers
+- Zod validates all inputs before reaching handlers; validation 400s include `requestId` for support correlation
 - Config object is `Object.freeze()`d — immutable after load
 - Admin key uses `crypto.timingSafeEqual` — no timing leaks
 - `escapeRegExp()` applied to Twitter entity data before `new RegExp()` — no ReDoS
 - Stripe/external API error messages never forwarded to clients — generic messages only, real error logged server-side
 - Auth failures (missing key, invalid key) logged with `logger.warn` for brute-force detection
 - CI pipeline: gitleaks (secret scanning) + npm audit + eslint-plugin-security
+- Emoji CDN fetch uses 5s timeout + AbortController — CDN unavailability doesn't block rendering (graceful degradation to empty box, no error exposed to client)
 
 ## CI Security Pipeline
 
@@ -46,6 +47,14 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to master:
 - URLs: Zod `.url()` for optional URL fields
 - Padding/radius: integer 0-100
 - ADMIN_KEY: minimum 16 characters (enforced at startup)
+
+## Batch Request Security
+
+- **CSV parsing**: busboy with 1MB file size limit — prevents memory abuse from oversized uploads
+- **Batch size limits**: enforced per tier (free=10, pro=100, business=500) before any rendering begins
+- **Per-item isolation**: one URL's failure never crashes the batch handler or leaks to other items
+- **Error messages**: per-item errors use generic codes (`RENDER_FAILED`, `RENDER_TIMEOUT`), internal error details never exposed
+- **Concurrency bound**: max 5 parallel renders (`BATCH_CONCURRENCY`) prevents worker pool starvation
 
 ## Security Audit History
 

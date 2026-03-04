@@ -20,10 +20,16 @@
 ### Endpoints
 - `GET /screenshot/:tweetIdOrUrl` — direct image response
 - `POST /screenshot` — JSON body with options + response type
+- `POST /screenshot/batch` — JSON array or CSV file upload, per-tier limits (free=10, pro=100, business=500), 5 concurrent renders, response: base64 or url
 - `GET /tweet/:tweetIdOrUrl` — raw tweet JSON
+- `GET /docs` — HTML docs page (browsers) or JSON (API clients), content-negotiated
+- `GET /billing/signup` — HTML signup form page (client-side JS POSTs to create key)
 - `POST /billing/signup` — create free-tier API key
 - `POST /billing/checkout` — Stripe checkout session
 - `GET /billing/usage` — credit stats (authenticated)
+- `GET /billing/success` — styled post-checkout success page
+- `GET /billing/cancel` — styled post-checkout cancel page
+- `GET /demo/screenshot/:tweetIdOrUrl` — public demo (IP-limited, PNG only)
 - Admin CRUD via `/admin/keys` and `/admin/usage`
 
 ## Rendering Options (both CLI and API)
@@ -46,6 +52,14 @@
 | hideVerified | `false` | Show/hide checkmark |
 | hideQuoteTweet | `false` | Show/hide quoted tweet |
 | hideShadow | `false` | Show/hide drop shadow |
+| showUrl | `false` | Show tweet URL at bottom of image |
+
+## Font & Emoji Support
+
+- **Emoji** — Twemoji SVGs fetched from CDN (jsdelivr), LRU cached per-worker (500 max)
+- **Multilingual** — 13 bundled Noto Sans fonts, lazy-loaded from disk when Satori detects non-Latin text
+- **Supported scripts:** Japanese, Korean, Chinese (Simplified + Traditional), Thai, Arabic, Hebrew, Bengali, Tamil, Malayalam, Telugu, Devanagari, Kannada
+- **Latin:** Inter Regular + Bold (always loaded)
 
 ## Not Supported
 
@@ -53,4 +67,3 @@
 - Videos as video (static thumbnail only)
 - Thread forward-walking (syndication API limitation)
 - Multiple images per tweet (only first rendered)
-- Emoji rendering (shows empty boxes — `loadAdditionalAsset` disabled)

@@ -3,7 +3,7 @@
  * GET /demo/screenshot/:tweetIdOrUrl
  *
  * Reuses the same rendering pipeline as /screenshot but restricted to
- * PNG format, scale 1, and no custom colors — to limit abuse surface.
+ * PNG format, scale 2, and no custom colors — to limit abuse surface.
  */
 
 import { Router } from 'express';
@@ -24,11 +24,18 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
 
   function buildDemoRenderOptions(params) {
     const dimension = params.dimension || 'auto';
+    const dim = DIMENSIONS[dimension];
+
+    const hasFixedHeight = dim?.height != null;
+    const width = hasFixedHeight ? 550 : (dim?.width || 550);
+    const canvasWidth = hasFixedHeight ? dim.width : null;
+    const canvasHeight = hasFixedHeight ? dim.height : null;
+
     return {
       theme: params.theme || 'dark',
-      width: DIMENSIONS[dimension]?.width || 550,
+      width,
       format: 'png',
-      scale: 1,
+      scale: 2,
       backgroundGradient: params.gradient,
       showMetrics: params.hideMetrics !== true,
       hideMedia: params.hideMedia === true,
@@ -36,8 +43,11 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       hideVerified: params.hideVerified === true,
       hideQuoteTweet: params.hideQuoteTweet === true,
       hideShadow: params.hideShadow === true,
+      showUrl: params.showUrl === true,
       padding: params.padding ?? 20,
       borderRadius: params.radius ?? 16,
+      canvasWidth,
+      canvasHeight,
     };
   }
 
@@ -55,7 +65,7 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
         const tweet = await fetchTweet(tweetId);
-        const options = buildDemoRenderOptions(req.validated);
+        const options = { ...buildDemoRenderOptions(req.validated), tweetId };
         const result = await render(tweet, options);
 
         res.set('Content-Type', result.contentType);
@@ -68,7 +78,7 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
         if (err.message?.includes('timed out')) {
           return res.status(504).json({
             error: 'This tweet took too long to render. Tweets with many large images may exceed the time limit. Try checking "Hide media" or using a different tweet.',
-            code: 'DEMO_RENDER_TIMEOUT',
+            code: 'RENDER_TIMEOUT',
           });
         }
         sendRouteError(res, err, 'DEMO_SCREENSHOT_FAILED', logger);

@@ -84,6 +84,78 @@ export async function trackAndEnforce(keyString, tier) {
 }
 
 /**
+ * Check if N credits are available and reserve them atomically.
+ * Used by batch endpoint to consume multiple credits in one call.
+ *
+ * @param {string} keyString - The API key
+ * @param {string} tier - The key's current tier
+ * @param {number} count - Number of credits to consume
+ * @returns {{ allowed: boolean, remaining: number, limit: number, tier: string, error?: string }}
+ */
+export async function checkAndReserveCredits(keyString, tier, count) {
+  const currentMonth = getCurrentMonth();
+  const limit = TIERS[tier]?.monthlyCredits ?? TIERS.free.monthlyCredits;
+
+  const usageRef = usageCollection().doc(keyString);
+  const doc = await usageRef.get();
+
+  // First usage ever for this key
+  if (!doc.exists) {
+    if (count > limit) {
+      return {
+        allowed: false, remaining: limit, limit, tier,
+        error: `Batch of ${count} screenshots exceeds the monthly credit limit of ${limit} for the ${tier} tier. Reduce the batch size or upgrade at /billing/checkout.`,
+      };
+    }
+    await usageRef.set({
+      total: count,
+      currentMonth,
+      currentMonthCount: count,
+      lastUsed: FieldValue.serverTimestamp(),
+    });
+    return { allowed: true, remaining: limit - count, limit, tier };
+  }
+
+  const data = doc.data();
+
+  // Month rolled over — reset the monthly counter
+  if (data.currentMonth !== currentMonth) {
+    if (count > limit) {
+      return {
+        allowed: false, remaining: limit, limit, tier,
+        error: `Batch of ${count} screenshots exceeds the monthly credit limit of ${limit} for the ${tier} tier. Reduce the batch size or upgrade at /billing/checkout.`,
+      };
+    }
+    await usageRef.update({
+      total: FieldValue.increment(count),
+      currentMonth,
+      currentMonthCount: count,
+      lastUsed: FieldValue.serverTimestamp(),
+    });
+    return { allowed: true, remaining: limit - count, limit, tier };
+  }
+
+  // Check if enough credits remain
+  const used = data.currentMonthCount;
+  if (used + count > limit) {
+    const remaining = Math.max(0, limit - used);
+    return {
+      allowed: false, remaining, limit, tier,
+      error: `Batch of ${count} screenshots would exceed the monthly credit limit. ${remaining} credits remaining for the ${tier} tier. Reduce the batch size or upgrade at /billing/checkout.`,
+    };
+  }
+
+  // Reserve N credits atomically
+  await usageRef.update({
+    total: FieldValue.increment(count),
+    currentMonthCount: FieldValue.increment(count),
+    lastUsed: FieldValue.serverTimestamp(),
+  });
+
+  return { allowed: true, remaining: limit - (used + count), limit, tier };
+}
+
+/**
  * Get current usage stats for a key (read-only, no mutation).
  * Used by GET /billing/usage endpoint.
  */

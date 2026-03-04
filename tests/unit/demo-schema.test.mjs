@@ -26,6 +26,7 @@ describe('demoQuerySchema', () => {
       expect(result.data.hideVerified).toBe('false');
       expect(result.data.hideShadow).toBe('false');
       expect(result.data.hideQuoteTweet).toBe('false');
+      expect(result.data.showUrl).toBe('false');
     });
 
     it('does not include gradient when not provided', () => {
@@ -112,7 +113,7 @@ describe('demoQuerySchema', () => {
   describe('boolean string fields', () => {
     const boolFields = [
       'hideMetrics', 'hideMedia', 'hideDate',
-      'hideVerified', 'hideShadow', 'hideQuoteTweet',
+      'hideVerified', 'hideShadow', 'hideQuoteTweet', 'showUrl',
     ];
 
     it('transforms "true" string to boolean true', () => {
@@ -163,6 +164,7 @@ describe('demoQuerySchema', () => {
         hideVerified: 'false',
         hideShadow: 'true',
         hideQuoteTweet: 'false',
+        showUrl: 'true',
       });
       expect(result.success).toBe(true);
       expect(result.data.hideMetrics).toBe(true);
@@ -171,6 +173,7 @@ describe('demoQuerySchema', () => {
       expect(result.data.hideVerified).toBe(false);
       expect(result.data.hideShadow).toBe(true);
       expect(result.data.hideQuoteTweet).toBe(false);
+      expect(result.data.showUrl).toBe(true);
     });
   });
 
@@ -331,6 +334,7 @@ describe('demoQuerySchema', () => {
         hideVerified: 'false',
         hideShadow: 'true',
         hideQuoteTweet: 'false',
+        showUrl: 'true',
         padding: '30',
         radius: '8',
       });
@@ -345,6 +349,7 @@ describe('demoQuerySchema', () => {
         hideVerified: false,
         hideShadow: true,
         hideQuoteTweet: false,
+        showUrl: true,
         padding: 30,
         radius: 8,
       });

@@ -19,6 +19,7 @@ export function validate(schema, source = 'body') {
         error: 'Request validation failed. Check the details field for specific issues.',
         code: 'VALIDATION_ERROR',
         details: errors,
+        ...(req.id && { requestId: req.id }),
       });
     }
     req.validated = result.data;

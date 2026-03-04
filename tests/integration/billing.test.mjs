@@ -58,6 +58,19 @@ beforeEach(() => {
   mock.collections.customers._store.clear();
 });
 
+describe('GET /billing/signup', () => {
+  it('returns HTML signup form page', async () => {
+    const res = await fetch(`${baseUrl}/billing/signup`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/html');
+
+    const text = await res.text();
+    expect(text).toContain('Get your API key');
+    expect(text).toContain('type="email"');
+    expect(text).toContain('type="submit"');
+  });
+});
+
 describe('POST /billing/signup', () => {
   it('creates a free API key for valid email', async () => {
     const res = await fetch(`${baseUrl}/billing/signup`, {
@@ -168,22 +181,25 @@ describe('POST /webhook/stripe', () => {
 });
 
 describe('GET /billing/success', () => {
-  it('returns success HTML page', async () => {
+  it('returns success HTML page with upgrade confirmation', async () => {
     const res = await fetch(`${baseUrl}/billing/success`);
     expect(res.status).toBe(200);
 
     const text = await res.text();
-    expect(text).toContain('Payment Successful');
+    expect(text).toContain('subscription is active');
+    expect(text).toContain('/docs');
+    expect(text).toContain('/billing/usage');
   });
 });
 
 describe('GET /billing/cancel', () => {
-  it('returns cancel HTML page', async () => {
+  it('returns cancel HTML page with retry link', async () => {
     const res = await fetch(`${baseUrl}/billing/cancel`);
     expect(res.status).toBe(200);
 
     const text = await res.text();
-    expect(text).toContain('Payment Cancelled');
+    expect(text).toContain('cancelled');
+    expect(text).toContain('/#pricing');
   });
 });
 
@@ -416,20 +432,21 @@ describe('Billing routes — characterization tests', () => {
 
   // ─── Success/cancel page characterization ────────────────────────
 
-  it('success page contains back-to-API link', async () => {
+  it('success page contains docs and usage links', async () => {
     const res = await fetch(`${charBaseUrl}/billing/success`);
     const text = await res.text();
     expect(res.status).toBe(200);
     expect(text).toContain('href="/"');
-    expect(text).toContain('Back to API');
+    expect(text).toContain('/docs');
+    expect(text).toContain('/billing/usage');
   });
 
-  it('cancel page contains retry message and back link', async () => {
+  it('cancel page contains pricing link and retry message', async () => {
     const res = await fetch(`${charBaseUrl}/billing/cancel`);
     const text = await res.text();
     expect(res.status).toBe(200);
     expect(text).toContain('try again');
-    expect(text).toContain('href="/"');
+    expect(text).toContain('/#pricing');
   });
 });
 

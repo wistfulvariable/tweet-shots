@@ -122,7 +122,7 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
 
   // ── Default render options ──────────────────────────────────────────────
 
-  it('calls renderTweetToImage with default options (theme=dark, format=png, scale=1, width=550)', async () => {
+  it('calls renderTweetToImage with default options (theme=dark, format=png, scale=2, width=550)', async () => {
     await fetch(`${baseUrl}/demo/screenshot/1234567890`);
     expect(renderTweetToImage).toHaveBeenCalledOnce();
     expect(renderTweetToImage).toHaveBeenCalledWith(
@@ -130,7 +130,7 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
       expect.objectContaining({
         theme: 'dark',
         format: 'png',
-        scale: 1,
+        scale: 2,
         width: 550,
         showMetrics: true,
         hideMedia: false,
@@ -138,6 +138,7 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
         hideVerified: false,
         hideQuoteTweet: false,
         hideShadow: false,
+        showUrl: false,
         padding: 20,
         borderRadius: 16,
       })
@@ -166,11 +167,11 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
 
   // ── Query param: dimension ──────────────────────────────────────────────
 
-  it('respects ?dimension=instagramFeed query param (width=1080)', async () => {
+  it('respects ?dimension=instagramFeed query param (card=550, canvas=1080x1080)', async () => {
     await fetch(`${baseUrl}/demo/screenshot/1234567890?dimension=instagramFeed`);
     expect(renderTweetToImage).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ width: 1080 })
+      expect.objectContaining({ width: 550, canvasWidth: 1080, canvasHeight: 1080 })
     );
   });
 
@@ -221,6 +222,14 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
     expect(renderTweetToImage).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ hideShadow: true })
+    );
+  });
+
+  it('respects showUrl=true and passes tweetId', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?showUrl=true`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ showUrl: true, tweetId: '1234567890' })
     );
   });
 
@@ -296,7 +305,7 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
     const res = await fetch(`${baseUrl}/demo/screenshot/1234567890`);
     expect(res.status).toBe(504);
     const body = await res.json();
-    expect(body.code).toBe('DEMO_RENDER_TIMEOUT');
+    expect(body.code).toBe('RENDER_TIMEOUT');
     expect(body.error).toContain('Hide media');
   });
 

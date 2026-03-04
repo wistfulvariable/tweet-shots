@@ -1,0 +1,39 @@
+{
+  "__typename": "Tweet",
+  "lang": "en",
+  "favorite_count": 58567,
+  "created_at": "2023-01-24T20:14:18.000Z",
+  "display_text_range": [
+    0,
+    47
+  ],
+  "entities": {
+    "hashtags": [],
+    "urls": [],
+    "user_mentions": [],
+    "symbols": []
+  },
+  "id_str": "1617979122625712128",
+  "text": "The hottest new programming language is English",
+  "user": {
+    "id_str": "33836629",
+    "name": "Andrej Karpathy",
+    "screen_name": "karpathy",
+    "is_blue_verified": true,
+    "profile_image_shape": "Circle",
+    "verified": false,
+    "profile_image_url_https": "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_normal.jpg"
+  },
+  "edit_control": {
+    "edit_tweet_ids": [
+      "1617979122625712128"
+    ],
+    "editable_until_msecs": "1674593058000",
+    "is_edit_eligible": false,
+    "edits_remaining": "5"
+  },
+  "conversation_count": 1669,
+  "news_action_type": "conversation",
+  "isEdited": false,
+  "isStaleEdit": false
+}

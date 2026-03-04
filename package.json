@@ -12,15 +12,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test:integration": "vitest run tests/integration",
+    "test:render": "vitest run tests/integration/real-render.test.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.3.0",
     "@google-cloud/storage": "^7.19.0",
     "@resvg/resvg-js": "^2.6.0",
+    "busboy": "1.6.0",
     "cors": "^2.8.5",
     "express": "5.2.1",
     "express-rate-limit": "8.2.1",
+    "firebase-admin": "13.7.0",
     "helmet": "8.1.0",
     "pdfkit": "0.17.2",
     "pino": "^10.3.1",

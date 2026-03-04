@@ -165,7 +165,7 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
       expect.objectContaining({
         theme: 'dark',
         format: 'png',
-        scale: 1,
+        scale: 2,
         width: 550,
       })
     );
@@ -263,6 +263,19 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
       expect.objectContaining({
         showMetrics: false,
         hideMedia: true,
+      })
+    );
+  });
+
+  it('passes showUrl and tweetId to render when showUrl=true', async () => {
+    await fetch(`${baseUrl}/screenshot/1234567890?showUrl=true`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        showUrl: true,
+        tweetId: '1234567890',
       })
     );
   });
@@ -423,14 +436,14 @@ describe('POST /screenshot', () => {
     expect(renderTime).toBeDefined();
   });
 
-  it('handles dimension presets', async () => {
+  it('handles dimension presets (card=550, canvas=1080x1080)', async () => {
     await postScreenshot({
       tweetId: '1234567890',
       dimension: 'instagramFeed',
     });
     expect(renderTweetToImage).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ width: 1080 })
+      expect.objectContaining({ width: 550, canvasWidth: 1080, canvasHeight: 1080 })
     );
   });
 

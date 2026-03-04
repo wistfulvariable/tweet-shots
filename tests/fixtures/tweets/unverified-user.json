@@ -1,0 +1,118 @@
+{
+  "__typename": "Tweet",
+  "lang": "en",
+  "favorite_count": 4,
+  "possibly_sensitive": false,
+  "created_at": "2016-04-11T11:18:48.000Z",
+  "display_text_range": [
+    0,
+    120
+  ],
+  "entities": {
+    "hashtags": [],
+    "urls": [],
+    "user_mentions": [
+      {
+        "id_str": "23937508",
+        "indices": [
+          20,
+          30
+        ],
+        "name": "BBC Radio 4",
+        "screen_name": "BBCRadio4"
+      }
+    ],
+    "symbols": [],
+    "media": [
+      {
+        "display_url": "pic.x.com/6F3ZSiWuIn",
+        "expanded_url": "https://x.com/edent/status/719484841172054016/photo/1",
+        "indices": [
+          97,
+          120
+        ],
+        "url": "https://t.co/6F3ZSiWuIn"
+      }
+    ]
+  },
+  "id_str": "719484841172054016",
+  "text": "Warning! I'll be on @BBCRadio4's You And Yours shortly.\nPlease tune your wirelesses accordingly. https://t.co/6F3ZSiWuIn",
+  "user": {
+    "id_str": "14054507",
+    "name": "Terence Eden is on Mastodon",
+    "screen_name": "edent",
+    "is_blue_verified": false,
+    "profile_image_shape": "Circle",
+    "verified": false,
+    "profile_image_url_https": "https://pbs.twimg.com/profile_images/1623225628530016260/SW0HsKjP_normal.jpg"
+  },
+  "edit_control": {
+    "edit_tweet_ids": [
+      "719484841172054016"
+    ],
+    "editable_until_msecs": "1460375328174",
+    "is_edit_eligible": true,
+    "edits_remaining": "5"
+  },
+  "mediaDetails": [
+    {
+      "display_url": "pic.x.com/6F3ZSiWuIn",
+      "expanded_url": "https://x.com/edent/status/719484841172054016/photo/1",
+      "ext_media_availability": {
+        "status": "Available"
+      },
+      "indices": [
+        97,
+        120
+      ],
+      "media_url_https": "https://pbs.twimg.com/media/CfwfpnJWwAEXwe3.jpg",
+      "original_info": {
+        "height": 1280,
+        "width": 960,
+        "focus_rects": []
+      },
+      "sizes": {
+        "large": {
+          "h": 1280,
+          "resize": "fit",
+          "w": 960
+        },
+        "medium": {
+          "h": 1200,
+          "resize": "fit",
+          "w": 900
+        },
+        "small": {
+          "h": 680,
+          "resize": "fit",
+          "w": 510
+        },
+        "thumb": {
+          "h": 150,
+          "resize": "crop",
+          "w": 150
+        }
+      },
+      "type": "photo",
+      "url": "https://t.co/6F3ZSiWuIn"
+    }
+  ],
+  "photos": [
+    {
+      "backgroundColor": {
+        "red": 204,
+        "green": 214,
+        "blue": 221
+      },
+      "cropCandidates": [],
+      "expandedUrl": "https://x.com/edent/status/719484841172054016/photo/1",
+      "url": "https://pbs.twimg.com/media/CfwfpnJWwAEXwe3.jpg",
+      "width": 960,
+      "height": 1280
+    }
+  ],
+  "conversation_count": 1,
+  "news_action_type": "conversation",
+  "isEdited": false,
+  "isStaleEdit": false
+}

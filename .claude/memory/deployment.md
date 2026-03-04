@@ -6,7 +6,7 @@
 1. **deps** — `node:20-slim`, `npm ci --omit=dev`
 2. **production** — `node:20-slim`, installs `libfontconfig1` (Resvg needs it), runs as non-root `app` user
 
-Copied files: `package.json`, `core.mjs`, `tweet-fetch.mjs`, `tweet-html.mjs`, `tweet-render.mjs`, `tweet-utils.mjs`, `tweet-shots.mjs`, `landing.html`, `fonts/`, `src/`. Each root `.mjs` file must be COPY'd explicitly.
+Copied files: `package.json`, `core.mjs`, `tweet-fetch.mjs`, `tweet-html.mjs`, `tweet-render.mjs`, `tweet-emoji.mjs`, `tweet-fonts.mjs`, `tweet-utils.mjs`, `tweet-shots.mjs`, `landing.html`, `fonts/`, `src/`. Each root `.mjs` file must be COPY'd explicitly. The `fonts/` directory contains Inter (always loaded, ~200KB) + 13 Noto Sans variants for multilingual rendering (lazy-loaded, ~30MB total).
 
 ```bash
 docker build -t tweet-shots .

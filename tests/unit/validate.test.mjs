@@ -82,4 +82,27 @@ describe('validate middleware', () => {
     expect(next).toHaveBeenCalled();
     expect(req.validated).toEqual({ name: 'Bob', age: 30 });
   });
+
+  it('includes requestId in validation error when req.id is set', () => {
+    const middleware = validate(schema, 'body');
+    const { req, res, next } = createMockReqRes({ name: '', age: -1 });
+    req.id = 'test-request-id-123';
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    const response = res.json.mock.calls[0][0];
+    expect(response.requestId).toBe('test-request-id-123');
+  });
+
+  it('omits requestId from validation error when req.id is not set', () => {
+    const middleware = validate(schema, 'body');
+    const { req, res, next } = createMockReqRes({ name: '', age: -1 });
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    const response = res.json.mock.calls[0][0];
+    expect(response).not.toHaveProperty('requestId');
+  });
 });

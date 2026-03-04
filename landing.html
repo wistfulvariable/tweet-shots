@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>tweet-shots API - Beautiful Tweet Screenshots</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root {
       --bg: #0f172a;
@@ -92,191 +93,372 @@
     
     /* Demo */
     .demo {
-      padding: 60px 0;
-      text-align: center;
+      padding: 60px 0 80px;
     }
 
     .demo h2 {
       font-size: 2.5rem;
       margin-bottom: 8px;
+      text-align: center;
     }
 
-    .demo-form {
-      max-width: 700px;
+    .demo-card {
+      max-width: 1100px;
       margin: 0 auto;
-      text-align: left;
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      overflow: hidden;
     }
 
-    .demo-input-row {
+    .demo-layout {
       display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
+      min-height: 480px;
+    }
+
+    .demo-controls {
+      flex: 0 0 44%;
+      padding: 32px;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .demo-preview-panel {
+      flex: 1;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .demo-input-group {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 28px;
+    }
+
+    .demo-input-group:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
 
     .demo-input {
       flex: 1;
       padding: 14px 16px;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
+      background: transparent;
+      border: none;
       color: var(--text);
-      font-size: 1rem;
+      font-size: 0.9375rem;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
+      min-width: 0;
     }
 
-    .demo-input:focus { border-color: var(--accent); }
     .demo-input::placeholder { color: var(--text-secondary); }
 
-    .demo-btn {
+    .demo-generate-btn {
+      padding: 14px 24px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
       white-space: nowrap;
-      min-width: 120px;
     }
 
-    .demo-btn:disabled {
+    .demo-generate-btn:hover { background: var(--accent-hover); }
+
+    .demo-generate-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
-      transform: none;
     }
 
-    .demo-options {
-      display: grid;
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    .demo-label {
+    .demo-section-label {
       display: block;
-      font-size: 0.875rem;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
       color: var(--text-secondary);
-      margin-bottom: 8px;
-      font-weight: 500;
+      margin-bottom: 10px;
+      font-weight: 600;
     }
 
     .demo-chips {
       display: flex;
-      flex-wrap: wrap;
       gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
     }
 
     .demo-chip {
-      padding: 6px 14px;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
       color: var(--text-secondary);
       font-size: 0.8125rem;
       font-family: inherit;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
 
     .demo-chip:hover {
-      border-color: var(--accent);
+      border-color: rgba(255, 255, 255, 0.2);
       color: var(--text);
     }
 
     .demo-chip.active {
-      background: var(--accent);
       border-color: var(--accent);
-      color: white;
+      color: var(--text);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .demo-theme-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      flex-shrink: 0;
+    }
+
+    .demo-gradient-swatch {
+      width: 22px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .demo-advanced-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .demo-advanced-trigger:hover { color: var(--text); }
+
+    .demo-advanced-trigger .chevron {
+      transition: transform 0.2s;
+      font-size: 0.625rem;
+    }
+
+    .demo-advanced-trigger.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .demo-advanced-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+
+    .demo-advanced-content.open {
+      max-height: 300px;
+      padding-top: 20px;
     }
 
     .demo-select {
+      width: 100%;
       padding: 10px 14px;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       color: var(--text);
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
       font-family: inherit;
       outline: none;
-      width: 100%;
-      max-width: 300px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
     }
 
-    .demo-select option { background: var(--card); }
+    .demo-select:focus { border-color: var(--accent); }
+    .demo-select option { background: #1e293b; }
 
-    .demo-toggles {
+    .demo-toggles-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
 
-    .demo-toggle {
+    .demo-switch {
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: var(--text-secondary);
-      font-size: 0.875rem;
+      gap: 10px;
       cursor: pointer;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      transition: color 0.15s;
     }
 
-    .demo-toggle input[type="checkbox"] {
-      accent-color: var(--accent);
+    .demo-switch:hover { color: var(--text); }
+    .demo-switch input { display: none; }
+
+    .demo-switch-track {
+      width: 36px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .demo-switch-track::after {
+      content: '';
+      position: absolute;
       width: 16px;
       height: 16px;
+      background: #64748b;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s, background 0.2s;
     }
 
-    .demo-result {
-      max-width: 700px;
-      margin: 30px auto 0;
+    .demo-switch input:checked + .demo-switch-track {
+      background: rgba(59, 130, 246, 0.3);
     }
 
-    .demo-loading {
+    .demo-switch input:checked + .demo-switch-track::after {
+      transform: translateX(16px);
+      background: var(--accent);
+    }
+
+    .demo-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      min-height: 320px;
+      border: 2px dashed rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      color: rgba(148, 163, 184, 0.6);
       text-align: center;
-      padding: 40px;
-      color: var(--text-secondary);
+    }
+
+    .demo-placeholder-icon {
+      width: 48px;
+      height: 48px;
+      opacity: 0.4;
+    }
+
+    .demo-placeholder p {
+      font-size: 0.875rem;
+      max-width: 200px;
+      line-height: 1.4;
+    }
+
+    .demo-preview-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 40px 0;
     }
 
     .demo-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255,255,255,0.1);
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .demo-error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 8px;
-      padding: 16px;
+    .demo-preview-error {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      padding: 20px 24px;
       color: #fca5a5;
       text-align: center;
+      font-size: 0.875rem;
     }
 
-    .demo-preview {
-      margin: 0 auto;
-      max-width: 600px;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-    }
-
-    .demo-preview img {
+    .demo-preview-result {
       width: 100%;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    .demo-actions {
+    .demo-preview-image {
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .demo-preview-actions {
       display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 20px;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .demo-action-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .demo-action-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .demo-action-primary:hover { background: var(--accent-hover); }
+
+    .demo-action-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .demo-action-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
     }
 
     .demo-fade-in {
-      animation: fadeIn 0.3s ease-in;
+      animation: fadeIn 0.3s ease-out;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
     
@@ -449,6 +631,9 @@
     @media (max-width: 768px) {
       .hero h1 { font-size: 2.5rem; }
       .price-card.featured { transform: none; }
+      .demo-layout { flex-direction: column; }
+      .demo-controls { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+      .demo-toggles-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -460,6 +645,7 @@
       <div class="cta-buttons">
         <a href="#pricing" class="btn btn-primary">Get API Key</a>
         <a href="/docs" class="btn btn-secondary">View Docs</a>
+        <a href="/dashboard" class="btn btn-secondary">Sign In</a>
       </div>
     </div>
   </section>
@@ -467,86 +653,94 @@
   <section class="demo" id="demo">
     <div class="container">
       <h2>Try it live</h2>
-      <p style="color: var(--text-secondary); margin-bottom: 30px;">
+      <p style="color: var(--text-secondary); margin-bottom: 30px; text-align: center;">
         Paste a tweet URL and customize your screenshot. No API key needed.
+        <span style="display:block; margin-top:6px; font-size:0.85rem; color:#64748b;">Rate limited to 5 requests/min.</span>
       </p>
 
-      <div class="demo-form">
-        <div class="demo-input-row">
-          <input type="text" id="demo-url" class="demo-input"
-                 placeholder="Paste tweet URL or ID (e.g. https://x.com/user/status/123...)"
-                 autocomplete="off">
-          <button id="demo-generate" class="btn btn-primary demo-btn">Generate</button>
-        </div>
-
-        <div class="demo-options">
-          <div class="demo-option-group">
-            <label class="demo-label">Theme</label>
-            <div class="demo-chips" id="demo-theme">
-              <button class="demo-chip active" data-value="dark">Dark</button>
-              <button class="demo-chip" data-value="light">Light</button>
-              <button class="demo-chip" data-value="dim">Dim</button>
-              <button class="demo-chip" data-value="black">Black</button>
+      <div class="demo-card">
+        <div class="demo-layout">
+          <div class="demo-controls">
+            <div class="demo-input-group">
+              <input type="text" id="demo-url" class="demo-input"
+                     placeholder="Paste tweet URL or ID..."
+                     autocomplete="off">
+              <button id="demo-generate" class="demo-generate-btn">Generate</button>
             </div>
-          </div>
 
-          <div class="demo-option-group">
-            <label class="demo-label">Gradient</label>
+            <span class="demo-section-label">Theme</span>
+            <div class="demo-chips" id="demo-theme">
+              <button class="demo-chip active" data-value="dark"><span class="demo-theme-dot" style="background:#15202b"></span>Dark</button>
+              <button class="demo-chip" data-value="light"><span class="demo-theme-dot" style="background:#ffffff"></span>Light</button>
+              <button class="demo-chip" data-value="dim"><span class="demo-theme-dot" style="background:#1e2732"></span>Dim</button>
+              <button class="demo-chip" data-value="black"><span class="demo-theme-dot" style="background:#000000"></span>Black</button>
+            </div>
+
+            <span class="demo-section-label">Gradient</span>
             <div class="demo-chips" id="demo-gradient">
               <button class="demo-chip active" data-value="">None</button>
-              <button class="demo-chip" data-value="sunset">Sunset</button>
-              <button class="demo-chip" data-value="ocean">Ocean</button>
-              <button class="demo-chip" data-value="forest">Forest</button>
-              <button class="demo-chip" data-value="fire">Fire</button>
-              <button class="demo-chip" data-value="midnight">Midnight</button>
-              <button class="demo-chip" data-value="sky">Sky</button>
-              <button class="demo-chip" data-value="candy">Candy</button>
-              <button class="demo-chip" data-value="peach">Peach</button>
+              <button class="demo-chip" data-value="sunset"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#ff6b6b,#feca57)"></span>Sunset</button>
+              <button class="demo-chip" data-value="ocean"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#667eea,#764ba2)"></span>Ocean</button>
+              <button class="demo-chip" data-value="forest"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#11998e,#38ef7d)"></span>Forest</button>
+              <button class="demo-chip" data-value="fire"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#f12711,#f5af19)"></span>Fire</button>
+              <button class="demo-chip" data-value="midnight"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#232526,#414345)"></span>Midnight</button>
+              <button class="demo-chip" data-value="sky"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#2980b9,#6dd5fa)"></span>Sky</button>
+              <button class="demo-chip" data-value="candy"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#d53369,#daae51)"></span>Candy</button>
+              <button class="demo-chip" data-value="peach"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)"></span>Peach</button>
+            </div>
+
+            <button class="demo-advanced-trigger" id="demo-advanced-toggle">
+              More options <span class="chevron">&#9662;</span>
+            </button>
+            <div class="demo-advanced-content" id="demo-advanced-content">
+              <span class="demo-section-label">Dimension</span>
+              <select id="demo-dimension" class="demo-select">
+                <option value="auto" selected>Auto (550px)</option>
+                <option value="instagramFeed">Instagram Feed (1080x1080)</option>
+                <option value="instagramStory">Instagram Story (1080x1920)</option>
+                <option value="instagramVertical">Instagram Vertical (1080x1350)</option>
+                <option value="tiktok">TikTok (1080x1920)</option>
+                <option value="linkedin">LinkedIn (1200x627)</option>
+                <option value="twitter">Twitter (1200x675)</option>
+                <option value="facebook">Facebook (1200x630)</option>
+                <option value="youtube">YouTube (1280x720)</option>
+              </select>
+
+              <span class="demo-section-label">Display</span>
+              <div class="demo-toggles-grid">
+                <label class="demo-switch"><input type="checkbox" id="demo-hideMetrics"><span class="demo-switch-track"></span>Hide metrics</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-hideMedia"><span class="demo-switch-track"></span>Hide media</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-hideDate"><span class="demo-switch-track"></span>Hide date</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-hideVerified"><span class="demo-switch-track"></span>Hide verified</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-hideQuoteTweet"><span class="demo-switch-track"></span>Hide quote tweet</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-hideShadow"><span class="demo-switch-track"></span>Hide shadow</label>
+              </div>
             </div>
           </div>
 
-          <div class="demo-option-group">
-            <label class="demo-label">Dimension</label>
-            <select id="demo-dimension" class="demo-select">
-              <option value="auto" selected>Auto (550px)</option>
-              <option value="instagramFeed">Instagram Feed (1080x1080)</option>
-              <option value="instagramStory">Instagram Story (1080x1920)</option>
-              <option value="instagramVertical">Instagram Vertical (1080x1350)</option>
-              <option value="tiktok">TikTok (1080x1920)</option>
-              <option value="linkedin">LinkedIn (1200x627)</option>
-              <option value="twitter">Twitter (1200x675)</option>
-              <option value="facebook">Facebook (1200x630)</option>
-              <option value="youtube">YouTube (1280x720)</option>
-            </select>
-          </div>
-
-          <div class="demo-option-group">
-            <label class="demo-label">Display Options</label>
-            <div class="demo-toggles">
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideMetrics"> Hide metrics</label>
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideMedia"> Hide media</label>
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideDate"> Hide date</label>
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideVerified"> Hide verified badge</label>
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideQuoteTweet"> Hide quote tweet</label>
-              <label class="demo-toggle"><input type="checkbox" id="demo-hideShadow"> Hide shadow</label>
+          <div class="demo-preview-panel">
+            <div id="demo-placeholder" class="demo-placeholder">
+              <svg class="demo-placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <p>Your screenshot will appear here</p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="demo-result" class="demo-result" style="display: none;">
-        <div id="demo-loading" class="demo-loading" style="display: none;">
-          <div class="demo-spinner"></div>
-          <p id="demo-loading-text">Generating screenshot...</p>
-        </div>
-        <div id="demo-error" class="demo-error" style="display: none;"></div>
-        <div id="demo-image-container" style="display: none;">
-          <div class="demo-preview">
-            <img id="demo-image" alt="Generated tweet screenshot">
-          </div>
-          <div class="demo-actions">
-            <a id="demo-download" class="btn btn-primary" download="tweet-screenshot.png">Download PNG</a>
-            <button id="demo-copy-api" class="btn btn-secondary">Copy API call</button>
+            <div id="demo-result" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:320px;">
+              <div id="demo-loading" class="demo-preview-loading" style="display:none;">
+                <div class="demo-spinner"></div>
+                <p id="demo-loading-text" style="color:var(--text-secondary); font-size:0.875rem;">Generating screenshot...</p>
+              </div>
+              <div id="demo-error" class="demo-preview-error" style="display:none;"></div>
+              <div id="demo-image-container" class="demo-preview-result" style="display:none;">
+                <img id="demo-image" class="demo-preview-image" alt="Generated tweet screenshot">
+                <div class="demo-preview-actions">
+                  <a id="demo-download" class="demo-action-btn demo-action-primary" download="tweet-screenshot.png">Download PNG</a>
+                  <button id="demo-copy-api" class="demo-action-btn demo-action-secondary">Copy API call</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -640,12 +834,12 @@
       <h2>Dead simple to use</h2>
       <div class="code-block">
         <span class="comment"># Generate a screenshot</span><br>
-        <span class="keyword">curl</span> <span class="string">"https://api.example.com/screenshot/1617979122625712128"</span> \<br>
+        <span class="keyword">curl</span> <span class="string">"https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128"</span> \<br>
         &nbsp;&nbsp;-H <span class="string">"X-API-KEY: your-api-key"</span> \<br>
         &nbsp;&nbsp;-o tweet.png<br><br>
-        
+
         <span class="comment"># With options</span><br>
-        <span class="keyword">curl</span> <span class="string">"https://api.example.com/screenshot/1617979122625712128?theme=dark&gradient=ocean&dimension=instagramFeed"</span> \<br>
+        <span class="keyword">curl</span> <span class="string">"https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark&amp;gradient=ocean&amp;dimension=instagramFeed"</span> \<br>
         &nbsp;&nbsp;-H <span class="string">"X-API-KEY: your-api-key"</span> \<br>
         &nbsp;&nbsp;-o tweet.png
       </div>
@@ -655,7 +849,7 @@
   <footer>
     <div class="container">
       <p>Built with ❤️ by <a href="https://github.com/wistfulvariable">wistfulvariable</a></p>
-      <p style="margin-top: 10px;"><a href="/docs">API Docs</a> · <a href="https://github.com/wistfulvariable/tweet-shots">GitHub</a></p>
+      <p style="margin-top: 10px;"><a href="/docs">API Docs</a> · <a href="/dashboard">Dashboard</a> · <a href="https://github.com/wistfulvariable/tweet-shots">GitHub</a></p>
     </div>
   </footer>
 
@@ -665,6 +859,7 @@
 
     var urlInput = document.getElementById('demo-url');
     var generateBtn = document.getElementById('demo-generate');
+    var placeholderEl = document.getElementById('demo-placeholder');
     var resultArea = document.getElementById('demo-result');
     var loadingEl = document.getElementById('demo-loading');
     var errorEl = document.getElementById('demo-error');
@@ -673,10 +868,18 @@
     var downloadLink = document.getElementById('demo-download');
     var copyApiBtn = document.getElementById('demo-copy-api');
     var dimensionSelect = document.getElementById('demo-dimension');
+    var advancedToggle = document.getElementById('demo-advanced-toggle');
+    var advancedContent = document.getElementById('demo-advanced-content');
 
     var currentBlobUrl = null;
     var loadingTextEl = document.getElementById('demo-loading-text');
     var loadingTimer = null;
+
+    // Advanced options toggle
+    advancedToggle.addEventListener('click', function() {
+      advancedToggle.classList.toggle('open');
+      advancedContent.classList.toggle('open');
+    });
 
     // Chip picker — toggle active state within each group
     document.querySelectorAll('.demo-chips').forEach(function(group) {
@@ -714,8 +917,9 @@
     }
 
     function showLoading() {
-      resultArea.style.display = 'block';
-      loadingEl.style.display = 'block';
+      placeholderEl.style.display = 'none';
+      resultArea.style.display = 'flex';
+      loadingEl.style.display = 'flex';
       errorEl.style.display = 'none';
       imageContainer.style.display = 'none';
       generateBtn.disabled = true;
@@ -752,7 +956,7 @@
 
       loadingEl.style.display = 'none';
       errorEl.style.display = 'none';
-      imageContainer.style.display = 'block';
+      imageContainer.style.display = 'flex';
       imageContainer.classList.remove('demo-fade-in');
       void imageContainer.offsetWidth; // force reflow for animation restart
       imageContainer.classList.add('demo-fade-in');

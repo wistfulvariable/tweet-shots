@@ -64,7 +64,21 @@ export function demoLimiter() {
   return rateLimit({
     windowMs: 60_000,
     max: 5,
-    message: { error: 'Demo rate limit reached. Sign up for an API key for higher limits.', code: 'DEMO_RATE_LIMITED' },
+    message: { error: 'Demo rate limit reached (5 requests/min). Sign up for an API key at /billing/signup for higher limits.', code: 'DEMO_RATE_LIMITED' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+}
+
+/**
+ * IP-based rate limiter for dashboard API endpoints.
+ * 30 requests per minute per IP.
+ */
+export function dashboardLimiter() {
+  return rateLimit({
+    windowMs: 60_000,
+    max: 30,
+    message: { error: 'Too many dashboard requests. Please wait a moment and try again.', code: 'RATE_LIMITED' },
     standardHeaders: true,
     legacyHeaders: false,
   });

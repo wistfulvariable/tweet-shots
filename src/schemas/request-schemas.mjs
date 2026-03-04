@@ -29,7 +29,7 @@ export const screenshotQuerySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
   format: z.enum(['png', 'svg']).default('png'),
-  scale: z.coerce.number().int().min(1).max(3).default(1),
+  scale: z.coerce.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   bgColor: hexColor,
   textColor: hexColor,
@@ -40,6 +40,7 @@ export const screenshotQuerySchema = z.object({
   hideVerified: boolString,
   hideShadow: boolString,
   hideQuoteTweet: boolString,
+  showUrl: boolString,
   padding: z.coerce.number().int().min(0).max(100).default(20),
   radius: z.coerce.number().int().min(0).max(100).default(16),
 });
@@ -54,7 +55,7 @@ export const screenshotBodySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
   format: z.enum(['png', 'svg']).default('png'),
-  scale: z.number().int().min(1).max(3).default(1),
+  scale: z.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   backgroundGradient: z.enum(GRADIENT_VALUES).optional(),
   bgColor: hexColor,
@@ -68,6 +69,7 @@ export const screenshotBodySchema = z.object({
   hideVerified: z.boolean().default(false),
   hideQuoteTweet: z.boolean().default(false),
   hideShadow: z.boolean().default(false),
+  showUrl: z.boolean().default(false),
   padding: z.number().int().min(0).max(100).default(20),
   radius: z.number().int().min(0).max(100).optional(),
   borderRadius: z.number().int().min(0).max(100).optional(),
@@ -109,6 +111,52 @@ export const portalSchema = z.object({
   returnUrl: z.string().url().optional(),
 });
 
+// ─── Shared render options for batch schemas ────────────────────────────────
+
+const batchRenderOptions = {
+  theme: z.enum(THEME_VALUES).default('dark'),
+  dimension: z.enum(DIMENSION_VALUES).default('auto'),
+  format: z.enum(['png', 'svg']).default('png'),
+  scale: z.number().int().min(1).max(3).default(2),
+  gradient: z.enum(GRADIENT_VALUES).optional(),
+  backgroundGradient: z.enum(GRADIENT_VALUES).optional(),
+  bgColor: hexColor,
+  backgroundColor: hexColor,
+  textColor: hexColor,
+  linkColor: hexColor,
+  showMetrics: z.boolean().optional(),
+  hideMetrics: z.boolean().default(false),
+  hideMedia: z.boolean().default(false),
+  hideDate: z.boolean().default(false),
+  hideVerified: z.boolean().default(false),
+  hideQuoteTweet: z.boolean().default(false),
+  hideShadow: z.boolean().default(false),
+  showUrl: z.boolean().default(false),
+  padding: z.number().int().min(0).max(100).default(20),
+  radius: z.number().int().min(0).max(100).optional(),
+  borderRadius: z.number().int().min(0).max(100).optional(),
+};
+
+/**
+ * POST /screenshot/batch JSON body.
+ * urls array + shared render options + response format.
+ * Max URL count enforced in handler (depends on tier).
+ */
+export const batchScreenshotSchema = z.object({
+  urls: z.array(z.string().min(1)).min(1, 'At least one URL or tweet ID is required'),
+  response: z.enum(['base64', 'url']).default('base64'),
+  ...batchRenderOptions,
+});
+
+/**
+ * Render options for multipart/form-data batch (form fields only, no urls).
+ * URLs come from the CSV file.
+ */
+export const batchMultipartOptionsSchema = z.object({
+  response: z.enum(['base64', 'url']).default('base64'),
+  ...batchRenderOptions,
+});
+
 /**
  * GET /demo/screenshot/:tweetIdOrUrl query parameters.
  * Subset of screenshotQuerySchema — no format, scale, or custom colors.
@@ -123,6 +171,7 @@ export const demoQuerySchema = z.object({
   hideVerified: boolString,
   hideShadow: boolString,
   hideQuoteTweet: boolString,
+  showUrl: boolString,
   padding: z.coerce.number().int().min(0).max(100).default(20),
   radius: z.coerce.number().int().min(0).max(100).default(16),
 });
