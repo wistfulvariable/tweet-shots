@@ -1,9 +1,10 @@
 /**
- * Integration tests for health, docs, pricing, and landing endpoints.
+ * Integration tests for health, pricing, and landing endpoints.
  * These are public endpoints — no auth required.
+ * Docs tests moved to docs.test.mjs.
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import { healthRoutes } from '../../src/routes/health.mjs';
 import { landingRoutes } from '../../src/routes/landing.mjs';
@@ -56,34 +57,6 @@ describe('GET /pricing', () => {
     const free = body.tiers.find(t => t.tier === 'free');
     expect(free.price).toBe(0);
     expect(free.monthlyCredits).toBe(50);
-  });
-});
-
-describe('GET /docs', () => {
-  it('returns JSON API documentation for non-HTML clients', async () => {
-    const res = await fetch(`${baseUrl}/docs`, {
-      headers: { Accept: 'application/json' },
-    });
-    expect(res.status).toBe(200);
-
-    const body = await res.json();
-    expect(body.authentication).toBeDefined();
-    expect(body.endpoints).toBeDefined();
-    expect(body.rateLimits).toBeDefined();
-  });
-
-  it('returns HTML documentation page for browser clients', async () => {
-    const res = await fetch(`${baseUrl}/docs`, {
-      headers: { Accept: 'text/html' },
-    });
-    expect(res.status).toBe(200);
-    expect(res.headers.get('content-type')).toContain('text/html');
-
-    const text = await res.text();
-    expect(text).toContain('API Documentation');
-    expect(text).toContain('Authentication');
-    expect(text).toContain('/screenshot');
-    expect(text).toContain('Rate Limits');
   });
 });
 

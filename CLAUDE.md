@@ -44,6 +44,9 @@ tweet-shots/
 ├── tweet-shots.mjs              # CLI entry point
 ├── landing.html                 # Landing page (inline CSS, loads landing.js)
 ├── landing.js                   # Landing page demo JS (external, 24h browser cache)
+├── docs.html                    # API documentation page (inline CSS, loads docs.js)
+├── docs.js                      # Docs page JS (tabs, copy, sidebar nav, 24h cache)
+├── llm-docs.txt                 # LLM-optimized plain-text API reference
 ├── fonts/                       # Bundled fonts (Inter + 13 Noto Sans variants)
 │   ├── Inter-Regular.woff       # Latin (always loaded)
 │   ├── Inter-Bold.woff          # Latin bold (always loaded)
@@ -67,7 +70,8 @@ tweet-shots/
 │   │   ├── billing.mjs          # Stripe checkout/portal/signup/webhook
 │   │   ├── dashboard.mjs        # /dashboard (HTML + API for user dashboard)
 │   │   ├── demo.mjs             # GET /demo/screenshot/:tweetIdOrUrl (public, IP-limited)
-│   │   ├── health.mjs           # /health, /pricing, /docs
+│   │   ├── health.mjs           # /health, /pricing
+│   │   ├── docs.mjs             # /docs (HTML+JSON), /docs/llm, /docs.js
 │   │   └── landing.mjs          # GET / (landing page)
 │   ├── services/
 │   │   ├── firestore.mjs        # Firestore client + collection refs
@@ -92,7 +96,7 @@ tweet-shots/
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (9 tests)
 │   ├── unit/                    # Per-service unit tests (21 files)
-│   ├── integration/             # API endpoint tests (9 files)
+│   ├── integration/             # API endpoint tests (10 files)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
@@ -121,6 +125,7 @@ tweet-shots/
 - When adding new root-level `.mjs` files, add a `COPY` line to the Dockerfile — each root `.mjs` must be explicitly listed (includes `tweet-emoji.mjs`, `tweet-fonts.mjs`)
 - Use `createLogger()` from `./src/logger.mjs` for logging in core modules — never use `console.*` (breaks structured logging, severity mapping, and Cloud Logging queries). `createLogger()` works without a config arg (defaults to `process.env.NODE_ENV`, silent in tests)
 - Update CSP directives in `server.mjs` helmet config when adding new external resources to HTML pages — currently allows `gstatic.com` (Firebase SDK), `lh3.googleusercontent.com` (avatars), `identitytoolkit.googleapis.com` + `securetoken.googleapis.com` (Firebase Auth API)
+- When adding or changing API endpoints/parameters, update `docs.html` and `llm-docs.txt` — these are static files that must be manually kept in sync with the actual API
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them

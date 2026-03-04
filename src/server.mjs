@@ -22,6 +22,7 @@ import { errorHandler } from './middleware/error-handler.mjs';
 
 // Routes
 import { healthRoutes } from './routes/health.mjs';
+import { docsRoutes } from './routes/docs.mjs';
 import { landingRoutes } from './routes/landing.mjs';
 import { screenshotRoutes } from './routes/screenshot.mjs';
 import { tweetRoutes } from './routes/tweet.mjs';
@@ -120,6 +121,7 @@ const billingMiddleware = billingGuard(logger);
 
 // Public (no auth)
 app.use(landingRoutes());
+app.use(docsRoutes());
 app.use(healthRoutes());
 app.use(demoRoutes({
   demoRateLimit: demoLimiter(),

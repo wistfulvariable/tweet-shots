@@ -1,0 +1,2228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Documentation - tweet-shots</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --code-bg: #0d1117;
+      --border: rgba(255,255,255,0.08);
+      --sidebar-width: 260px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ─── Top Header ─────────────────────────────────────── */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(15, 23, 42, 0.97);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .top-header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .top-header-brand {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--text);
+      text-decoration: none;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .top-header-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .top-header-links a {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .top-header-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ─── Layout ─────────────────────────────────────────── */
+    .docs-layout {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ─── Sidebar ────────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: 56px;
+      width: var(--sidebar-width);
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .sidebar-section-label {
+      display: block;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      padding: 16px 24px 8px;
+      font-weight: 600;
+    }
+
+    .sidebar-section-label:first-child {
+      padding-top: 0;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 6px 24px;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      transition: color 0.15s, background 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .sidebar a:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+      text-decoration: none;
+    }
+
+    .sidebar a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(59,130,246,0.06);
+    }
+
+    /* ─── Main Content ───────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 48px 80px;
+      max-width: 920px;
+    }
+
+    html { scroll-padding-top: 80px; }
+
+    /* ─── Section Headers ────────────────────────────────── */
+    .section-heading {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 56px 0 16px;
+      padding-top: 24px;
+    }
+
+    .section-heading:first-child {
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0 0 0;
+    }
+
+    .section-description {
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      font-size: 0.9375rem;
+      line-height: 1.7;
+    }
+
+    /* ─── Method Badges ──────────────────────────────────── */
+    .method-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: 'Monaco', 'Menlo', monospace;
+      letter-spacing: 0.03em;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    .method-get {
+      background: rgba(34,197,94,0.15);
+      color: #4ade80;
+    }
+
+    .method-post {
+      background: rgba(59,130,246,0.15);
+      color: #60a5fa;
+    }
+
+    .method-delete {
+      background: rgba(239,68,68,0.15);
+      color: #f87171;
+    }
+
+    /* ─── Endpoint Block ─────────────────────────────────── */
+    .endpoint-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .endpoint-url {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.9375rem;
+      color: var(--text);
+      display: inline;
+      vertical-align: middle;
+    }
+
+    .endpoint-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .endpoint-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .endpoint-meta-item .label {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .endpoint-description {
+      color: var(--text-secondary);
+      margin-top: 16px;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ─── Subsection Headers ─────────────────────────────── */
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 24px 0 12px;
+      color: var(--text);
+    }
+
+    h4 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: var(--text);
+    }
+
+    /* ─── Tables ─────────────────────────────────────────── */
+    .docs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 0.8125rem;
+    }
+
+    .docs-table th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .docs-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    .docs-table td:first-child {
+      color: var(--text);
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.8125rem;
+      white-space: nowrap;
+    }
+
+    .docs-table code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.8125rem;
+    }
+
+    .docs-table tr:last-child td { border-bottom: none; }
+
+    .table-wrapper {
+      overflow-x: auto;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .table-wrapper .docs-table {
+      margin-bottom: 0;
+    }
+
+    .table-wrapper .docs-table th:first-child,
+    .table-wrapper .docs-table td:first-child {
+      padding-left: 16px;
+    }
+
+    .table-wrapper .docs-table th:last-child,
+    .table-wrapper .docs-table td:last-child {
+      padding-right: 16px;
+    }
+
+    /* ─── Code Blocks ────────────────────────────────────── */
+    .code-wrapper {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 0.8125rem;
+      line-height: 1.7;
+      color: #e6edf3;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255,255,255,0.14);
+      color: var(--text);
+    }
+
+    /* ─── Notes / Callouts ───────────────────────────────── */
+    .note {
+      background: rgba(59,130,246,0.08);
+      border-left: 3px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .note p { margin: 0; color: inherit; }
+
+    .note-warning {
+      background: rgba(234,179,8,0.08);
+      border-left-color: #eab308;
+    }
+
+    .note-success {
+      background: rgba(34,197,94,0.08);
+      border-left-color: var(--success);
+    }
+
+    /* ─── Steps ──────────────────────────────────────────── */
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .step-number {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(59,130,246,0.15);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+    }
+
+    .step-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .step-content h4 {
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+
+    .step-content p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 12px;
+    }
+
+    /* ─── Code Example Tabs ──────────────────────────────── */
+    .example-block {
+      margin-bottom: 32px;
+    }
+
+    .example-block h4 {
+      margin-bottom: 12px;
+    }
+
+    .example-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+
+    .example-tab {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .example-tab:hover {
+      color: var(--text);
+    }
+
+    .example-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .example-panel {
+      display: none;
+    }
+
+    .example-panel.active {
+      display: block;
+    }
+
+    .example-panel pre {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-top: none;
+    }
+
+    /* ─── Pricing Table ──────────────────────────────────── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .pricing-card.featured {
+      border-color: var(--accent);
+    }
+
+    .pricing-card h4 {
+      margin: 0 0 4px;
+      font-size: 1.125rem;
+    }
+
+    .pricing-card .price {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 8px 0;
+    }
+
+    .pricing-card .price span {
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .pricing-card .credits {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
+
+    .pricing-card ul {
+      list-style: none;
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .pricing-card ul li {
+      padding: 4px 0;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .pricing-card ul li::before {
+      content: '\2713';
+      color: var(--success);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .btn-sm {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      text-decoration: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      text-decoration: none;
+    }
+
+    /* ─── JSON response blocks ───────────────────────────── */
+    .response-block {
+      margin-bottom: 24px;
+    }
+
+    .response-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    /* ─── Inline list ────────────────────────────────────── */
+    .inline-list {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+
+    .inline-list code {
+      font-size: 0.8125rem;
+    }
+
+    /* ─── Footer ─────────────────────────────────────────── */
+    .docs-footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .docs-footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .docs-footer-links a {
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      transition: color 0.15s;
+    }
+
+    .docs-footer-links a:hover {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    /* ─── Responsive ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+
+      .mobile-nav {
+        display: block;
+      }
+
+      .main-content {
+        padding: 24px 20px 60px;
+      }
+
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .endpoint-meta {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+
+    @media (min-width: 901px) {
+      .mobile-nav {
+        display: none;
+      }
+    }
+
+    /* ─── Mobile Nav ─────────────────────────────────────── */
+    .mobile-nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-nav::-webkit-scrollbar { display: none; }
+
+    .mobile-nav a {
+      display: inline-block;
+      padding: 6px 12px;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .mobile-nav a:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      text-decoration: none;
+    }
+
+    /* ─── Paragraphs ─────────────────────────────────────── */
+    p {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    /* ─── Unordered lists ────────────────────────────────── */
+    ul.doc-list {
+      list-style: none;
+      margin-bottom: 16px;
+    }
+
+    ul.doc-list li {
+      padding: 4px 0;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    ul.doc-list li::before {
+      content: '\2022';
+      position: absolute;
+      left: 0;
+      color: var(--text-secondary);
+    }
+
+    /* ─── Sub-endpoint style ─────────────────────────────── */
+    .sub-endpoint {
+      background: rgba(15,23,42,0.5);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .sub-endpoint h4 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="top-header-inner">
+      <a href="/" class="top-header-brand">tweet-shots</a>
+      <div class="top-header-links">
+        <a href="/">Home</a>
+        <a href="/docs">Docs</a>
+        <a href="/docs/llm">LLM Docs</a>
+        <a href="/dashboard">Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation -->
+  <nav class="mobile-nav">
+    <a href="#getting-started">Getting Started</a>
+    <a href="#authentication">Authentication</a>
+    <a href="#screenshot-get">Screenshot (GET)</a>
+    <a href="#screenshot-post">Screenshot (POST)</a>
+    <a href="#batch">Batch</a>
+    <a href="#tweet-data">Tweet Data</a>
+    <a href="#demo">Demo</a>
+    <a href="#billing">Billing</a>
+    <a href="#parameters">Parameters</a>
+    <a href="#styling">Styling</a>
+    <a href="#examples">Examples</a>
+    <a href="#rate-limits">Rate Limits</a>
+    <a href="#errors">Errors</a>
+    <a href="#headers">Headers</a>
+  </nav>
+
+  <div class="docs-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <span class="sidebar-section-label">Overview</span>
+      <a href="#getting-started">Getting Started</a>
+      <a href="#authentication">Authentication</a>
+
+      <span class="sidebar-section-label">Endpoints</span>
+      <a href="#screenshot-get">Screenshot (GET)</a>
+      <a href="#screenshot-post">Screenshot (POST)</a>
+      <a href="#batch">Batch Screenshots</a>
+      <a href="#tweet-data">Tweet Data</a>
+      <a href="#demo">Demo</a>
+      <a href="#billing">Billing &amp; Usage</a>
+
+      <span class="sidebar-section-label">Reference</span>
+      <a href="#parameters">Parameters</a>
+      <a href="#styling">Styling Guide</a>
+      <a href="#examples">Code Examples</a>
+      <a href="#rate-limits">Rate Limits</a>
+      <a href="#errors">Error Handling</a>
+      <a href="#headers">Response Headers</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- GETTING STARTED                                        -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="getting-started">Getting Started</h2>
+      <p>tweet-shots converts tweet URLs or IDs into pixel-perfect PNG/SVG screenshots &mdash; no browser automation needed. Choose from multiple themes, gradient backgrounds, dimension presets, and styling options to create beautiful social media images programmatically.</p>
+
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Get a free API key</h4>
+          <p>Sign up at <a href="/billing/signup">/billing/signup</a> or use the API directly:</p>
+          <div class="code-wrapper">
+            <pre><code>curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/billing/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com"}'</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Take your first screenshot</h4>
+          <p>Pass any tweet URL or ID as a path parameter:</p>
+          <div class="code-wrapper">
+            <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128" \
+  -H "X-API-KEY: your-api-key" \
+  -o tweet.png</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>View the result</h4>
+          <p>Open <code>tweet.png</code> to see your pixel-perfect screenshot. Customize with query parameters like <code>?theme=light&amp;gradient=ocean</code>.</p>
+        </div>
+      </div>
+
+      <p><strong>Base URL:</strong> <code>https://tweet-shots-api-1084185199991.us-central1.run.app</code></p>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- AUTHENTICATION                                         -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="authentication">Authentication</h2>
+      <p>All screenshot and tweet data endpoints require an API key. There are two ways to authenticate:</p>
+
+      <h3>Option 1: HTTP Header (recommended)</h3>
+      <div class="code-wrapper">
+        <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128" \
+  -H "X-API-KEY: ts_free_your-key-here"</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>Option 2: Query Parameter</h3>
+      <div class="code-wrapper">
+        <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?apiKey=ts_free_your-key-here"</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <div class="note note-warning">
+        <p><strong>Security tip:</strong> Always use the header method when possible. Never expose your API key in client-side JavaScript or public repositories. The query parameter method is provided for convenience in simple scripts and testing.</p>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- GET /screenshot/:tweetIdOrUrl                          -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="screenshot-get">Screenshot (GET)</h2>
+
+      <div class="endpoint-block">
+        <div>
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-url">/screenshot/:tweetIdOrUrl</span>
+        </div>
+        <div class="endpoint-meta">
+          <span class="endpoint-meta-item"><span class="label">Auth:</span> Required</span>
+          <span class="endpoint-meta-item"><span class="label">Credits:</span> 1 per request</span>
+          <span class="endpoint-meta-item"><span class="label">Response:</span> Binary image</span>
+        </div>
+        <p class="endpoint-description">Generate a screenshot of a tweet and return the image directly. The URL parameter accepts either a numeric tweet ID or a full tweet URL (URL-encoded).</p>
+      </div>
+
+      <h3>URL Parameter</h3>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Name</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>tweetIdOrUrl</td>
+              <td>A tweet ID (e.g., <code>1617979122625712128</code>) or a full URL-encoded tweet URL (e.g., <code>https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F1617979122625712128</code>). Both <code>twitter.com</code> and <code>x.com</code> URLs are supported.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Query Parameters</h3>
+      <p>All query parameters are optional. See the <a href="#parameters">Parameters Reference</a> for the full list with types and allowed values.</p>
+
+      <div class="inline-list">
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>fontFamily</code>, <code>fontUrl</code>, <code>fontBoldUrl</code>, <code>logo</code>, <code>logoPosition</code>, <code>logoSize</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+      </div>
+
+      <h3>Response Headers</h3>
+      <p><code>Content-Type</code>, <code>X-Tweet-ID</code>, <code>X-Tweet-Author</code>, <code>X-Render-Time-Ms</code>, <code>X-Credits-Limit</code>, <code>X-Credits-Remaining</code></p>
+
+      <h3>Example</h3>
+      <div class="code-wrapper">
+        <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark&amp;gradient=ocean&amp;dimension=instagramFeed" \
+  -H "X-API-KEY: ts_free_your-key-here" \
+  -o tweet.png</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- POST /screenshot                                       -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="screenshot-post">Screenshot (POST)</h2>
+
+      <div class="endpoint-block">
+        <div>
+          <span class="method-badge method-post">POST</span>
+          <span class="endpoint-url">/screenshot</span>
+        </div>
+        <div class="endpoint-meta">
+          <span class="endpoint-meta-item"><span class="label">Auth:</span> Required</span>
+          <span class="endpoint-meta-item"><span class="label">Credits:</span> 1 per request</span>
+          <span class="endpoint-meta-item"><span class="label">Content-Type:</span> application/json</span>
+        </div>
+        <p class="endpoint-description">Generate a screenshot with a JSON request body. Supports three response modes: binary image, base64-encoded JSON, or a hosted URL. Use proper JSON types (booleans, numbers) instead of strings.</p>
+      </div>
+
+      <h3>Request Body</h3>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>tweetId</td><td>string</td><td>*</td><td>Tweet ID. Required if <code>tweetUrl</code> is not provided.</td></tr>
+            <tr><td>tweetUrl</td><td>string</td><td>*</td><td>Tweet URL. Required if <code>tweetId</code> is not provided.</td></tr>
+            <tr><td>response</td><td>string</td><td>No</td><td>Response format: <code>"image"</code> (default), <code>"base64"</code>, or <code>"url"</code>.</td></tr>
+            <tr><td colspan="4" style="color:var(--text-secondary); font-style:italic; font-family: inherit;">...plus all render options from the <a href="#parameters">Parameters Reference</a>. Use proper types: booleans (<code>true</code>/<code>false</code>), numbers, not strings.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p><strong>Aliases:</strong> You can use <code>backgroundGradient</code> in place of <code>gradient</code>, <code>backgroundColor</code> in place of <code>bgColor</code>, and <code>borderRadius</code> in place of <code>radius</code>.</p>
+      </div>
+
+      <h3>Response Modes</h3>
+
+      <h4><code>response: "image"</code> (default)</h4>
+      <p>Returns the raw binary image with appropriate <code>Content-Type</code> header (<code>image/png</code> or <code>image/svg+xml</code>).</p>
+
+      <h4><code>response: "base64"</code></h4>
+      <div class="response-block">
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "success": true,
+  "tweetId": "1617979122625712128",
+  "author": "elonmusk",
+  "format": "png",
+  "data": "iVBORw0KGgoAAAANSUhEUg..."
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <h4><code>response: "url"</code></h4>
+      <p>The image is uploaded to Cloud Storage and a public URL is returned.</p>
+      <div class="response-block">
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "success": true,
+  "tweetId": "1617979122625712128",
+  "author": "elonmusk",
+  "format": "png",
+  "url": "https://storage.googleapis.com/tweet-shots-screenshots/screenshots/1617979122625712128-1709312000000.png"
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <h3>Example</h3>
+      <div class="code-wrapper">
+        <pre><code>curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot \
+  -H "X-API-KEY: ts_free_your-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tweetId": "1617979122625712128",
+    "response": "base64",
+    "theme": "dark",
+    "gradient": "ocean",
+    "hideMetrics": true,
+    "scale": 2
+  }'</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- POST /screenshot/batch                                 -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="batch">Batch Screenshots</h2>
+
+      <div class="endpoint-block">
+        <div>
+          <span class="method-badge method-post">POST</span>
+          <span class="endpoint-url">/screenshot/batch</span>
+        </div>
+        <div class="endpoint-meta">
+          <span class="endpoint-meta-item"><span class="label">Auth:</span> Required</span>
+          <span class="endpoint-meta-item"><span class="label">Credits:</span> N (one per URL, reserved upfront)</span>
+          <span class="endpoint-meta-item"><span class="label">Content-Type:</span> application/json or multipart/form-data</span>
+        </div>
+        <p class="endpoint-description">Generate screenshots for multiple tweets in a single request. Credits are checked and reserved upfront. Max 5 concurrent renders per batch. Shared render options apply to all URLs in the batch.</p>
+      </div>
+
+      <h3>Batch Size Limits</h3>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Tier</th><th>Max URLs per Batch</th></tr></thead>
+          <tbody>
+            <tr><td>free</td><td>10</td></tr>
+            <tr><td>pro</td><td>100</td></tr>
+            <tr><td>business</td><td>500</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>JSON Request</h3>
+      <div class="code-wrapper">
+        <pre><code>{
+  "urls": [
+    "1617979122625712128",
+    "https://x.com/elonmusk/status/1617979122625712128",
+    "1234567890"
+  ],
+  "response": "base64",
+  "theme": "dark",
+  "gradient": "sunset"
+}</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>CSV Upload (multipart/form-data)</h3>
+      <p>Upload a CSV file with a <code>url</code> column header. Additional render options can be sent as form fields.</p>
+      <div class="code-wrapper">
+        <pre><code>curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/batch \
+  -H "X-API-KEY: ts_free_your-key-here" \
+  -F "file=@tweets.csv" \
+  -F "response=base64" \
+  -F "theme=dark"</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+      <p>Example CSV file:</p>
+      <div class="code-wrapper">
+        <pre><code>url
+1617979122625712128
+https://x.com/elonmusk/status/1617979122625712128
+1234567890</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>Response</h3>
+      <div class="code-wrapper">
+        <pre><code>{
+  "success": true,
+  "total": 3,
+  "succeeded": 2,
+  "failed": 1,
+  "results": [
+    {
+      "tweetId": "1617979122625712128",
+      "success": true,
+      "data": "iVBORw0KGgo...",
+      "author": "elonmusk",
+      "format": "png"
+    },
+    {
+      "tweetId": "1617979122625712128",
+      "success": true,
+      "data": "iVBORw0KGgo...",
+      "author": "elonmusk",
+      "format": "png"
+    },
+    {
+      "tweetId": "1234567890",
+      "success": false,
+      "error": "Rendering failed for this tweet.",
+      "code": "RENDER_FAILED"
+    }
+  ]
+}</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <div class="note">
+        <p>When using <code>"response": "url"</code>, each successful result will have a <code>url</code> field instead of <code>data</code>, containing the public Cloud Storage URL for the rendered image.</p>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- GET /tweet/:tweetIdOrUrl                               -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="tweet-data">Tweet Data</h2>
+
+      <div class="endpoint-block">
+        <div>
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-url">/tweet/:tweetIdOrUrl</span>
+        </div>
+        <div class="endpoint-meta">
+          <span class="endpoint-meta-item"><span class="label">Auth:</span> Required</span>
+          <span class="endpoint-meta-item"><span class="label">Credits:</span> 1 per request</span>
+          <span class="endpoint-meta-item"><span class="label">Response:</span> application/json</span>
+        </div>
+        <p class="endpoint-description">Retrieve raw tweet data from Twitter's syndication API. Returns the tweet object including text, author info, entities, media, and public metrics. Useful for inspecting tweet data before rendering.</p>
+      </div>
+
+      <h3>Response</h3>
+      <div class="code-wrapper">
+        <pre><code>{
+  "success": true,
+  "tweetId": "1617979122625712128",
+  "data": {
+    "id_str": "1617979122625712128",
+    "full_text": "The tweet text content...",
+    "user": {
+      "name": "Display Name",
+      "screen_name": "username",
+      "profile_image_url_https": "https://..."
+    },
+    "created_at": "2023-01-24T...",
+    "entities": { ... },
+    "public_metrics": {
+      "reply_count": 123,
+      "retweet_count": 456,
+      "like_count": 7890
+    }
+  }
+}</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>Example</h3>
+      <div class="code-wrapper">
+        <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/tweet/1617979122625712128" \
+  -H "X-API-KEY: ts_free_your-key-here"</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- DEMO                                                   -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="demo">Demo Endpoint</h2>
+
+      <div class="endpoint-block">
+        <div>
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-url">/demo/screenshot/:tweetIdOrUrl</span>
+        </div>
+        <div class="endpoint-meta">
+          <span class="endpoint-meta-item"><span class="label">Auth:</span> None (public)</span>
+          <span class="endpoint-meta-item"><span class="label">Rate Limit:</span> 5 req/min per IP</span>
+          <span class="endpoint-meta-item"><span class="label">Response:</span> Binary image (PNG only)</span>
+        </div>
+        <p class="endpoint-description">A public endpoint for testing the screenshot API without an API key. Great for evaluating the service before signing up. Responses are cached for 5 minutes.</p>
+      </div>
+
+      <p>Supports the same visual parameters as <code>GET /screenshot</code> except custom fonts (<code>fontUrl</code>, <code>fontBoldUrl</code>, <code>fontFamily</code>) and logo (<code>logo</code>) which are excluded to prevent SSRF abuse on the public endpoint.</p>
+
+      <h3>Supported Parameters</h3>
+      <div class="inline-list">
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+      </div>
+
+      <h3>Example</h3>
+      <div class="code-wrapper">
+        <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/demo/screenshot/1617979122625712128?theme=light&amp;gradient=sunset" \
+  -o demo.png</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- BILLING & USAGE                                        -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="billing">Billing &amp; Usage</h2>
+      <p>Manage API keys, subscriptions, and usage with these billing endpoints.</p>
+
+      <!-- POST /billing/signup -->
+      <div class="sub-endpoint">
+        <h4><span class="method-badge method-post">POST</span> /billing/signup</h4>
+        <p>Get a free API key with 50 screenshots/month. Rate limited to 5 requests per 15 minutes per IP.</p>
+
+        <div class="response-label">Request Body</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "email": "you@example.com",
+  "name": "Optional Name"
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "success": true,
+  "apiKey": "ts_free_3958a9ca-c863-43c5-b62d-0c2e7d928302",
+  "tier": "free",
+  "credits": 50,
+  "message": "Your API key is ready! Save it somewhere safe."
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <!-- POST /billing/checkout -->
+      <div class="sub-endpoint">
+        <h4><span class="method-badge method-post">POST</span> /billing/checkout</h4>
+        <p>Create a Stripe checkout session to upgrade to Pro or Business tier.</p>
+
+        <div class="response-label">Request Body</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "email": "you@example.com",
+  "tier": "pro",
+  "successUrl": "https://yoursite.com/success",
+  "cancelUrl": "https://yoursite.com/cancel"
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "url": "https://checkout.stripe.com/pay/cs_...",
+  "sessionId": "cs_..."
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <p>Redirect the user to the returned <code>url</code> to complete payment.</p>
+      </div>
+
+      <!-- POST /billing/portal -->
+      <div class="sub-endpoint">
+        <h4><span class="method-badge method-post">POST</span> /billing/portal</h4>
+        <p>Create a Stripe billing portal session for managing subscriptions, updating payment methods, or canceling.</p>
+
+        <div class="response-label">Request Body</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "email": "you@example.com",
+  "returnUrl": "https://yoursite.com/"
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "url": "https://billing.stripe.com/session/..."
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <!-- GET /billing/usage -->
+      <div class="sub-endpoint">
+        <h4><span class="method-badge method-get">GET</span> /billing/usage</h4>
+        <p>Check your current usage stats. Requires API key authentication.</p>
+
+        <div class="response-label">Example</div>
+        <div class="code-wrapper">
+          <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/billing/usage" \
+  -H "X-API-KEY: ts_free_your-key-here"</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+
+        <div class="response-label">Response</div>
+        <div class="code-wrapper">
+          <pre><code>{
+  "tier": "free",
+  "limit": 50,
+  "used": 12,
+  "remaining": 38,
+  "currentMonth": "2025-03",
+  "resetDate": "2025-04-01T00:00:00.000Z"
+}</code></pre>
+          <button class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- PARAMETERS REFERENCE                                   -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="parameters">Parameters Reference</h2>
+      <p>A consolidated reference of all render parameters. These apply to GET query parameters and POST JSON body fields unless otherwise noted.</p>
+
+      <div class="note">
+        <p><strong>GET vs POST types:</strong> For GET requests, boolean parameters must be the exact strings <code>"true"</code> or <code>"false"</code> (not <code>0</code>/<code>1</code>/<code>yes</code>/<code>no</code>). For POST JSON bodies, use proper boolean values (<code>true</code>/<code>false</code>) and numbers.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Default</th><th>Values</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>theme</td>
+              <td>string</td>
+              <td><code>dark</code></td>
+              <td><code>dark</code>, <code>light</code>, <code>dim</code>, <code>black</code></td>
+              <td>Card color theme</td>
+            </tr>
+            <tr>
+              <td>dimension</td>
+              <td>string</td>
+              <td><code>auto</code></td>
+              <td><code>auto</code>, <code>instagramFeed</code>, <code>instagramStory</code>, <code>instagramVertical</code>, <code>tiktok</code>, <code>linkedin</code>, <code>twitter</code>, <code>facebook</code>, <code>youtube</code></td>
+              <td>Canvas size preset</td>
+            </tr>
+            <tr>
+              <td>format</td>
+              <td>string</td>
+              <td><code>png</code></td>
+              <td><code>png</code>, <code>svg</code></td>
+              <td>Output image format</td>
+            </tr>
+            <tr>
+              <td>scale</td>
+              <td>number</td>
+              <td><code>2</code></td>
+              <td><code>1</code>, <code>2</code>, <code>3</code></td>
+              <td>Resolution multiplier</td>
+            </tr>
+            <tr>
+              <td>gradient</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>sunset</code>, <code>ocean</code>, <code>forest</code>, <code>fire</code>, <code>midnight</code>, <code>sky</code>, <code>candy</code>, <code>peach</code></td>
+              <td>Background gradient preset</td>
+            </tr>
+            <tr>
+              <td>bgColor</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>#rrggbb</code></td>
+              <td>Custom background color</td>
+            </tr>
+            <tr>
+              <td>textColor</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>#rrggbb</code></td>
+              <td>Custom text color</td>
+            </tr>
+            <tr>
+              <td>linkColor</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>#rrggbb</code></td>
+              <td>Custom link/hashtag color</td>
+            </tr>
+            <tr>
+              <td>hideMetrics</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Hide like/retweet/reply counts</td>
+            </tr>
+            <tr>
+              <td>hideMedia</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Hide embedded images/videos</td>
+            </tr>
+            <tr>
+              <td>hideDate</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Hide tweet timestamp</td>
+            </tr>
+            <tr>
+              <td>hideVerified</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Hide verification badge</td>
+            </tr>
+            <tr>
+              <td>hideShadow</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Remove card drop shadow</td>
+            </tr>
+            <tr>
+              <td>hideQuoteTweet</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Hide quoted tweet</td>
+            </tr>
+            <tr>
+              <td>showUrl</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Show tweet URL in the card</td>
+            </tr>
+            <tr>
+              <td>padding</td>
+              <td>number</td>
+              <td><code>20</code></td>
+              <td><code>0</code>&ndash;<code>100</code></td>
+              <td>Padding around card (px)</td>
+            </tr>
+            <tr>
+              <td>radius</td>
+              <td>number</td>
+              <td><code>16</code></td>
+              <td><code>0</code>&ndash;<code>100</code></td>
+              <td>Card border radius (px)</td>
+            </tr>
+            <tr>
+              <td>fontFamily</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td>Any (max 100 chars)</td>
+              <td>Custom font family name</td>
+            </tr>
+            <tr>
+              <td>fontUrl</td>
+              <td>URL</td>
+              <td>&mdash;</td>
+              <td>Valid URL</td>
+              <td>Custom regular font URL</td>
+            </tr>
+            <tr>
+              <td>fontBoldUrl</td>
+              <td>URL</td>
+              <td>&mdash;</td>
+              <td>Valid URL</td>
+              <td>Custom bold font URL</td>
+            </tr>
+            <tr>
+              <td>logo</td>
+              <td>URL</td>
+              <td>&mdash;</td>
+              <td>Valid URL</td>
+              <td>Brand logo image URL</td>
+            </tr>
+            <tr>
+              <td>logoPosition</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>top-left</code>, <code>top-right</code>, <code>bottom-left</code>, <code>bottom-right</code></td>
+              <td>Logo placement</td>
+            </tr>
+            <tr>
+              <td>logoSize</td>
+              <td>number</td>
+              <td><code>40</code></td>
+              <td><code>16</code>&ndash;<code>200</code></td>
+              <td>Logo size in pixels</td>
+            </tr>
+            <tr>
+              <td>frame</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>phone</code></td>
+              <td>Device frame mockup</td>
+            </tr>
+            <tr>
+              <td>gradientFrom</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>#rrggbb</code></td>
+              <td>Custom gradient start color</td>
+            </tr>
+            <tr>
+              <td>gradientTo</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>#rrggbb</code></td>
+              <td>Custom gradient end color</td>
+            </tr>
+            <tr>
+              <td>gradientAngle</td>
+              <td>number</td>
+              <td>&mdash;</td>
+              <td><code>0</code>&ndash;<code>360</code></td>
+              <td>Custom gradient angle (degrees)</td>
+            </tr>
+            <tr>
+              <td>thread</td>
+              <td>boolean</td>
+              <td><code>false</code></td>
+              <td><code>true</code>, <code>false</code></td>
+              <td>Render entire tweet thread</td>
+            </tr>
+            <tr>
+              <td>response</td>
+              <td>string</td>
+              <td><code>image</code></td>
+              <td><code>image</code>, <code>base64</code>, <code>url</code></td>
+              <td>Response format (POST only)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- STYLING GUIDE                                          -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="styling">Styling Guide</h2>
+      <p>tweet-shots offers extensive visual customization. Here is an overview of the main styling features.</p>
+
+      <h3>Themes</h3>
+      <p>Four built-in themes control the card's color scheme:</p>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Theme</th><th>Background</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td>dark</td><td>Dark blue (#15202b)</td><td>Default Twitter dark mode look</td></tr>
+            <tr><td>light</td><td>White (#ffffff)</td><td>Light backgrounds, print, documents</td></tr>
+            <tr><td>dim</td><td>Dark gray (#1e2732)</td><td>Softer dark mode, less contrast</td></tr>
+            <tr><td>black</td><td>Pure black (#000000)</td><td>OLED displays, maximum contrast</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Gradient Backgrounds</h3>
+      <p>Eight preset gradients wrap around the tweet card, adding visual depth. The card itself retains its theme background color.</p>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Name</th><th>Colors</th></tr></thead>
+          <tbody>
+            <tr><td>sunset</td><td>Red to yellow</td></tr>
+            <tr><td>ocean</td><td>Purple to violet</td></tr>
+            <tr><td>forest</td><td>Teal to green</td></tr>
+            <tr><td>fire</td><td>Red to orange</td></tr>
+            <tr><td>midnight</td><td>Dark gray to charcoal</td></tr>
+            <tr><td>sky</td><td>Blue to light blue</td></tr>
+            <tr><td>candy</td><td>Pink to gold</td></tr>
+            <tr><td>peach</td><td>Cream to salmon</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Custom Gradients</h3>
+      <p>Use <code>gradientFrom</code>, <code>gradientTo</code>, and <code>gradientAngle</code> together to create your own gradient background. These override any preset gradient.</p>
+      <div class="code-wrapper">
+        <pre><code>?gradientFrom=%23ff6b6b&amp;gradientTo=%23feca57&amp;gradientAngle=135</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>Custom Colors</h3>
+      <p>Override individual colors within the card. These work independently of the selected theme.</p>
+      <ul class="doc-list">
+        <li><code>bgColor</code> &mdash; Card background color (overrides theme)</li>
+        <li><code>textColor</code> &mdash; Main text color (overrides theme)</li>
+        <li><code>linkColor</code> &mdash; Hashtag, mention, and URL color (overrides theme)</li>
+      </ul>
+
+      <h3>Dimension Presets</h3>
+      <p>The tweet card always renders at 550px readable width. When a dimension preset is selected, the canvas resizes to the preset dimensions and the card is centered within it.</p>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Preset</th><th>Canvas Size</th><th>Use Case</th></tr></thead>
+          <tbody>
+            <tr><td>auto</td><td>550px (width only)</td><td>Default, flexible height</td></tr>
+            <tr><td>instagramFeed</td><td>1080 x 1080</td><td>Instagram square post</td></tr>
+            <tr><td>instagramStory</td><td>1080 x 1920</td><td>Instagram / TikTok story</td></tr>
+            <tr><td>instagramVertical</td><td>1080 x 1350</td><td>Instagram portrait post</td></tr>
+            <tr><td>tiktok</td><td>1080 x 1920</td><td>TikTok video thumbnail</td></tr>
+            <tr><td>linkedin</td><td>1200 x 627</td><td>LinkedIn shared image</td></tr>
+            <tr><td>twitter</td><td>1200 x 675</td><td>Twitter card image</td></tr>
+            <tr><td>facebook</td><td>1200 x 630</td><td>Facebook shared image</td></tr>
+            <tr><td>youtube</td><td>1280 x 720</td><td>YouTube thumbnail</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Phone Frame</h3>
+      <p>Set <code>frame=phone</code> to wrap the screenshot in a phone device mockup. Works with all themes and gradients.</p>
+
+      <h3>Custom Fonts</h3>
+      <p>Provide <code>fontUrl</code> and <code>fontBoldUrl</code> pointing to WOFF or TTF font files, along with <code>fontFamily</code> to name the font. The API fetches the fonts at render time.</p>
+      <div class="note note-warning">
+        <p>Custom fonts are not available on the demo endpoint to prevent SSRF abuse.</p>
+      </div>
+
+      <h3>Branding</h3>
+      <p>Add a logo watermark with the <code>logo</code> parameter (URL to an image). Control placement with <code>logoPosition</code> (e.g., <code>bottom-right</code>) and size with <code>logoSize</code> (default 40px, range 16-200px).</p>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- CODE EXAMPLES                                          -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="examples">Code Examples</h2>
+
+      <!-- Example 1: Basic Screenshot -->
+      <div class="example-block" data-example="basic">
+        <h4>Basic Screenshot</h4>
+        <div class="example-tabs">
+          <button class="example-tab active" data-lang="curl">curl</button>
+          <button class="example-tab" data-lang="javascript">JavaScript</button>
+          <button class="example-tab" data-lang="python">Python</button>
+          <button class="example-tab" data-lang="nodejs">Node.js</button>
+        </div>
+        <div class="example-panel active" data-lang="curl">
+          <div class="code-wrapper">
+            <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark" \
+  -H "X-API-KEY: YOUR_API_KEY" \
+  -o tweet.png</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="javascript">
+          <div class="code-wrapper">
+            <pre><code>const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(
+  `${API_BASE}/screenshot/1617979122625712128?theme=dark`,
+  { headers: { 'X-API-KEY': API_KEY } }
+);
+
+const blob = await response.blob();
+const url = URL.createObjectURL(blob);
+
+// Display in an img element
+const img = document.createElement('img');
+img.src = url;
+document.body.appendChild(img);</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="python">
+          <div class="code-wrapper">
+            <pre><code>import requests
+
+API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app'
+API_KEY = 'YOUR_API_KEY'
+
+response = requests.get(
+    f'{API_BASE}/screenshot/1617979122625712128',
+    headers={'X-API-KEY': API_KEY},
+    params={'theme': 'dark'}
+)
+response.raise_for_status()
+
+with open('tweet.png', 'wb') as f:
+    f.write(response.content)
+
+print('Saved to tweet.png')</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="nodejs">
+          <div class="code-wrapper">
+            <pre><code>import fs from 'fs';
+
+const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(
+  `${API_BASE}/screenshot/1617979122625712128?theme=dark`,
+  { headers: { 'X-API-KEY': API_KEY } }
+);
+
+const buffer = Buffer.from(await response.arrayBuffer());
+fs.writeFileSync('tweet.png', buffer);
+
+console.log('Saved to tweet.png');</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example 2: POST with Options -->
+      <div class="example-block" data-example="post-options">
+        <h4>POST with Options (base64 response)</h4>
+        <div class="example-tabs">
+          <button class="example-tab active" data-lang="curl">curl</button>
+          <button class="example-tab" data-lang="javascript">JavaScript</button>
+          <button class="example-tab" data-lang="python">Python</button>
+          <button class="example-tab" data-lang="nodejs">Node.js</button>
+        </div>
+        <div class="example-panel active" data-lang="curl">
+          <div class="code-wrapper">
+            <pre><code>curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot \
+  -H "X-API-KEY: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tweetId": "1617979122625712128",
+    "response": "base64",
+    "theme": "light",
+    "gradient": "ocean",
+    "hideMetrics": true,
+    "dimension": "instagramFeed"
+  }'</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="javascript">
+          <div class="code-wrapper">
+            <pre><code>const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/screenshot`, {
+  method: 'POST',
+  headers: {
+    'X-API-KEY': API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    tweetId: '1617979122625712128',
+    response: 'base64',
+    theme: 'light',
+    gradient: 'ocean',
+    hideMetrics: true,
+    dimension: 'instagramFeed',
+  }),
+});
+
+const data = await response.json();
+console.log('Author:', data.author);
+console.log('Base64 length:', data.data.length);
+
+// Convert to image
+const img = new Image();
+img.src = `data:image/png;base64,${data.data}`;</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="python">
+          <div class="code-wrapper">
+            <pre><code>import requests
+import base64
+
+API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app'
+API_KEY = 'YOUR_API_KEY'
+
+response = requests.post(
+    f'{API_BASE}/screenshot',
+    headers={
+        'X-API-KEY': API_KEY,
+        'Content-Type': 'application/json',
+    },
+    json={
+        'tweetId': '1617979122625712128',
+        'response': 'base64',
+        'theme': 'light',
+        'gradient': 'ocean',
+        'hideMetrics': True,
+        'dimension': 'instagramFeed',
+    }
+)
+response.raise_for_status()
+
+data = response.json()
+print(f"Author: {data['author']}")
+
+# Decode and save
+image_bytes = base64.b64decode(data['data'])
+with open('tweet.png', 'wb') as f:
+    f.write(image_bytes)</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="nodejs">
+          <div class="code-wrapper">
+            <pre><code>import fs from 'fs';
+
+const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/screenshot`, {
+  method: 'POST',
+  headers: {
+    'X-API-KEY': API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    tweetId: '1617979122625712128',
+    response: 'base64',
+    theme: 'light',
+    gradient: 'ocean',
+    hideMetrics: true,
+    dimension: 'instagramFeed',
+  }),
+});
+
+const data = await response.json();
+console.log('Author:', data.author);
+
+// Decode and save
+const buffer = Buffer.from(data.data, 'base64');
+fs.writeFileSync('tweet.png', buffer);
+console.log('Saved to tweet.png');</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example 3: Batch Processing -->
+      <div class="example-block" data-example="batch">
+        <h4>Batch Processing</h4>
+        <div class="example-tabs">
+          <button class="example-tab active" data-lang="curl">curl</button>
+          <button class="example-tab" data-lang="javascript">JavaScript</button>
+          <button class="example-tab" data-lang="python">Python</button>
+          <button class="example-tab" data-lang="nodejs">Node.js</button>
+        </div>
+        <div class="example-panel active" data-lang="curl">
+          <div class="code-wrapper">
+            <pre><code>curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/batch \
+  -H "X-API-KEY: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": [
+      "1617979122625712128",
+      "https://x.com/elonmusk/status/1617979122625712128"
+    ],
+    "response": "base64",
+    "theme": "dark",
+    "gradient": "sunset"
+  }'</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="javascript">
+          <div class="code-wrapper">
+            <pre><code>const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/screenshot/batch`, {
+  method: 'POST',
+  headers: {
+    'X-API-KEY': API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    urls: [
+      '1617979122625712128',
+      'https://x.com/elonmusk/status/1617979122625712128',
+    ],
+    response: 'base64',
+    theme: 'dark',
+    gradient: 'sunset',
+  }),
+});
+
+const data = await response.json();
+console.log(`Total: ${data.total}, Succeeded: ${data.succeeded}, Failed: ${data.failed}`);
+
+data.results.forEach((result) => {
+  if (result.success) {
+    console.log(`${result.tweetId}: OK (${result.author})`);
+  } else {
+    console.log(`${result.tweetId}: FAILED - ${result.error}`);
+  }
+});</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="python">
+          <div class="code-wrapper">
+            <pre><code>import requests
+import base64
+
+API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app'
+API_KEY = 'YOUR_API_KEY'
+
+response = requests.post(
+    f'{API_BASE}/screenshot/batch',
+    headers={
+        'X-API-KEY': API_KEY,
+        'Content-Type': 'application/json',
+    },
+    json={
+        'urls': [
+            '1617979122625712128',
+            'https://x.com/elonmusk/status/1617979122625712128',
+        ],
+        'response': 'base64',
+        'theme': 'dark',
+        'gradient': 'sunset',
+    }
+)
+response.raise_for_status()
+data = response.json()
+
+print(f"Total: {data['total']}, Succeeded: {data['succeeded']}")
+
+for result in data['results']:
+    if result['success']:
+        image_bytes = base64.b64decode(result['data'])
+        filename = f"{result['tweetId']}.png"
+        with open(filename, 'wb') as f:
+            f.write(image_bytes)
+        print(f"Saved {filename}")
+    else:
+        print(f"Failed {result['tweetId']}: {result['error']}")</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="nodejs">
+          <div class="code-wrapper">
+            <pre><code>import fs from 'fs';
+
+const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/screenshot/batch`, {
+  method: 'POST',
+  headers: {
+    'X-API-KEY': API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    urls: [
+      '1617979122625712128',
+      'https://x.com/elonmusk/status/1617979122625712128',
+    ],
+    response: 'base64',
+    theme: 'dark',
+    gradient: 'sunset',
+  }),
+});
+
+const data = await response.json();
+console.log(`Total: ${data.total}, Succeeded: ${data.succeeded}`);
+
+for (const result of data.results) {
+  if (result.success) {
+    const buffer = Buffer.from(result.data, 'base64');
+    fs.writeFileSync(`${result.tweetId}.png`, buffer);
+    console.log(`Saved ${result.tweetId}.png`);
+  } else {
+    console.log(`Failed ${result.tweetId}: ${result.error}`);
+  }
+}</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example 4: Check Usage -->
+      <div class="example-block" data-example="usage">
+        <h4>Check Usage</h4>
+        <div class="example-tabs">
+          <button class="example-tab active" data-lang="curl">curl</button>
+          <button class="example-tab" data-lang="javascript">JavaScript</button>
+          <button class="example-tab" data-lang="python">Python</button>
+          <button class="example-tab" data-lang="nodejs">Node.js</button>
+        </div>
+        <div class="example-panel active" data-lang="curl">
+          <div class="code-wrapper">
+            <pre><code>curl "https://tweet-shots-api-1084185199991.us-central1.run.app/billing/usage" \
+  -H "X-API-KEY: YOUR_API_KEY"</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="javascript">
+          <div class="code-wrapper">
+            <pre><code>const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/billing/usage`, {
+  headers: { 'X-API-KEY': API_KEY },
+});
+
+const usage = await response.json();
+console.log(`Tier: ${usage.tier}`);
+console.log(`Used: ${usage.used} / ${usage.limit}`);
+console.log(`Remaining: ${usage.remaining}`);
+console.log(`Resets: ${usage.resetDate}`);</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="python">
+          <div class="code-wrapper">
+            <pre><code>import requests
+
+API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app'
+API_KEY = 'YOUR_API_KEY'
+
+response = requests.get(
+    f'{API_BASE}/billing/usage',
+    headers={'X-API-KEY': API_KEY}
+)
+response.raise_for_status()
+
+usage = response.json()
+print(f"Tier: {usage['tier']}")
+print(f"Used: {usage['used']} / {usage['limit']}")
+print(f"Remaining: {usage['remaining']}")
+print(f"Resets: {usage['resetDate']}")</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="example-panel" data-lang="nodejs">
+          <div class="code-wrapper">
+            <pre><code>const API_BASE = 'https://tweet-shots-api-1084185199991.us-central1.run.app';
+const API_KEY = 'YOUR_API_KEY';
+
+const response = await fetch(`${API_BASE}/billing/usage`, {
+  headers: { 'X-API-KEY': API_KEY },
+});
+
+const usage = await response.json();
+console.log(`Tier: ${usage.tier}`);
+console.log(`Used: ${usage.used} / ${usage.limit}`);
+console.log(`Remaining: ${usage.remaining}`);
+console.log(`Resets: ${usage.resetDate}`);</code></pre>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- RATE LIMITS & PRICING                                  -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="rate-limits">Rate Limits &amp; Pricing</h2>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <h4>Free</h4>
+          <div class="price">$0<span>/mo</span></div>
+          <div class="credits">50 screenshots/month</div>
+          <ul>
+            <li>10 requests/min</li>
+            <li>Batch: 10 URLs max</li>
+            <li>All themes &amp; gradients</li>
+            <li>Custom fonts</li>
+            <li>Branding/logo</li>
+          </ul>
+          <a href="/billing/signup" class="btn-sm btn-secondary">Get Started</a>
+        </div>
+        <div class="pricing-card featured">
+          <h4>Pro</h4>
+          <div class="price">$9<span>/mo</span></div>
+          <div class="credits">1,000 screenshots/month</div>
+          <ul>
+            <li>100 requests/min</li>
+            <li>Batch: 100 URLs max</li>
+            <li>All themes &amp; gradients</li>
+            <li>Custom fonts</li>
+            <li>Branding/logo</li>
+          </ul>
+          <a href="/billing/checkout?tier=pro" class="btn-sm btn-primary">Subscribe</a>
+        </div>
+        <div class="pricing-card">
+          <h4>Business</h4>
+          <div class="price">$49<span>/mo</span></div>
+          <div class="credits">10,000 screenshots/month</div>
+          <ul>
+            <li>1,000 requests/min</li>
+            <li>Batch: 500 URLs max</li>
+            <li>All themes &amp; gradients</li>
+            <li>Custom fonts</li>
+            <li>Branding/logo</li>
+          </ul>
+          <a href="/billing/checkout?tier=business" class="btn-sm btn-secondary">Subscribe</a>
+        </div>
+      </div>
+
+      <p>All tiers include the same rendering features. Tiers differ in rate limits, monthly credit allowances, and batch sizes. <a href="/billing/signup">Sign up for free</a> or <a href="/billing/checkout?tier=pro">upgrade to Pro</a>.</p>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- ERROR HANDLING                                         -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="errors">Error Handling</h2>
+      <p>All errors return a consistent JSON format:</p>
+
+      <div class="code-wrapper">
+        <pre><code>{
+  "error": "Human-readable description of the problem",
+  "code": "SCREAMING_SNAKE_CASE",
+  "requestId": "uuid-for-support-correlation"
+}</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <p>Validation errors include an additional <code>details</code> array with per-field messages:</p>
+      <div class="code-wrapper">
+        <pre><code>{
+  "error": "Request validation failed. Check the details field for specific issues.",
+  "code": "VALIDATION_ERROR",
+  "details": [
+    { "field": "theme", "message": "Invalid enum value. Expected 'light' | 'dark' | 'dim' | 'black'" }
+  ],
+  "requestId": "abc-123"
+}</code></pre>
+        <button class="copy-btn">Copy</button>
+      </div>
+
+      <h3>Error Codes</h3>
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Code</th><th>Status</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>MISSING_API_KEY</td><td>401</td><td>No API key provided in header or query parameter</td></tr>
+            <tr><td>INVALID_API_KEY</td><td>401</td><td>API key not found in database or has been deactivated</td></tr>
+            <tr><td>RATE_LIMITED</td><td>429</td><td>Too many requests for your tier's rate limit</td></tr>
+            <tr><td>MONTHLY_LIMIT_EXCEEDED</td><td>429</td><td>Monthly credit limit reached for your tier</td></tr>
+            <tr><td>VALIDATION_ERROR</td><td>400</td><td>Invalid request parameters (check <code>details</code> array)</td></tr>
+            <tr><td>SCREENSHOT_FAILED</td><td>404/500</td><td>Tweet not found or rendering failed</td></tr>
+            <tr><td>RENDER_TIMEOUT</td><td>504</td><td>Render exceeded the time limit (try <code>hideMedia=true</code>)</td></tr>
+            <tr><td>BATCH_LIMIT_EXCEEDED</td><td>400</td><td>Batch size exceeds the maximum for your tier</td></tr>
+            <tr><td>FETCH_FAILED</td><td>404/502</td><td>Could not retrieve tweet data from Twitter</td></tr>
+            <tr><td>DEMO_RATE_LIMITED</td><td>429</td><td>Demo endpoint rate limit exceeded (5 req/min per IP)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note note-success">
+        <p><strong>Tip:</strong> Check the <code>X-Credits-Remaining</code> response header to monitor your usage proactively. When you receive a <code>429</code> with <code>MONTHLY_LIMIT_EXCEEDED</code>, upgrade your tier or wait for the monthly reset. The <code>Retry-After</code> header on <code>429</code> responses indicates how many seconds to wait before retrying.</p>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- RESPONSE HEADERS                                       -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <h2 class="section-heading" id="headers">Response Headers</h2>
+      <p>These headers are included in API responses to provide metadata and support debugging.</p>
+
+      <div class="table-wrapper">
+        <table class="docs-table">
+          <thead><tr><th>Header</th><th>Present On</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>X-Request-ID</td>
+              <td>All requests</td>
+              <td>Unique request ID for support correlation</td>
+            </tr>
+            <tr>
+              <td>X-Tweet-ID</td>
+              <td>Screenshot endpoints</td>
+              <td>The resolved tweet ID</td>
+            </tr>
+            <tr>
+              <td>X-Tweet-Author</td>
+              <td>Screenshot endpoints</td>
+              <td>Tweet author's screen name</td>
+            </tr>
+            <tr>
+              <td>X-Render-Time-Ms</td>
+              <td>Screenshot endpoints</td>
+              <td>Time to render in milliseconds</td>
+            </tr>
+            <tr>
+              <td>X-Credits-Limit</td>
+              <td>Authenticated requests</td>
+              <td>Monthly credit limit for your tier</td>
+            </tr>
+            <tr>
+              <td>X-Credits-Remaining</td>
+              <td>Authenticated requests</td>
+              <td>Remaining credits this month</td>
+            </tr>
+            <tr>
+              <td>Content-Type</td>
+              <td>All requests</td>
+              <td><code>image/png</code>, <code>image/svg+xml</code>, or <code>application/json</code></td>
+            </tr>
+            <tr>
+              <td>Retry-After</td>
+              <td>429 responses</td>
+              <td>Seconds to wait before retrying</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- FOOTER                                                 -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <footer class="docs-footer">
+        <div class="docs-footer-links">
+          <a href="/">Home</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/billing/signup">Sign Up</a>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/docs/llm">LLM Docs</a>
+        </div>
+        <p>tweet-shots API</p>
+      </footer>
+
+    </main>
+  </div>
+
+  <script src="/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+tweet-shots API Reference
+=========================
+
+Base URL: https://tweet-shots-api-1084185199991.us-central1.run.app
+
+Converts tweet URLs or IDs into pixel-perfect PNG/SVG screenshots. No browser automation — uses Twitter's syndication API + Satori rendering.
+
+AUTHENTICATION
+--------------
+Two methods (use one):
+  Header:     X-API-KEY: ts_<tier>_<uuid>
+  Query:      ?apiKey=ts_<tier>_<uuid>
+
+Get a free key: POST /billing/signup with {"email":"you@example.com"}
+
+
+ENDPOINTS
+---------
+
+### GET /screenshot/:tweetIdOrUrl
+Auth: Required | Credits: 1 | Returns: image (PNG or SVG)
+
+URL param: tweetIdOrUrl — Tweet ID or full URL (URL-encoded if URL)
+All render parameters accepted as query strings. Booleans must be exact strings "true" or "false".
+
+Response headers: Content-Type, X-Tweet-ID, X-Tweet-Author, X-Render-Time-Ms, X-Credits-Limit, X-Credits-Remaining
+
+Example:
+  curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark&gradient=ocean" \
+    -H "X-API-KEY: YOUR_KEY" -o tweet.png
+
+
+### POST /screenshot
+Auth: Required | Credits: 1 | Content-Type: application/json
+
+Body (at least one of tweetId or tweetUrl required):
+  {
+    "tweetId": "1617979122625712128",   // or "tweetUrl": "https://x.com/user/status/123"
+    "response": "image|base64|url",      // default: "image"
+    "theme": "dark",                     // plus all render params below
+  }
+
+Aliases: backgroundGradient → gradient, backgroundColor → bgColor, borderRadius → radius
+
+Response when response="image": binary image
+Response when response="base64":
+  { "success": true, "tweetId": "123", "author": "user", "format": "png", "data": "<base64>" }
+Response when response="url":
+  { "success": true, "tweetId": "123", "author": "user", "format": "png", "url": "https://storage..." }
+
+Example:
+  curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot \
+    -H "X-API-KEY: YOUR_KEY" -H "Content-Type: application/json" \
+    -d '{"tweetId":"1617979122625712128","response":"base64","theme":"dark","gradient":"sunset"}'
+
+
+### POST /screenshot/batch
+Auth: Required | Credits: N (1 per URL) | Content-Type: application/json OR multipart/form-data
+
+Batch limits: Free=10, Pro=100, Business=500 URLs max
+Concurrency: up to 5 concurrent renders
+
+JSON request:
+  { "urls": ["id1","id2","https://x.com/..."], "response": "base64|url", ...renderOptions }
+
+CSV upload (multipart): field "file" with CSV containing "url" column header
+
+Response:
+  {
+    "success": true,
+    "total": 3,
+    "succeeded": 2,
+    "failed": 1,
+    "results": [
+      { "tweetId": "123", "success": true, "data": "<base64>", "author": "user", "format": "png" },
+      { "tweetId": "456", "success": false, "error": "Tweet not found", "code": "RENDER_FAILED" }
+    ]
+  }
+
+
+### GET /tweet/:tweetIdOrUrl
+Auth: Required | Credits: 1 | Returns: JSON
+
+Returns raw tweet data from Twitter's syndication API.
+
+Response:
+  {
+    "success": true,
+    "tweetId": "123",
+    "data": { "id_str", "full_text", "user": { "screen_name", "name", ... }, "created_at", "entities", "public_metrics", ... }
+  }
+
+
+### GET /demo/screenshot/:tweetIdOrUrl
+Auth: None (public) | Rate limit: 5 req/min per IP | Returns: PNG only
+
+Same render params as GET /screenshot except: no fontUrl, fontBoldUrl, fontFamily, logo (SSRF prevention).
+Responses cached for 5 minutes. Good for testing before getting an API key.
+
+
+### GET /billing/usage
+Auth: Required (API key)
+
+Response:
+  { "tier": "free", "limit": 50, "used": 12, "remaining": 38, "currentMonth": "2026-03", "resetDate": "2026-04-01T00:00:00Z" }
+
+
+### POST /billing/signup
+Auth: None | Rate limit: 5/15min per IP
+
+Body: { "email": "you@example.com", "name": "Optional Name" }
+Response: { "success": true, "apiKey": "ts_free_<uuid>", "tier": "free", "credits": 50, "message": "..." }
+
+
+### POST /billing/checkout
+Auth: None | Rate limit: 15/15min per IP
+
+Body: { "email": "you@example.com", "tier": "pro|business" }
+Response: { "url": "https://checkout.stripe.com/...", "sessionId": "cs_..." }
+
+Redirect the user to the returned URL to complete payment.
+
+
+### POST /billing/portal
+Auth: None | Rate limit: 15/15min per IP
+
+Body: { "email": "you@example.com" }
+Response: { "url": "https://billing.stripe.com/..." }
+
+Redirect the user to manage their subscription.
+
+
+RENDER PARAMETERS
+-----------------
+
+Name            Type      Default   Values                                                          Description
+theme           string    dark      dark, light, dim, black                                         Card color theme
+dimension       string    auto      auto, instagramFeed, instagramStory, instagramVertical,         Canvas size preset
+                                    tiktok, linkedin, twitter, facebook, youtube
+format          string    png       png, svg                                                        Output format
+scale           number    2         1, 2, 3                                                         Resolution multiplier
+gradient        string    —         sunset, ocean, forest, fire, midnight, sky, candy, peach         Background gradient preset
+bgColor         string    —         #rrggbb                                                         Custom background color
+textColor       string    —         #rrggbb                                                         Custom text color
+linkColor       string    —         #rrggbb                                                         Custom link/hashtag color
+hideMetrics     boolean   false     true, false                                                     Hide like/retweet/reply counts
+hideMedia       boolean   false     true, false                                                     Hide embedded images/videos
+hideDate        boolean   false     true, false                                                     Hide tweet timestamp
+hideVerified    boolean   false     true, false                                                     Hide verification badge
+hideShadow      boolean   false     true, false                                                     Remove card drop shadow
+hideQuoteTweet  boolean   false     true, false                                                     Hide quoted tweet
+padding         number    20        0–100                                                           Padding around card (px)
+radius          number    16        0–100                                                           Card border radius (px)
+fontFamily      string    —         any (max 100 chars)                                             Custom font family name
+fontUrl         URL       —         valid URL                                                       Custom regular font URL
+fontBoldUrl     URL       —         valid URL                                                       Custom bold font URL
+logo            URL       —         valid URL                                                       Brand logo image URL
+logoPosition    string    —         top-left, top-right, bottom-left, bottom-right                  Logo placement
+logoSize        number    40        16–200                                                          Logo size in pixels
+frame           string    —         phone                                                           Device frame mockup
+gradientFrom    string    —         #rrggbb                                                         Custom gradient start color
+gradientTo      string    —         #rrggbb                                                         Custom gradient end color
+gradientAngle   number    —         0–360                                                           Custom gradient angle (degrees)
+thread          boolean   false     true, false                                                     Render entire tweet thread
+response        string    image     image, base64, url                                              Response format (POST only)
+
+Note: GET query params require boolean values as exact strings "true"/"false". POST JSON body accepts native booleans.
+
+
+TIERS & RATE LIMITS
+-------------------
+
+Tier       Price    Rate Limit     Monthly Credits   Max Batch
+free       $0/mo    10 req/min     50                10 URLs
+pro        $9/mo    100 req/min    1,000             100 URLs
+business   $49/mo   1,000 req/min  10,000            500 URLs
+
+All tiers support custom fonts, branding/logo, all themes, all gradients, and all dimension presets.
+Credits reset monthly on UTC day boundary. Billing guard fails open (Firestore outage = requests proceed).
+
+
+ERROR RESPONSE FORMAT
+---------------------
+
+All errors return JSON:
+  {
+    "error": "Human-readable message",
+    "code": "SCREAMING_SNAKE_CASE",
+    "requestId": "uuid"
+  }
+
+Validation errors add a "details" array:
+  { "error": "...", "code": "VALIDATION_ERROR", "details": [{ "field": "theme", "message": "Invalid value" }] }
+
+
+ERROR CODES
+-----------
+
+Code                      Status   Trigger
+MISSING_API_KEY           401      No API key in header or query
+INVALID_API_KEY           401      Key not found or deactivated
+RATE_LIMITED              429      Exceeded tier rate limit
+MONTHLY_LIMIT_EXCEEDED    429      Monthly credits exhausted
+VALIDATION_ERROR          400      Invalid request parameters
+SCREENSHOT_FAILED         404/500  Tweet not found or render error
+RENDER_TIMEOUT            504      Render exceeded time limit (30–60s)
+BATCH_LIMIT_EXCEEDED      400      Batch size exceeds tier maximum
+FETCH_FAILED              404/502  Could not retrieve tweet data
+DEMO_RATE_LIMITED         429      Demo endpoint rate limit (5/min/IP)
+SIGNUP_FAILED             500      Account creation error
+CHECKOUT_FAILED           500      Stripe checkout session error
+BILLING_NOT_CONFIGURED    503      Stripe not configured on server
+
+
+RESPONSE HEADERS
+----------------
+
+Header               Present On              Description
+X-Request-ID         All requests            Unique ID for support correlation
+X-Tweet-ID           Screenshot endpoints    Resolved tweet ID
+X-Tweet-Author       Screenshot endpoints    Author's screen name
+X-Render-Time-Ms     Screenshot endpoints    Render duration in milliseconds
+X-Credits-Limit      Authenticated requests  Monthly credit limit for tier
+X-Credits-Remaining  Authenticated requests  Credits remaining this month
+Content-Type         All requests            image/png, image/svg+xml, or application/json
+Retry-After          429 responses           Seconds to wait before retrying
+
+
+QUICK EXAMPLES
+--------------
+
+# Get a free API key
+curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/billing/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com"}'
+
+# Generate a screenshot (save to file)
+curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark&gradient=ocean" \
+  -H "X-API-KEY: YOUR_KEY" -o tweet.png
+
+# POST with options (base64 response)
+curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot \
+  -H "X-API-KEY: YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"tweetId":"1617979122625712128","response":"base64","theme":"light","hideMetrics":true}'
+
+# Batch screenshots
+curl -X POST https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/batch \
+  -H "X-API-KEY: YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"urls":["1617979122625712128","1234567890"],"response":"base64","theme":"dark"}'
+
+# Check usage
+curl https://tweet-shots-api-1084185199991.us-central1.run.app/billing/usage \
+  -H "X-API-KEY: YOUR_KEY"
+
+# Get raw tweet data
+curl https://tweet-shots-api-1084185199991.us-central1.run.app/tweet/1617979122625712128 \
+  -H "X-API-KEY: YOUR_KEY"

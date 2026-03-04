@@ -63,6 +63,7 @@ const { authenticate } = await import('../../src/middleware/authenticate.mjs');
 const { billingGuard } = await import('../../src/middleware/billing-guard.mjs');
 const { errorHandler } = await import('../../src/middleware/error-handler.mjs');
 const { healthRoutes } = await import('../../src/routes/health.mjs');
+const { docsRoutes } = await import('../../src/routes/docs.mjs');
 const { landingRoutes } = await import('../../src/routes/landing.mjs');
 const { screenshotRoutes } = await import('../../src/routes/screenshot.mjs');
 const { tweetRoutes } = await import('../../src/routes/tweet.mjs');
@@ -88,6 +89,7 @@ beforeAll(async () => {
 
   // Public routes
   app.use(landingRoutes());
+  app.use(docsRoutes());
   app.use(healthRoutes());
 
   // Authenticated routes
