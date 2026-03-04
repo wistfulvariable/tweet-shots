@@ -55,7 +55,7 @@ export async function fetchTweet(tweetId) {
 
   if (!response.ok) {
     // Map upstream status to client-facing error — never expose raw HTTP details
-    if (response.status === 404) {
+    if (response.status === 400 || response.status === 404) {
       throw new AppError('Tweet not found or is no longer available', 404);
     }
     if (response.status === 429) {

@@ -119,6 +119,8 @@ const {
   GRADIENTS,
 } = await import('../../core.mjs');
 
+const { AppError } = await import('../../src/errors.mjs');
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Create a deep clone of MOCK_TWEET to avoid cross-test mutation */
@@ -438,10 +440,22 @@ describe('fetchTweet', () => {
     expect(result).toEqual(tweetData);
   });
 
-  it('throws on non-ok HTTP response', async () => {
+  it('throws 404 on HTTP 404 response', async () => {
     globalThis.fetch = vi.fn(async () => mockFetchResponse({}, { ok: false, status: 404, statusText: 'Not Found' }));
 
-    await expect(fetchTweet('999')).rejects.toThrow('Tweet not found or is no longer available');
+    const err = await fetchTweet('999').catch(e => e);
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.statusCode).toBe(404);
+    expect(err.message).toBe('Tweet not found or is no longer available');
+  });
+
+  it('throws 404 on HTTP 400 response (invalid/oversized tweet ID)', async () => {
+    globalThis.fetch = vi.fn(async () => mockFetchResponse({}, { ok: false, status: 400, statusText: 'Bad Request' }));
+
+    const err = await fetchTweet('99999999999999999999').catch(e => e);
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.statusCode).toBe(404);
+    expect(err.message).toBe('Tweet not found or is no longer available');
   });
 
   it('throws when data.text is falsy', async () => {
