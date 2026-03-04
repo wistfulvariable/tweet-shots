@@ -59,15 +59,16 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 - Polls: no renderable structure in response
 - Thread: `parent.id_str` for backward walk only, no forward links
 - Rate limits: permissive but unofficial limits unclear
+- Invalid/oversized tweet IDs (e.g. 20+ digits) → API returns **400**, not 404
 
 ## Error Handling (tweet-fetch.mjs)
 
 ```js
 // Map upstream status — never expose raw HTTP details
-if (response.status === 404) throw new AppError('Tweet not found or is no longer available', 404);
+if (response.status === 400 || response.status === 404) throw new AppError('Tweet not found...', 404);
 if (response.status === 429) throw new AppError('Twitter rate limit reached...', 429);
 if (!response.ok) throw new AppError('Unable to retrieve tweet...', 502);
 if (!data.text) throw new AppError('Tweet not found or unavailable', 404);
 ```
 
-Both CLI and API use `fetchTweet()` from `tweet-fetch.mjs` with `!data.text` as availability check. Routes import directly from `tweet-fetch.mjs`, not `core.mjs`.
+400 is mapped to 404 because the syndication API returns 400 (not 404) for invalid or oversized tweet IDs. Both CLI and API use `fetchTweet()` from `tweet-fetch.mjs` with `!data.text` as availability check. Routes import directly from `tweet-fetch.mjs`, not `core.mjs`.
