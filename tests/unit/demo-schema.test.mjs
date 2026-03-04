@@ -22,16 +22,14 @@ describe('demoQuerySchema', () => {
       expect(result.data.bgColor).toBeUndefined();
       expect(result.data.textColor).toBeUndefined();
       expect(result.data.linkColor).toBeUndefined();
-      // NOTE: Zod .default('false') injects the raw string BEFORE .transform() runs,
-      // so omitted boolean fields get the string "false" rather than boolean false.
-      // This is a known Zod behavior — the transform only fires on explicitly provided values.
-      expect(result.data.hideMetrics).toBe('false');
-      expect(result.data.hideMedia).toBe('false');
-      expect(result.data.hideDate).toBe('false');
-      expect(result.data.hideVerified).toBe('false');
-      expect(result.data.hideShadow).toBe('false');
-      expect(result.data.hideQuoteTweet).toBe('false');
-      expect(result.data.showUrl).toBe('false');
+      expect(result.data.hideMetrics).toBe(false);
+      expect(result.data.hideMedia).toBe(false);
+      expect(result.data.hideDate).toBe(false);
+      expect(result.data.hideVerified).toBe(false);
+      expect(result.data.hideShadow).toBe(false);
+      expect(result.data.hideQuoteTweet).toBe(false);
+      expect(result.data.showUrl).toBe(false);
+      expect(result.data.thread).toBe(false);
     });
 
     it('does not include gradient when not provided', () => {
@@ -118,7 +116,7 @@ describe('demoQuerySchema', () => {
   describe('boolean string fields', () => {
     const boolFields = [
       'hideMetrics', 'hideMedia', 'hideDate',
-      'hideVerified', 'hideShadow', 'hideQuoteTweet', 'showUrl',
+      'hideVerified', 'hideShadow', 'hideQuoteTweet', 'showUrl', 'thread',
     ];
 
     it('transforms "true" string to boolean true', () => {
@@ -137,13 +135,11 @@ describe('demoQuerySchema', () => {
       }
     });
 
-    it('defaults all boolean fields to string "false" when omitted', () => {
-      // See note in defaults test: Zod .default('false') bypasses .transform(),
-      // so the default is the raw string "false", not boolean false.
+    it('defaults all boolean fields to false when omitted', () => {
       const result = demoQuerySchema.safeParse({});
       expect(result.success).toBe(true);
       for (const field of boolFields) {
-        expect(result.data[field], `${field} should default to string "false"`).toBe('false');
+        expect(result.data[field], `${field} should default to false`).toBe(false);
       }
     });
 

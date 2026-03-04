@@ -109,11 +109,10 @@ describe('screenshotQuerySchema', () => {
     expect(result.data.showUrl).toBe(true);
   });
 
-  it('defaults showUrl to string "false" when omitted (Zod boolString behavior)', () => {
+  it('defaults showUrl to false when omitted', () => {
     const result = screenshotQuerySchema.safeParse({});
     expect(result.success).toBe(true);
-    // Query schemas use boolString which defaults to raw string "false" (Zod .default bypasses .transform)
-    expect(result.data.showUrl).toBe('false');
+    expect(result.data.showUrl).toBe(false);
   });
 
   it('accepts valid fontFamily', () => {
