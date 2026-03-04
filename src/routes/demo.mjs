@@ -7,8 +7,8 @@
  */
 
 import { Router } from 'express';
-import { extractTweetId, fetchTweet } from '../../tweet-fetch.mjs';
-import { renderTweetToImage, DIMENSIONS } from '../../tweet-render.mjs';
+import { extractTweetId, fetchTweet, fetchThread } from '../../tweet-fetch.mjs';
+import { renderTweetToImage, renderThreadToImage, DIMENSIONS } from '../../tweet-render.mjs';
 import { demoQuerySchema } from '../schemas/request-schemas.mjs';
 import { validate } from '../middleware/validate.mjs';
 import { sendRouteError } from '../errors.mjs';
@@ -49,6 +49,11 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       showUrl: params.showUrl === true,
       padding: params.padding ?? 20,
       borderRadius: params.radius ?? 16,
+      frame: params.frame,
+      gradientFrom: params.gradientFrom,
+      gradientTo: params.gradientTo,
+      gradientAngle: params.gradientAngle,
+      thread: params.thread === true,
       canvasWidth,
       canvasHeight,
     };
@@ -67,9 +72,16 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       try {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
-        const tweet = await fetchTweet(tweetId);
         const options = { ...buildDemoRenderOptions(req.validated), tweetId };
-        const result = await render(tweet, options);
+
+        let result;
+        if (options.thread) {
+          const tweets = await fetchThread(tweetId);
+          result = await renderThreadToImage(tweets, options);
+        } else {
+          const tweet = await fetchTweet(tweetId);
+          result = await render(tweet, options);
+        }
 
         res.set('Content-Type', result.contentType);
         res.set('Cache-Control', 'public, max-age=300');

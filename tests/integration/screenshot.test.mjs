@@ -34,6 +34,7 @@ vi.mock('../../tweet-fetch.mjs', async (importOriginal) => {
     ...actual,
     extractTweetId: vi.fn(actual.extractTweetId),
     fetchTweet: vi.fn(async () => structuredClone(MOCK_TWEET)),
+    fetchThread: vi.fn(async () => [structuredClone(MOCK_TWEET), structuredClone(MOCK_TWEET)]),
   };
 });
 
@@ -45,6 +46,14 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       const format = opts.format || 'png';
       return {
         data: Buffer.from(`fake-${format}-data`),
+        format,
+        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      };
+    }),
+    renderThreadToImage: vi.fn(async (tweets, opts = {}) => {
+      const format = opts.format || 'png';
+      return {
+        data: Buffer.from(`fake-thread-${format}-data`),
         format,
         contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
       };
@@ -62,8 +71,8 @@ vi.mock('../../src/services/storage.mjs', () => ({
 const { authenticate } = await import('../../src/middleware/authenticate.mjs');
 const { billingGuard } = await import('../../src/middleware/billing-guard.mjs');
 const { screenshotRoutes } = await import('../../src/routes/screenshot.mjs');
-const { extractTweetId, fetchTweet } = await import('../../tweet-fetch.mjs');
-const { renderTweetToImage } = await import('../../tweet-render.mjs');
+const { extractTweetId, fetchTweet, fetchThread } = await import('../../tweet-fetch.mjs');
+const { renderTweetToImage, renderThreadToImage } = await import('../../tweet-render.mjs');
 const { upload } = await import('../../src/services/storage.mjs');
 
 // ─── Test Setup ──────────────────────────────────────────────────────────────
@@ -107,10 +116,19 @@ beforeEach(() => {
   // Re-set default mock implementations after clearAllMocks
   extractTweetId.mockImplementation(_realExtractTweetId);
   fetchTweet.mockImplementation(async () => structuredClone(MOCK_TWEET));
+  fetchThread.mockImplementation(async () => [structuredClone(MOCK_TWEET), structuredClone(MOCK_TWEET)]);
   renderTweetToImage.mockImplementation(async (tweet, opts = {}) => {
     const format = opts.format || 'png';
     return {
       data: Buffer.from(`fake-${format}-data`),
+      format,
+      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+    };
+  });
+  renderThreadToImage.mockImplementation(async (tweets, opts = {}) => {
+    const format = opts.format || 'png';
+    return {
+      data: Buffer.from(`fake-thread-${format}-data`),
       format,
       contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
     };
@@ -475,6 +493,166 @@ describe('POST /screenshot', () => {
       tweetId: '1234567890',
       fontUrl: 'not-a-url',
     });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ─── New feature: Thread rendering ──────────────────────────────────────────
+
+describe('thread rendering', () => {
+  function postScreenshot(body, apiKey = MOCK_API_KEY) {
+    return fetch(`${baseUrl}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('GET: calls fetchThread and renderThreadToImage when thread=true', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?thread=true`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(fetchThread).toHaveBeenCalledWith('1234567890');
+    expect(renderThreadToImage).toHaveBeenCalled();
+    expect(fetchTweet).not.toHaveBeenCalled();
+    expect(renderTweetToImage).not.toHaveBeenCalled();
+  });
+
+  it('GET: calls regular fetchTweet when thread=false', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?thread=false`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(fetchTweet).toHaveBeenCalled();
+    expect(renderTweetToImage).toHaveBeenCalled();
+    expect(fetchThread).not.toHaveBeenCalled();
+  });
+
+  it('POST: calls fetchThread and renderThreadToImage when thread=true', async () => {
+    const res = await postScreenshot({ tweetId: '1234567890', thread: true });
+    expect(res.status).toBe(200);
+    expect(fetchThread).toHaveBeenCalledWith('1234567890');
+    expect(renderThreadToImage).toHaveBeenCalled();
+    expect(fetchTweet).not.toHaveBeenCalled();
+  });
+
+  it('GET: sets X-Tweet-Author from last tweet in thread', async () => {
+    fetchThread.mockResolvedValue([
+      { ...MOCK_TWEET, user: { ...MOCK_TWEET.user, screen_name: 'firsttweet' } },
+      { ...MOCK_TWEET, user: { ...MOCK_TWEET.user, screen_name: 'lasttweet' } },
+    ]);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?thread=true`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.headers.get('x-tweet-author')).toBe('lasttweet');
+  });
+});
+
+// ─── New feature: Logo/watermark ─────────────────────────────────────────────
+
+describe('logo/watermark params', () => {
+  function getScreenshot(params = '', apiKey = MOCK_API_KEY) {
+    return fetch(`${baseUrl}/screenshot/1234567890${params}`, {
+      headers: { 'X-API-KEY': apiKey },
+    });
+  }
+
+  it('GET: passes logo params to renderTweetToImage', async () => {
+    await getScreenshot('?logo=https%3A%2F%2Fexample.com%2Flogo.png&logoPosition=top-left&logoSize=60');
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        logo: 'https://example.com/logo.png',
+        logoPosition: 'top-left',
+        logoSize: 60,
+      })
+    );
+  });
+
+  it('GET: validates logoPosition enum', async () => {
+    const res = await getScreenshot('?logo=https://example.com/logo.png&logoPosition=center');
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('GET: validates logoSize range', async () => {
+    const res = await getScreenshot('?logo=https://example.com/logo.png&logoSize=5');
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ─── New feature: Phone mockup frame ─────────────────────────────────────────
+
+describe('phone mockup frame', () => {
+  it('GET: passes frame=phone to renderTweetToImage', async () => {
+    await fetch(`${baseUrl}/screenshot/1234567890?frame=phone`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ frame: 'phone' })
+    );
+  });
+
+  it('GET: rejects invalid frame values', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?frame=tablet`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ─── New feature: Custom gradient ────────────────────────────────────────────
+
+describe('custom gradient colors', () => {
+  it('GET: passes gradientFrom/To to renderTweetToImage', async () => {
+    await fetch(
+      `${baseUrl}/screenshot/1234567890?gradientFrom=%23ff0000&gradientTo=%230000ff`,
+      { headers: { 'X-API-KEY': MOCK_API_KEY } }
+    );
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        gradientFrom: '#ff0000',
+        gradientTo: '#0000ff',
+      })
+    );
+  });
+
+  it('GET: passes gradientAngle to renderTweetToImage', async () => {
+    await fetch(
+      `${baseUrl}/screenshot/1234567890?gradientFrom=%23ff0000&gradientTo=%230000ff&gradientAngle=90`,
+      { headers: { 'X-API-KEY': MOCK_API_KEY } }
+    );
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ gradientAngle: 90 })
+    );
+  });
+
+  it('GET: rejects invalid hex color for gradientFrom', async () => {
+    const res = await fetch(
+      `${baseUrl}/screenshot/1234567890?gradientFrom=red`,
+      { headers: { 'X-API-KEY': MOCK_API_KEY } }
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('GET: rejects gradientAngle out of range', async () => {
+    const res = await fetch(
+      `${baseUrl}/screenshot/1234567890?gradientFrom=%23ff0000&gradientTo=%230000ff&gradientAngle=400`,
+      { headers: { 'X-API-KEY': MOCK_API_KEY } }
+    );
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe('VALIDATION_ERROR');

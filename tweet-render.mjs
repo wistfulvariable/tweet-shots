@@ -9,7 +9,13 @@ import { html } from 'satori-html';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTweetHtml, addLogoToHtml, getHighResProfileUrl, GRADIENT_FRAME_PADDING } from './tweet-html.mjs';
+import {
+  generateTweetHtml,
+  generateThreadHtml,
+  getHighResProfileUrl,
+  GRADIENT_FRAME_PADDING,
+  PHONE_CHROME,
+} from './tweet-html.mjs';
 import { fetchEmoji } from './tweet-emoji.mjs';
 import { loadLanguageFont } from './tweet-fonts.mjs';
 
@@ -316,11 +322,21 @@ export async function loadFonts() {
 const HEIGHT_HEADER = 76;        // Profile pic (48) + margin-top to text (12) + buffer (16)
 const HEIGHT_PER_TEXT_LINE = 28; // ~28px per line (17px font * 1.5 line-height + spacing)
 const CHARS_PER_LINE = 45;       // ~45 characters per line at 17px font in 550px width
-const HEIGHT_MEDIA = 300;        // Media image (280) + margin-top (12) + buffer (8)
+const HEIGHT_MEDIA_1 = 300;      // 1 image: 280px + margin + buffer
+const HEIGHT_MEDIA_2_3 = 252;    // 2–3 images: 220px + margin + buffer
+const HEIGHT_MEDIA_4 = 354;      // 4 images: 2×160px + 2px gap + margin + buffer
 const HEIGHT_QUOTE_TWEET = 120;  // Quote tweet embed card (complex layout, keep generous)
 const HEIGHT_METRICS = 56;       // Metrics bar: margin (16) + padding-top (16) + content (20) + buffer (4)
 const HEIGHT_DATE = 40;          // Timestamp: margin (16) + text (20) + buffer (4)
 const HEIGHT_URL = 36;           // Tweet URL: margin (12) + text (14) + buffer (10)
+
+/** Return estimated media block height based on image count. */
+function mediaHeight(count) {
+  if (count === 0) return 0;
+  if (count === 1) return HEIGHT_MEDIA_1;
+  if (count <= 3) return HEIGHT_MEDIA_2_3;
+  return HEIGHT_MEDIA_4;
+}
 
 /**
  * Estimate canvas height based on tweet content and visibility options.
@@ -328,18 +344,95 @@ const HEIGHT_URL = 36;           // Tweet URL: margin (12) + text (14) + buffer 
  */
 function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl }) {
   const textLength = tweet.text?.length || 0;
-  const hasMedia = !hideMedia && ((tweet.photos?.length > 0) || (tweet.mediaDetails?.length > 0));
+  const mediaCount = hideMedia ? 0 : (tweet.mediaDetails?.length || tweet.photos?.length || 0);
   const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
 
   return (
     HEIGHT_HEADER + (padding * 2) +
     Math.ceil(textLength / CHARS_PER_LINE) * HEIGHT_PER_TEXT_LINE +
-    (hasMedia ? HEIGHT_MEDIA : 0) +
+    mediaHeight(mediaCount) +
     (hasQuoteTweet ? HEIGHT_QUOTE_TWEET : 0) +
     (showMetrics ? HEIGHT_METRICS : 0) +
     (hideDate ? 0 : HEIGHT_DATE) +
     (showUrl ? HEIGHT_URL : 0)
   );
+}
+
+// Height constants for thread tweet items (more compact than single-tweet layout)
+const THREAD_HEADER_HEIGHT = 56;   // Name/handle/time in single compact row
+const THREAD_TEXT_LINE_HEIGHT = 26;
+const THREAD_CHARS_PER_LINE = 42;  // Narrower content column (excludes avatar col)
+const THREAD_METRICS_HEIGHT = 42;  // Simplified 2-metric bar
+const THREAD_CONNECTOR_HEIGHT = 16; // Connector line between tweets
+
+/** Estimate height for a single tweet within a thread layout. */
+function calculateThreadTweetHeight(tweet, { hideMedia, showMetrics }) {
+  const textLength = tweet.text?.length || 0;
+  const mediaCount = hideMedia ? 0 : (tweet.mediaDetails?.length || tweet.photos?.length || 0);
+  return (
+    THREAD_HEADER_HEIGHT +
+    Math.ceil(textLength / THREAD_CHARS_PER_LINE) * THREAD_TEXT_LINE_HEIGHT +
+    mediaHeight(mediaCount) +
+    (showMetrics ? THREAD_METRICS_HEIGHT : 0)
+  );
+}
+
+/** Estimate total canvas height for a thread of tweets. */
+function calculateThreadHeight(tweets, options) {
+  const { padding, hideMedia, showMetrics } = options;
+  let total = padding * 2;
+  tweets.forEach((tweet, i) => {
+    total += calculateThreadTweetHeight(tweet, { hideMedia, showMetrics });
+    if (i < tweets.length - 1) total += THREAD_CONNECTOR_HEIGHT;
+  });
+  return total;
+}
+
+// ============================================================================
+// SHARED SATORI RENDERING
+// ============================================================================
+
+/** Load fonts: custom URL-based or cached Inter. */
+async function resolveFonts(fontUrl, fontBoldUrl, fontFamily) {
+  if (fontUrl) {
+    const customName = fontFamily || 'CustomFont';
+    const [regularData, boldData] = await Promise.all([
+      fetchFontAsArrayBuffer(fontUrl),
+      fontBoldUrl ? fetchFontAsArrayBuffer(fontBoldUrl) : Promise.resolve(null),
+    ]);
+    if (regularData) {
+      return [
+        { name: customName, data: regularData, weight: 400, style: 'normal' },
+        { name: customName, data: boldData || regularData, weight: 700, style: 'normal' },
+      ];
+    }
+  }
+  return loadFonts();
+}
+
+/** Run Satori + optional Resvg conversion for a given HTML string and canvas dimensions. */
+async function satoriRender(htmlContent, canvasWidth, canvasHeight, scale, format, fonts) {
+  const markup = html(htmlContent);
+
+  const svg = await satori(markup, {
+    width: canvasWidth,
+    height: canvasHeight,
+    fonts,
+    loadAdditionalAsset: async (code, segment) => {
+      if (code === 'emoji') return fetchEmoji(segment);
+      return loadLanguageFont(code);
+    },
+  });
+
+  if (format === 'svg') {
+    return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
+  }
+
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: 'width', value: canvasWidth * scale },
+  });
+  const pngBuffer = resvg.render().asPng();
+  return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }
 
 // ============================================================================
@@ -386,10 +479,15 @@ export async function renderTweetToImage(tweet, options = {}) {
     fontFamily = null,
     fontUrl = null,
     fontBoldUrl = null,
+    // Phone mockup frame
+    frame = null,
+    // Custom gradient colors (override named backgroundGradient)
+    gradientFrom = null,
+    gradientTo = null,
+    gradientAngle = 135,
   } = options;
 
   // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants.
-  // Returns a Map of htmlUrl → base64 (tweet object is NOT mutated).
   const imageSize = pickImageSize(width, scale);
   const imageMap = await preFetchAllImages(tweet, { imageSize });
 
@@ -399,31 +497,38 @@ export async function renderTweetToImage(tweet, options = {}) {
     if (logoBase64) imageMap.set(logo, logoBase64);
   }
 
-  // Determine canvas dimensions based on gradient/dimension requirements
-  const hasGradient = !!(backgroundGradient || backgroundImage);
+  // Resolve whether a gradient (named or custom) is active
+  const hasCustomGradient = !!(gradientFrom && gradientTo);
+  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient);
   const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
   const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
 
   const contentHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl });
 
+  // Phone chrome adds fixed pixel amounts to canvas dimensions
+  const phoneExtraWidth = frame === 'phone' ? PHONE_CHROME.border * 2 : 0;
+  const phoneExtraHeight = frame === 'phone'
+    ? PHONE_CHROME.notch + PHONE_CHROME.homeBar + PHONE_CHROME.border * 2
+    : 0;
+
   let canvasWidth, canvasHeight;
   if (hasFixedDimensions) {
-    // Dimension preset: use preset dimensions, ensure content fits
     canvasWidth = canvasWidthOverride;
-    canvasHeight = Math.max(canvasHeightOverride, contentHeight + gradientPad * 2);
+    canvasHeight = Math.max(canvasHeightOverride, contentHeight + phoneExtraHeight + gradientPad * 2);
   } else if (hasGradient) {
-    // Gradient frame: add padding around the card
-    canvasWidth = width + padding * 2 + gradientPad * 2;
-    canvasHeight = contentHeight + gradientPad * 2;
+    const baseWidth = frame === 'phone'
+      ? width + phoneExtraWidth
+      : width + padding * 2;
+    canvasWidth = baseWidth + gradientPad * 2;
+    canvasHeight = contentHeight + phoneExtraHeight + gradientPad * 2;
   } else {
-    // Standard: canvas = card dimensions
-    canvasWidth = width + padding * 2;
-    canvasHeight = contentHeight;
+    canvasWidth = frame === 'phone' ? width + phoneExtraWidth : width + padding * 2;
+    canvasHeight = contentHeight + phoneExtraHeight;
   }
 
   const needsWrapper = hasGradient || hasFixedDimensions;
 
-  let htmlContent = generateTweetHtml(tweet, theme, {
+  const htmlContent = generateTweetHtml(tweet, theme, {
     showMetrics,
     width,
     padding,
@@ -441,14 +546,16 @@ export async function renderTweetToImage(tweet, options = {}) {
     linkColor,
     borderRadius,
     fontFamily,
+    logo,
+    logoPosition,
+    logoSize,
+    frame,
+    gradientFrom,
+    gradientTo,
+    gradientAngle,
     canvasWidth: needsWrapper ? canvasWidth : null,
     canvasHeight: needsWrapper ? canvasHeight : null,
   });
-
-  // Add logo if provided (uses original URL — base64 injected via VDOM walker)
-  if (logo) {
-    htmlContent = addLogoToHtml(htmlContent, logo, logoPosition, logoSize);
-  }
 
   // Parse HTML → VDOM (fast: no base64 in the string, just short URLs)
   const markup = html(htmlContent);
@@ -456,36 +563,13 @@ export async function renderTweetToImage(tweet, options = {}) {
   // Inject base64 images into the VDOM tree (bypasses satori-html's O(n²) parser)
   injectImageSources(markup, imageMap);
 
-  // Load fonts — use custom fonts if fontUrl provided, otherwise cached Inter
-  let fonts;
-  if (fontUrl) {
-    const customName = fontFamily || 'CustomFont';
-    const [regularData, boldData] = await Promise.all([
-      fetchFontAsArrayBuffer(fontUrl),
-      fontBoldUrl ? fetchFontAsArrayBuffer(fontBoldUrl) : Promise.resolve(null),
-    ]);
-    if (regularData) {
-      fonts = [
-        { name: customName, data: regularData, weight: 400, style: 'normal' },
-        { name: customName, data: boldData || regularData, weight: 700, style: 'normal' },
-      ];
-    } else {
-      // Custom font fetch failed — fall back to default Inter
-      fonts = await loadFonts();
-    }
-  } else {
-    fonts = await loadFonts();
-  }
-
-  // Apply scale
-  const scaledWidth = canvasWidth * scale;
+  const fonts = await resolveFonts(fontUrl, fontBoldUrl, fontFamily);
 
   // Generate SVG with Satori
   const svg = await satori(markup, {
     width: canvasWidth,
     height: canvasHeight,
     fonts,
-    // Load emoji SVGs from Twemoji CDN and multilingual fonts from bundled Noto Sans
     loadAdditionalAsset: async (code, segment) => {
       if (code === 'emoji') return fetchEmoji(segment);
       return loadLanguageFont(code);
@@ -500,11 +584,126 @@ export async function renderTweetToImage(tweet, options = {}) {
   const resvg = new Resvg(svg, {
     fitTo: {
       mode: 'width',
-      value: scaledWidth,
+      value: canvasWidth * scale,
     },
   });
   const pngData = resvg.render();
   const pngBuffer = pngData.asPng();
 
+  return { data: pngBuffer, format: 'png', contentType: 'image/png' };
+}
+
+/**
+ * Render a thread of tweets (from fetchThread()) as a single image.
+ * Pre-fetches all images from all tweets, renders them stacked with connector lines.
+ * @param {object[]} tweets - Tweet array from fetchThread(), oldest first
+ * @param {object} [options] - Same render options as renderTweetToImage
+ * @returns {Promise<{data: Buffer, format: string, contentType: string}>}
+ */
+export async function renderThreadToImage(tweets, options = {}) {
+  const {
+    theme = 'dark',
+    width = 550,
+    showMetrics = true,
+    format = 'png',
+    scale = 2,
+    hideMedia = false,
+    hideVerified = false,
+    backgroundColor = null,
+    backgroundGradient = null,
+    backgroundImage = null,
+    textColor = null,
+    linkColor = null,
+    padding = 20,
+    borderRadius = 16,
+    hideShadow = false,
+    fontFamily = null,
+    fontUrl = null,
+    fontBoldUrl = null,
+    canvasWidth: canvasWidthOverride = null,
+    canvasHeight: canvasHeightOverride = null,
+    gradientFrom = null,
+    gradientTo = null,
+    gradientAngle = 135,
+  } = options;
+
+  // Use 'small' images for threads — many tweets means many images, avoid timeouts
+  const imageSize = 'small';
+
+  // Pre-fetch images from all tweets in the thread
+  const imageMap = new Map();
+  await Promise.all(
+    tweets.map(tweet =>
+      preFetchAllImages(tweet, { imageSize }).then(map => {
+        for (const [url, b64] of map) imageMap.set(url, b64);
+      })
+    )
+  );
+
+  const hasCustomGradient = !!(gradientFrom && gradientTo);
+  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient);
+  const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
+  const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
+
+  const contentHeight = calculateThreadHeight(tweets, { padding, hideMedia, showMetrics });
+
+  let canvasWidth, canvasHeight;
+  if (hasFixedDimensions) {
+    canvasWidth = canvasWidthOverride;
+    canvasHeight = Math.max(canvasHeightOverride, contentHeight + gradientPad * 2);
+  } else if (hasGradient) {
+    canvasWidth = width + padding * 2 + gradientPad * 2;
+    canvasHeight = contentHeight + gradientPad * 2;
+  } else {
+    canvasWidth = width + padding * 2;
+    canvasHeight = contentHeight;
+  }
+
+  const needsWrapper = hasGradient || hasFixedDimensions;
+
+  const htmlContent = generateThreadHtml(tweets, theme, {
+    showMetrics,
+    width,
+    padding,
+    hideMedia,
+    hideVerified,
+    backgroundColor,
+    backgroundGradient,
+    backgroundImage,
+    textColor,
+    linkColor,
+    borderRadius,
+    hideShadow,
+    fontFamily,
+    gradientFrom,
+    gradientTo,
+    gradientAngle,
+    canvasWidth: needsWrapper ? canvasWidth : null,
+    canvasHeight: needsWrapper ? canvasHeight : null,
+  });
+
+  const markup = html(htmlContent);
+  injectImageSources(markup, imageMap);
+
+  const fonts = await resolveFonts(fontUrl, fontBoldUrl, fontFamily);
+
+  const svg = await satori(markup, {
+    width: canvasWidth,
+    height: canvasHeight,
+    fonts,
+    loadAdditionalAsset: async (code, segment) => {
+      if (code === 'emoji') return fetchEmoji(segment);
+      return loadLanguageFont(code);
+    },
+  });
+
+  if (format === 'svg') {
+    return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
+  }
+
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: 'width', value: canvasWidth * scale },
+  });
+  const pngBuffer = resvg.render().asPng();
   return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }

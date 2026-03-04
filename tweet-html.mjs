@@ -50,6 +50,9 @@ export const GRADIENTS = {
   peach: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
 };
 
+// Phone mockup chrome dimensions (pixels)
+export const PHONE_CHROME = { border: 10, notch: 40, homeBar: 28 };
+
 // ============================================================================
 // FORMATTING UTILITIES
 // ============================================================================
@@ -152,9 +155,78 @@ export function getHighResProfileUrl(user) {
   return user?.profile_image_url_https?.replace('_normal', '_400x400') || '';
 }
 
-// Get first media URL from either mediaDetails or photos array
+/** Get first media URL (used for quote tweet thumbnails only). */
 function getFirstMediaUrl(tweet) {
   return tweet.mediaDetails?.[0]?.media_url_https || tweet.photos?.[0]?.url;
+}
+
+/** Get all media URLs from a tweet (for the main media grid). */
+function getAllMediaUrls(tweet) {
+  if (tweet.mediaDetails?.length > 0) {
+    return tweet.mediaDetails.map(m => m.media_url_https).filter(Boolean);
+  }
+  if (tweet.photos?.length > 0) {
+    return tweet.photos.map(p => p.url).filter(Boolean);
+  }
+  return [];
+}
+
+/**
+ * Build a media grid for 1–4 images using Satori-compatible flexbox.
+ * @param {string[]} urls - Image URLs (max 4 used)
+ * @param {number} innerWidth - Available width in pixels
+ * @param {string} borderColor - CSS color for the container border
+ */
+function buildMediaGridHtml(urls, innerWidth, borderColor) {
+  if (urls.length === 0) return '';
+
+  const border = `1px solid ${borderColor}`;
+  const r = 16;
+  const wHalf = Math.floor((innerWidth - 2) / 2); // 2px gap between halves
+
+  if (urls.length === 1) {
+    return `
+      <div style="display: flex; margin-top: 12px; border-radius: ${r}px; overflow: hidden; border: ${border};">
+        <img src="${urls[0]}" style="width: ${innerWidth}px; height: 280px; object-fit: cover;" />
+      </div>
+    `;
+  }
+
+  if (urls.length === 2) {
+    return `
+      <div style="display: flex; flex-direction: row; margin-top: 12px; border-radius: ${r}px; overflow: hidden; border: ${border}; gap: 2px;">
+        <img src="${urls[0]}" style="width: ${wHalf}px; height: 220px; object-fit: cover; flex-shrink: 0;" />
+        <img src="${urls[1]}" style="width: ${wHalf}px; height: 220px; object-fit: cover; flex-shrink: 0;" />
+      </div>
+    `;
+  }
+
+  if (urls.length === 3) {
+    const hHalf = Math.floor((220 - 2) / 2);
+    return `
+      <div style="display: flex; flex-direction: row; margin-top: 12px; border-radius: ${r}px; overflow: hidden; border: ${border}; gap: 2px;">
+        <img src="${urls[0]}" style="width: ${wHalf}px; height: 220px; object-fit: cover; flex-shrink: 0;" />
+        <div style="display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;">
+          <img src="${urls[1]}" style="width: ${wHalf}px; height: ${hHalf}px; object-fit: cover;" />
+          <img src="${urls[2]}" style="width: ${wHalf}px; height: ${hHalf}px; object-fit: cover;" />
+        </div>
+      </div>
+    `;
+  }
+
+  // 4+ images: show first 4 in a 2×2 grid
+  return `
+    <div style="display: flex; flex-direction: column; margin-top: 12px; border-radius: ${r}px; overflow: hidden; border: ${border}; gap: 2px;">
+      <div style="display: flex; flex-direction: row; gap: 2px;">
+        <img src="${urls[0]}" style="width: ${wHalf}px; height: 160px; object-fit: cover; flex-shrink: 0;" />
+        <img src="${urls[1]}" style="width: ${wHalf}px; height: 160px; object-fit: cover; flex-shrink: 0;" />
+      </div>
+      <div style="display: flex; flex-direction: row; gap: 2px;">
+        <img src="${urls[2]}" style="width: ${wHalf}px; height: 160px; object-fit: cover; flex-shrink: 0;" />
+        <img src="${urls[3]}" style="width: ${wHalf}px; height: 160px; object-fit: cover; flex-shrink: 0;" />
+      </div>
+    </div>
+  `;
 }
 
 /** Build the quote tweet embed card. Returns empty string if no quoted tweet. */
@@ -199,7 +271,7 @@ function buildQuoteTweetHtml(quotedTweet, colors, finalColors) {
 
   const qtVerifiedBadge = qtIsVerified ? verifiedBadgeSvg(finalColors.link, 14) : '';
 
-  // Quote tweet media (smaller thumbnail)
+  // Quote tweet media (smaller thumbnail — first image only)
   let qtMediaHtml = '';
   const qtMediaUrl = getFirstMediaUrl(quotedTweet);
   if (qtMediaUrl) {
@@ -278,29 +350,6 @@ function verifiedBadgeSvg(color, size = 18) {
 }
 
 // ============================================================================
-// LOGO/BRANDING OVERLAY
-// ============================================================================
-
-export function addLogoToHtml(baseHtml, logoUrl, position = 'bottom-right', size = 40) {
-  const positions = {
-    'top-left': 'top: 10px; left: 10px;',
-    'top-right': 'top: 10px; right: 10px;',
-    'bottom-left': 'bottom: 10px; left: 10px;',
-    'bottom-right': 'bottom: 10px; right: 10px;',
-  };
-
-  const posStyle = positions[position] || positions['bottom-right'];
-
-  const logoHtml = `
-    <img src="${logoUrl}"
-         style="position: absolute; ${posStyle} width: ${size}px; height: ${size}px; border-radius: 8px; opacity: 0.9;" />
-  `;
-
-  // Insert logo before closing div
-  return baseHtml.replace(/<\/div>\s*$/, `${logoHtml}</div>`);
-}
-
-// ============================================================================
 // HTML TEMPLATE GENERATION
 // ============================================================================
 
@@ -333,6 +382,16 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     // Canvas dimensions for centering within fixed-size output (e.g. dimension presets)
     canvasWidth = null,
     canvasHeight = null,
+    // Watermark/logo
+    logo = null,
+    logoPosition = 'bottom-right',
+    logoSize = 40,
+    // Phone mockup frame
+    frame = null,
+    // Custom gradient colors (take priority over named backgroundGradient)
+    gradientFrom = null,
+    gradientTo = null,
+    gradientAngle = 135,
   } = options;
 
   const resolvedFontFamily = fontFamily || DEFAULT_FONT_FAMILY;
@@ -346,8 +405,13 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     bg: backgroundColor || colors.bg,
   };
 
+  // Resolve gradient: custom takes priority over named preset
+  const resolvedGradient = (gradientFrom && gradientTo)
+    ? `linear-gradient(${gradientAngle}deg, ${gradientFrom} 0%, ${gradientTo} 100%)`
+    : (backgroundGradient && GRADIENTS[backgroundGradient] ? GRADIENTS[backgroundGradient] : null);
+
   // Determine if we need a two-layer structure (gradient frame or dimension centering)
-  const hasGradientFrame = !!(backgroundGradient && GRADIENTS[backgroundGradient]) || !!backgroundImage;
+  const hasGradientFrame = !!resolvedGradient || !!backgroundImage;
   const hasCanvasDimensions = !!(canvasWidth && canvasHeight);
   const needsWrapper = hasGradientFrame || hasCanvasDimensions;
 
@@ -377,16 +441,10 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     </div>
   ` : '';
 
-  // Handle media (photos from mediaDetails or photos array)
-  let mediaHtml = '';
-  const mediaUrl = getFirstMediaUrl(tweet);
-  if (mediaUrl) {
-    mediaHtml = `
-      <div style="display: flex; margin-top: 12px; border-radius: 16px; overflow: hidden; border: 1px solid ${colors.border};">
-        <img src="${mediaUrl}" style="width: ${width - 40}px; height: 280px; object-fit: cover;" />
-      </div>
-    `;
-  }
+  // Media grid — all images from the tweet
+  const innerWidth = width - padding * 2;
+  const mediaUrls = getAllMediaUrls(tweet);
+  const mediaHtml = buildMediaGridHtml(mediaUrls, innerWidth, colors.border);
 
   const quoteTweetHtml = tweet.quoted_tweet
     ? buildQuoteTweetHtml(tweet.quoted_tweet, colors, finalColors)
@@ -403,8 +461,19 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   const finalQuoteTweetHtml = hideQuoteTweet ? '' : quoteTweetHtml;
   const finalVerifiedBadge = hideVerified ? '' : verifiedBadge;
 
+  // Logo placement — top positions prepend before header, bottom positions append after metrics
+  const logoJustify = (logoPosition === 'top-right' || logoPosition === 'bottom-right') ? 'flex-end' : 'flex-start';
+  const logoRow = logo ? `
+    <div style="display: flex; justify-content: ${logoJustify};">
+      <img src="${logo}" style="width: ${logoSize}px; height: ${logoSize}px; border-radius: 8px; opacity: 0.9;" />
+    </div>
+  ` : '';
+  const logoTop = (logo && logoPosition.startsWith('top-')) ? logoRow : '';
+  const logoBottom = (logo && logoPosition.startsWith('bottom-')) ? logoRow : '';
+
   // Build the tweet card content (shared between wrapper and standalone modes)
   const cardContent = `
+      ${logoTop}
       <div style="display: flex; align-items: center; gap: 12px;">
         <img src="${profilePic}" style="width: 48px; height: 48px; border-radius: 50%;" />
         <div style="display: flex; flex-direction: column;">
@@ -428,13 +497,61 @@ export function generateTweetHtml(tweet, theme, options = {}) {
       ${dateHtml}
       ${metricsHtml}
       ${urlHtml}
+      ${logoBottom}
   `;
+
+  // Phone mockup frame wraps the card content
+  if (frame === 'phone') {
+    const phoneHtml = `
+      <div style="display: flex; flex-direction: column; background: #0d0d0d; border-radius: ${44 + PHONE_CHROME.border}px; padding: ${PHONE_CHROME.border}px;">
+        <div style="display: flex; flex-direction: column; background: #1a1a1a; border-radius: 44px; overflow: hidden; width: ${width}px;">
+          <div style="display: flex; justify-content: center; align-items: center; height: ${PHONE_CHROME.notch}px; background: #1a1a1a;">
+            <div style="width: 80px; height: 8px; background: #0d0d0d; border-radius: 10px;" />
+          </div>
+          <div style="display: flex; flex-direction: column; background: ${cardBg};">
+            <div style="display: flex; flex-direction: column; padding: ${padding}px;">
+              ${cardContent}
+            </div>
+          </div>
+          <div style="display: flex; justify-content: center; align-items: center; height: ${PHONE_CHROME.homeBar}px; background: #1a1a1a;">
+            <div style="width: 100px; height: 4px; background: #3a3a3a; border-radius: 4px;" />
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (needsWrapper) {
+      let outerBg;
+      if (resolvedGradient) {
+        outerBg = resolvedGradient;
+      } else if (backgroundImage) {
+        outerBg = `url(${backgroundImage}) center/cover no-repeat`;
+      } else {
+        outerBg = cardBg;
+      }
+
+      const wrapperW = canvasWidth || (width + PHONE_CHROME.border * 2 + GRADIENT_FRAME_PADDING * 2);
+      const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
+
+      return `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${resolvedFontFamily};">
+        ${phoneHtml}
+      </div>
+      `;
+    }
+
+    return `
+    <div style="display: flex; flex-direction: column; font-family: ${resolvedFontFamily};">
+      ${phoneHtml}
+    </div>
+    `;
+  }
 
   if (needsWrapper) {
     // Two-layer: outer canvas/gradient + inner card with solid bg
     let outerBg;
-    if (backgroundGradient && GRADIENTS[backgroundGradient]) {
-      outerBg = GRADIENTS[backgroundGradient];
+    if (resolvedGradient) {
+      outerBg = resolvedGradient;
     } else if (backgroundImage) {
       outerBg = `url(${backgroundImage}) center/cover no-repeat`;
     } else {
@@ -453,10 +570,166 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     `;
   }
 
-  // Standard single-layer card (no gradient, no fixed dimensions)
+  // Standard single-layer card (no gradient, no fixed dimensions, no phone frame)
   return `
     <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
       ${cardContent}
+    </div>
+  `;
+}
+
+// ============================================================================
+// THREAD HTML GENERATION
+// ============================================================================
+
+/**
+ * Generate HTML for a thread of tweets rendered as a single image.
+ * Uses a Twitter-style layout: avatar column with connector line + content column.
+ * @param {object[]} tweets - Array of tweet objects, oldest first
+ * @param {string} theme - Theme name (light/dark/dim/black)
+ * @param {object} [options] - Same options as generateTweetHtml
+ * @returns {string} HTML string for Satori rendering
+ */
+export function generateThreadHtml(tweets, theme, options = {}) {
+  const colors = THEMES[theme] || THEMES.dark;
+  const {
+    width = 550,
+    padding = 20,
+    showMetrics = true,
+    hideMedia = false,
+    hideVerified = false,
+    backgroundColor = null,
+    backgroundImage = null,
+    backgroundGradient = null,
+    textColor = null,
+    linkColor = null,
+    borderRadius = 16,
+    hideShadow = false,
+    fontFamily = null,
+    canvasWidth = null,
+    canvasHeight = null,
+    gradientFrom = null,
+    gradientTo = null,
+    gradientAngle = 135,
+  } = options;
+
+  const resolvedFontFamily = fontFamily || DEFAULT_FONT_FAMILY;
+
+  const finalColors = {
+    ...colors,
+    text: textColor || colors.text,
+    link: linkColor || colors.link,
+    bg: backgroundColor || colors.bg,
+  };
+
+  const cardBg = finalColors.bg;
+  const shadow = hideShadow ? '' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+
+  // Content column width: card width minus padding on each side, minus avatar col (48px) and gap (12px)
+  const threadContentWidth = width - padding * 2 - 48 - 12;
+
+  // Build each tweet row in the thread
+  const tweetItems = tweets.map((tweet, index) => {
+    const isLast = index === tweets.length - 1;
+    const userName = tweet.user?.name || 'Unknown';
+    const userHandle = tweet.user?.screen_name || 'unknown';
+    const isVerified = (tweet.user?.is_blue_verified || tweet.user?.verified) && !hideVerified;
+    const profilePic = getHighResProfileUrl(tweet.user);
+    const tweetText = processTweetText(tweet, finalColors.link);
+    const verifiedBadge = isVerified ? verifiedBadgeSvg(finalColors.link, 16) : '';
+    const dateStr = tweet.created_at ? formatDate(tweet.created_at) : '';
+
+    const mediaUrls = hideMedia ? [] : getAllMediaUrls(tweet);
+    const mediaHtml = buildMediaGridHtml(mediaUrls, threadContentWidth, colors.border);
+
+    // Simplified metrics: retweets + likes only (compact for thread view)
+    let metricsHtml = '';
+    if (showMetrics) {
+      const retweets = tweet.retweet_count || 0;
+      const likes = tweet.favorite_count || 0;
+      const ms = `display: flex; align-items: center; gap: 5px; color: ${colors.textSecondary}; font-size: 13px;`;
+      metricsHtml = `
+        <div style="display: flex; align-items: center; gap: 18px; margin-top: 10px;">
+          <div style="${ms}">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="${colors.textSecondary}">
+              <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
+            </svg>
+            <span>${formatNumber(retweets)}</span>
+          </div>
+          <div style="${ms}">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="${colors.textSecondary}">
+              <path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91zm4.187 7.69c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z"/>
+            </svg>
+            <span>${formatNumber(likes)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Connector line between tweets (not after last tweet)
+    const connector = isLast ? '' : `
+      <div style="display: flex; width: 2px; background: ${colors.border}; flex: 1; min-height: 12px; margin-top: 4px;" />
+    `;
+
+    return `
+      <div style="display: flex; flex-direction: row; gap: 12px;">
+        <div style="display: flex; flex-direction: column; align-items: center; width: 48px; flex-shrink: 0;">
+          <img src="${profilePic}" style="width: 48px; height: 48px; border-radius: 50%;" />
+          ${connector}
+        </div>
+        <div style="display: flex; flex-direction: column; flex: 1; padding-bottom: ${isLast ? 0 : 16}px;">
+          <div style="display: flex; flex-direction: row; align-items: center; gap: 6px;">
+            <span style="font-weight: 700; font-size: 14px; color: ${finalColors.text};">${userName}</span>
+            ${verifiedBadge}
+            <span style="font-size: 13px; color: ${colors.textSecondary};">@${userHandle}</span>
+            ${dateStr ? `<span style="font-size: 13px; color: ${colors.textSecondary};">· ${dateStr}</span>` : ''}
+          </div>
+          <div style="display: flex; flex-direction: column; margin-top: 6px; font-size: 16px; line-height: 1.5; color: ${finalColors.text};">
+            ${tweetText}
+          </div>
+          ${mediaHtml}
+          ${metricsHtml}
+        </div>
+      </div>
+    `;
+  });
+
+  const threadContent = tweetItems.join('');
+
+  // Resolve gradient (same logic as generateTweetHtml)
+  const resolvedGradient = (gradientFrom && gradientTo)
+    ? `linear-gradient(${gradientAngle}deg, ${gradientFrom} 0%, ${gradientTo} 100%)`
+    : (backgroundGradient && GRADIENTS[backgroundGradient] ? GRADIENTS[backgroundGradient] : null);
+
+  const hasGradientFrame = !!resolvedGradient || !!backgroundImage;
+  const hasCanvasDimensions = !!(canvasWidth && canvasHeight);
+  const needsWrapper = hasGradientFrame || hasCanvasDimensions;
+
+  if (needsWrapper) {
+    let outerBg;
+    if (resolvedGradient) {
+      outerBg = resolvedGradient;
+    } else if (backgroundImage) {
+      outerBg = `url(${backgroundImage}) center/cover no-repeat`;
+    } else {
+      outerBg = cardBg;
+    }
+
+    const wrapperW = canvasWidth || (width + padding * 2 + GRADIENT_FRAME_PADDING * 2);
+    const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
+
+    return `
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${resolvedFontFamily};">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+        ${threadContent}
+      </div>
+    </div>
+    `;
+  }
+
+  return `
+    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
+      ${threadContent}
     </div>
   `;
 }

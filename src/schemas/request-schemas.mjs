@@ -18,6 +18,8 @@ const DIMENSION_VALUES = [
 const GRADIENT_VALUES = [
   'sunset', 'ocean', 'forest', 'fire', 'midnight', 'sky', 'candy', 'peach',
 ];
+const LOGO_POSITION_VALUES = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+const FRAME_VALUES = ['phone'];
 
 // Boolean string transform for query params ("true"/"false" → boolean)
 const boolString = z.enum(['true', 'false']).transform(v => v === 'true').default('false');
@@ -46,6 +48,18 @@ export const screenshotQuerySchema = z.object({
   fontFamily: z.string().max(100).optional(),
   fontUrl: z.string().url().optional(),
   fontBoldUrl: z.string().url().optional(),
+  // Watermark/logo (not exposed on demo endpoint — SSRF risk)
+  logo: z.string().url().optional(),
+  logoPosition: z.enum(LOGO_POSITION_VALUES).optional(),
+  logoSize: z.coerce.number().int().min(16).max(200).optional(),
+  // Phone mockup frame
+  frame: z.enum(FRAME_VALUES).optional(),
+  // Custom gradient colors
+  gradientFrom: hexColor,
+  gradientTo: hexColor,
+  gradientAngle: z.coerce.number().int().min(0).max(360).optional(),
+  // Thread rendering
+  thread: boolString,
 });
 
 /**
@@ -79,6 +93,18 @@ export const screenshotBodySchema = z.object({
   fontFamily: z.string().max(100).optional(),
   fontUrl: z.string().url().optional(),
   fontBoldUrl: z.string().url().optional(),
+  // Watermark/logo
+  logo: z.string().url().optional(),
+  logoPosition: z.enum(LOGO_POSITION_VALUES).optional(),
+  logoSize: z.number().int().min(16).max(200).optional(),
+  // Phone mockup frame
+  frame: z.enum(FRAME_VALUES).optional(),
+  // Custom gradient colors
+  gradientFrom: hexColor,
+  gradientTo: hexColor,
+  gradientAngle: z.number().int().min(0).max(360).optional(),
+  // Thread rendering
+  thread: z.boolean().default(false),
 }).refine(data => data.tweetId || data.tweetUrl, {
   message: 'Either tweetId or tweetUrl is required',
 });
@@ -144,6 +170,18 @@ const batchRenderOptions = {
   fontFamily: z.string().max(100).optional(),
   fontUrl: z.string().url().optional(),
   fontBoldUrl: z.string().url().optional(),
+  // Watermark/logo
+  logo: z.string().url().optional(),
+  logoPosition: z.enum(LOGO_POSITION_VALUES).optional(),
+  logoSize: z.number().int().min(16).max(200).optional(),
+  // Phone mockup frame
+  frame: z.enum(FRAME_VALUES).optional(),
+  // Custom gradient colors
+  gradientFrom: hexColor,
+  gradientTo: hexColor,
+  gradientAngle: z.number().int().min(0).max(360).optional(),
+  // Thread rendering
+  thread: z.boolean().default(false),
 };
 
 /**
@@ -168,7 +206,7 @@ export const batchMultipartOptionsSchema = z.object({
 
 /**
  * GET /demo/screenshot/:tweetIdOrUrl query parameters.
- * Matches screenshotQuerySchema minus font URLs (SSRF risk on public endpoint).
+ * Matches screenshotQuerySchema minus logo/fontUrl/fontBoldUrl (SSRF risk on public endpoint).
  */
 export const demoQuerySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
@@ -188,4 +226,12 @@ export const demoQuerySchema = z.object({
   showUrl: boolString,
   padding: z.coerce.number().int().min(0).max(100).default(20),
   radius: z.coerce.number().int().min(0).max(100).default(16),
+  // Phone mockup frame
+  frame: z.enum(FRAME_VALUES).optional(),
+  // Custom gradient colors
+  gradientFrom: hexColor,
+  gradientTo: hexColor,
+  gradientAngle: z.coerce.number().int().min(0).max(360).optional(),
+  // Thread rendering
+  thread: boolString,
 });
