@@ -1,0 +1,31 @@
+# Git
+.git/
+.gitignore
+
+# Dependencies (rebuilt in Docker)
+node_modules/
+
+# Tests and dev tooling
+tests/
+vitest.config.mjs
+eslint.config.mjs
+.github/
+
+# Output and reports
+output/
+audit-reports/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Documentation (excluded by .dockerignore via *.md)
+*.md
+CLAUDE.md
+.claude/
+
+# Misc
+examples/
+repomix-output.*

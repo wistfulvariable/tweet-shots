@@ -26,6 +26,14 @@ npm run deploy
 
 `cloudbuild.yaml` uses Kaniko with `--cache=true` (168h TTL) to cache Docker layers in Artifact Registry. Only changed layers rebuild — source-only deploys skip `npm ci`, `apt-get`, and font copying.
 
+## .gcloudignore
+
+Controls what `gcloud builds submit` uploads to Cloud Build. Without this, the entire directory (including `node_modules/`, `.git/`, tests) gets uploaded — adding hundreds of MB and significant latency. The `.dockerignore` only affects what Docker copies *inside* the build, not what gets uploaded.
+
+Excludes: `node_modules/`, `.git/`, `tests/`, `audit-reports/`, `.github/`, `.claude/`, IDE files, markdown docs. Source files and `fonts/` pass through (~30MB upload).
+
+**Rule:** `.gcloudignore` and `.dockerignore` serve different purposes but should stay in sync — if a file isn't needed in the Docker image, it shouldn't be uploaded to Cloud Build either.
+
 - **Service URL:** `https://tweet-shots-api-1084185199991.us-central1.run.app`
 - **GCP Project:** `tweet-shots-api`
 - **Region:** `us-central1` (same as Firestore)

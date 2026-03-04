@@ -95,6 +95,7 @@ tweet-shots/
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
 ├── .dockerignore
+├── .gcloudignore                # Excludes node_modules, tests, .git from Cloud Build upload
 ├── vitest.config.mjs
 └── package.json
 ```
@@ -117,6 +118,8 @@ tweet-shots/
 - Include `...(req.id && { requestId: req.id })` in all middleware error JSON responses — enables support correlation. Route handlers get this automatically via `sendRouteError()` and the global error handler.
 - Use `loadAdditionalAsset` in Satori for emoji and multilingual fonts — `tweet-emoji.mjs` fetches Twemoji SVGs from CDN (5s timeout, LRU cache), `tweet-fonts.mjs` lazy-loads bundled Noto Sans from `fonts/`. Both modules are imported by `tweet-render.mjs` and used per-render.
 - When adding new root-level `.mjs` files, add a `COPY` line to the Dockerfile — each root `.mjs` must be explicitly listed (includes `tweet-emoji.mjs`, `tweet-fonts.mjs`)
+- Use `createLogger()` from `./src/logger.mjs` for logging in core modules — never use `console.*` (breaks structured logging, severity mapping, and Cloud Logging queries). `createLogger()` works without a config arg (defaults to `process.env.NODE_ENV`, silent in tests)
+- Update CSP directives in `server.mjs` helmet config when adding new external resources to HTML pages — currently allows `gstatic.com` (Firebase SDK), `lh3.googleusercontent.com` (avatars), `identitytoolkit.googleapis.com` + `securetoken.googleapis.com` (Firebase Auth API)
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
@@ -237,7 +240,7 @@ npm run deploy
 
 - ES Modules throughout (`import`/`export`, `.mjs` extension)
 - Dependency injection: route modules receive middleware/services as constructor args
-- pino for structured logging (pretty in dev, JSON in prod)
+- pino for structured logging (pretty in dev, JSON in prod, silent in test). Response-complete logging middleware logs `{method, path, status, durationMs}` on every response (skips `/health`)
 - Zod schemas for all request validation
 - Error responses: `{ error: string, code: "SCREAMING_SNAKE_CASE", requestId?: string }` — see `docs/ERROR_MESSAGES.md` for full style guide
 - `options = {}` destructuring with defaults in every function signature

@@ -5,9 +5,9 @@
 Vitest 4.0 with `restoreMocks: true`. Tests: `tests/**/*.test.mjs`. Timeouts: 10s. All deterministic — no network calls.
 
 ```bash
-npm test                  # All (~670 tests, ~2s)
-npm run test:unit         # tests/unit/ only (19 files)
-npm run test:integration  # tests/integration/ only (10 files)
+npm test                  # All (~793 tests, ~17s)
+npm run test:unit         # tests/unit/ only (24 files)
+npm run test:integration  # tests/integration/ only (11 files)
 ```
 
 ## Firestore Mock
@@ -68,6 +68,19 @@ Mock sub-modules directly (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs
 ## Batch Route Testing
 
 `batch-screenshot.test.mjs`: no `billingGuard` in middleware chain (batch calls `checkAndReserveCredits()` internally). CSV upload tests use manually-built multipart bodies. Batch limit tests need all three tier fixtures (free/pro/business).
+
+## Parameterized Test Conventions
+
+Use `it.each` / `describe.each` when 3+ tests share identical assertion structure and differ only in input/expected values. Existing examples:
+
+- `tweet-fonts.test.mjs`: `it.each` over 8 locale/font-name pairs for `loadLanguageFont`
+- `tweet-emoji.test.mjs`: `it.each` over 7 emoji/codepoint pairs for `emojiToCodepoint`
+- `demo-schema.test.mjs`: `describe.each(['padding', 'radius'])` for identical 0–100 int validation
+- `api-keys.test.mjs`: `it.each` over 3 tiers for `generateKeyString`
+- `demo.test.mjs`: `it.each` for 6 boolean toggles (handles name inversions like `hideMetrics`→`showMetrics: false`) and 3 color params (handles `bgColor`→`backgroundColor` mapping)
+- `real-render.test.mjs`: `it.each` over all themes and gradient names
+
+Keep distinct tests separate when they test qualitatively different behavior (e.g., flags vs ZWJ vs skin tones in emoji tests).
 
 ## Pitfalls
 
