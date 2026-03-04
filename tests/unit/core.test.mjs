@@ -1182,6 +1182,139 @@ describe('renderTweetToImage', () => {
     expect(tweet.quoted_tweet.user.profile_image_url_https).toBe(originalQtProfileUrl);
     expect(tweet.quoted_tweet.mediaDetails[0].media_url_https).toBe(originalQtMediaUrl);
   });
+
+  // ─── Custom font tests ──────────────────────────────────────────────────
+
+  it('uses custom font when fontUrl is provided', async () => {
+    const tweet = cloneTweet();
+    const fakeFontData = new ArrayBuffer(64);
+    new Uint8Array(fakeFontData).set(Buffer.from('wOFF'));
+
+    globalThis.fetch = vi.fn(async (url) => {
+      if (url === 'https://example.com/custom-font.woff') {
+        return {
+          ok: true,
+          arrayBuffer: async () => fakeFontData,
+          headers: { get: () => 'font/woff' },
+        };
+      }
+      // Default image response for pre-fetches
+      return {
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(4),
+        headers: { get: () => 'image/png' },
+      };
+    });
+
+    await renderTweetToImage(tweet, {
+      fontUrl: 'https://example.com/custom-font.woff',
+      fontFamily: 'MyCustomFont',
+    });
+
+    const satoriCall = satori.mock.calls[0];
+    const fonts = satoriCall[1].fonts;
+    expect(fonts).toHaveLength(2);
+    expect(fonts[0].name).toBe('MyCustomFont');
+    expect(fonts[0].weight).toBe(400);
+    expect(fonts[1].name).toBe('MyCustomFont');
+    expect(fonts[1].weight).toBe(700);
+  });
+
+  it('defaults fontFamily to "CustomFont" when fontUrl given without fontFamily', async () => {
+    const tweet = cloneTweet();
+    const fakeFontData = new ArrayBuffer(64);
+
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => fakeFontData,
+      headers: { get: () => 'font/woff' },
+    }));
+
+    await renderTweetToImage(tweet, {
+      fontUrl: 'https://example.com/font.woff',
+    });
+
+    const satoriCall = satori.mock.calls[0];
+    const fonts = satoriCall[1].fonts;
+    expect(fonts[0].name).toBe('CustomFont');
+    expect(fonts[1].name).toBe('CustomFont');
+  });
+
+  it('uses separate bold font when fontBoldUrl is provided', async () => {
+    const tweet = cloneTweet();
+    const regularData = new ArrayBuffer(64);
+    const boldData = new ArrayBuffer(128);
+
+    globalThis.fetch = vi.fn(async (url) => {
+      if (url === 'https://example.com/font-bold.woff') {
+        return {
+          ok: true,
+          arrayBuffer: async () => boldData,
+          headers: { get: () => 'font/woff' },
+        };
+      }
+      return {
+        ok: true,
+        arrayBuffer: async () => regularData,
+        headers: { get: () => 'font/woff' },
+      };
+    });
+
+    await renderTweetToImage(tweet, {
+      fontUrl: 'https://example.com/font.woff',
+      fontBoldUrl: 'https://example.com/font-bold.woff',
+      fontFamily: 'DualFont',
+    });
+
+    const satoriCall = satori.mock.calls[0];
+    const fonts = satoriCall[1].fonts;
+    expect(fonts).toHaveLength(2);
+    expect(fonts[0].weight).toBe(400);
+    expect(fonts[0].data).toBe(regularData);
+    expect(fonts[1].weight).toBe(700);
+    expect(fonts[1].data).toBe(boldData);
+  });
+
+  it('falls back to default Inter fonts when custom font fetch fails', async () => {
+    const tweet = cloneTweet();
+
+    globalThis.fetch = vi.fn(async (url) => {
+      if (url.includes('custom-font')) {
+        return { ok: false, status: 404, headers: { get: () => null } };
+      }
+      return {
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(4),
+        headers: { get: () => 'image/png' },
+      };
+    });
+
+    await renderTweetToImage(tweet, {
+      fontUrl: 'https://example.com/custom-font.woff',
+      fontFamily: 'FailFont',
+    });
+
+    const satoriCall = satori.mock.calls[0];
+    const fonts = satoriCall[1].fonts;
+    // Should have fallen back to Inter fonts (loaded from mocked fs)
+    expect(fonts[0].name).toBe('Inter');
+  });
+
+  it('passes fontFamily through to HTML generation', async () => {
+    const tweet = cloneTweet();
+
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(4),
+      headers: { get: () => 'image/png' },
+    }));
+
+    await renderTweetToImage(tweet, { fontFamily: 'Roboto' });
+
+    // satori-html's html() mock receives the HTML string — check it has the font family
+    const htmlCall = html.mock.calls[0][0];
+    expect(htmlCall).toContain('Roboto');
+  });
 });
 
 // ─── Constants exports ───────────────────────────────────────────────────────

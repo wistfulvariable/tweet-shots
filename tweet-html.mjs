@@ -307,7 +307,7 @@ export function addLogoToHtml(baseHtml, logoUrl, position = 'bottom-right', size
 // Padding around the tweet card when displayed on a gradient/canvas background
 export const GRADIENT_FRAME_PADDING = 40;
 
-const FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const DEFAULT_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export function generateTweetHtml(tweet, theme, options = {}) {
   const colors = THEMES[theme] || THEMES.dark;
@@ -329,10 +329,13 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     textSecondaryColor = null,
     linkColor = null,
     borderRadius = 16,
+    fontFamily = null,
     // Canvas dimensions for centering within fixed-size output (e.g. dimension presets)
     canvasWidth = null,
     canvasHeight = null,
   } = options;
+
+  const resolvedFontFamily = fontFamily || DEFAULT_FONT_FAMILY;
 
   // Override colors if custom colors provided
   const finalColors = {
@@ -442,7 +445,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
 
     return `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${FONT_FAMILY};">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${resolvedFontFamily};">
       <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
         ${cardContent}
       </div>
@@ -452,7 +455,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
 
   // Standard single-layer card (no gradient, no fixed dimensions)
   return `
-    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${FONT_FAMILY}; ${shadow}">
+    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
       ${cardContent}
     </div>
   `;

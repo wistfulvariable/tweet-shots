@@ -30,26 +30,26 @@
     
     /* Hero */
     .hero {
-      padding: 80px 0;
+      padding: 32px 0 24px;
       text-align: center;
       background: linear-gradient(180deg, rgba(59,130,246,0.1) 0%, transparent 100%);
     }
-    
+
     .hero h1 {
-      font-size: 3.5rem;
+      font-size: 2.5rem;
       font-weight: 800;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       background: var(--gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    
+
     .hero p {
-      font-size: 1.25rem;
+      font-size: 1rem;
       color: var(--text-secondary);
       max-width: 600px;
-      margin: 0 auto 30px;
+      margin: 0 auto 16px;
     }
     
     .cta-buttons {
@@ -61,7 +61,7 @@
     
     .btn {
       display: inline-block;
-      padding: 14px 32px;
+      padding: 10px 24px;
       border-radius: 8px;
       font-weight: 600;
       text-decoration: none;
@@ -93,7 +93,7 @@
     
     /* Demo */
     .demo {
-      padding: 60px 0 80px;
+      padding: 24px 0 80px;
     }
 
     .demo h2 {
@@ -120,6 +120,8 @@
       flex: 0 0 44%;
       padding: 32px;
       border-right: 1px solid rgba(255, 255, 255, 0.06);
+      overflow-y: auto;
+      max-height: calc(100vh - 200px);
     }
 
     .demo-preview-panel {
@@ -129,6 +131,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      overflow-y: auto;
+      max-height: calc(100vh - 180px);
     }
 
     .demo-input-group {
@@ -270,7 +274,7 @@
     }
 
     .demo-advanced-content.open {
-      max-height: 300px;
+      max-height: 800px;
       padding-top: 20px;
     }
 
@@ -410,6 +414,8 @@
 
     .demo-preview-image {
       max-width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
       border-radius: 12px;
       box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
     }
@@ -449,6 +455,80 @@
     .demo-action-secondary:hover {
       background: rgba(255, 255, 255, 0.1);
       color: var(--text);
+    }
+
+    .demo-color-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .demo-color-field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .demo-color-field label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      min-width: 28px;
+    }
+
+    .demo-color-input {
+      width: 32px;
+      height: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+      padding: 1px;
+    }
+
+    .demo-color-input::-webkit-color-swatch-wrapper { padding: 1px; }
+    .demo-color-input::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+    .demo-color-reset {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      line-height: 1;
+    }
+
+    .demo-color-field.dirty .demo-color-reset { opacity: 1; }
+    .demo-color-reset:hover { color: var(--text); }
+
+    .demo-range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .demo-range-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      min-width: 50px;
+    }
+
+    .demo-range-input {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+    }
+
+    .demo-range-value {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      min-width: 24px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
     }
 
     .demo-fade-in {
@@ -690,10 +770,11 @@
     }
 
     @media (max-width: 768px) {
-      .hero h1 { font-size: 2.5rem; }
+      .hero h1 { font-size: 2rem; }
       .price-card.featured { transform: none; }
       .demo-layout { flex-direction: column; }
-      .demo-controls { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+      .demo-controls { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.06); max-height: none; overflow-y: visible; }
+      .demo-preview-panel { max-height: none; }
       .demo-toggles-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -718,7 +799,6 @@
       <div class="cta-buttons">
         <a href="#pricing" class="btn btn-primary">Get API Key</a>
         <a href="/docs" class="btn btn-secondary">View Docs</a>
-        <a href="/dashboard" class="btn btn-secondary">Sign In</a>
       </div>
     </div>
   </section>
@@ -726,9 +806,9 @@
   <section class="demo" id="demo">
     <div class="container">
       <h2>Try it live</h2>
-      <p style="color: var(--text-secondary); margin-bottom: 30px; text-align: center;">
+      <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center;">
         Paste a tweet URL and customize your screenshot. No API key needed.
-        <span style="display:block; margin-top:6px; font-size:0.85rem; color:#64748b;">Rate limited to 5 requests/min.</span>
+        <span style="display:block; margin-top:4px; font-size:0.85rem; color:#64748b;">Rate limited to 5 requests/min.</span>
       </p>
 
       <div class="demo-card">
@@ -766,7 +846,26 @@
               More options <span class="chevron">&#9662;</span>
             </button>
             <div class="demo-advanced-content" id="demo-advanced-content">
-              <span class="demo-section-label">Dimension</span>
+              <span class="demo-section-label">Output</span>
+              <div style="display:flex; gap:16px; margin-bottom:20px;">
+                <div style="flex:1;">
+                  <div style="font-size:0.6875rem; color:var(--text-secondary); margin-bottom:6px;">Format</div>
+                  <div class="demo-chips" id="demo-format" style="margin-bottom:0;">
+                    <button class="demo-chip active" data-value="png">PNG</button>
+                    <button class="demo-chip" data-value="svg">SVG</button>
+                  </div>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:0.6875rem; color:var(--text-secondary); margin-bottom:6px;">Scale</div>
+                  <div class="demo-chips" id="demo-scale" style="margin-bottom:0;">
+                    <button class="demo-chip" data-value="1">1x</button>
+                    <button class="demo-chip active" data-value="2">2x</button>
+                    <button class="demo-chip" data-value="3">3x</button>
+                  </div>
+                </div>
+              </div>
+
+              <span class="demo-section-label">Layout</span>
               <select id="demo-dimension" class="demo-select">
                 <option value="auto" selected>Auto (550px)</option>
                 <option value="instagramFeed">Instagram Feed (1080x1080)</option>
@@ -778,6 +877,35 @@
                 <option value="facebook">Facebook (1200x630)</option>
                 <option value="youtube">YouTube (1280x720)</option>
               </select>
+              <div class="demo-range-row">
+                <span class="demo-range-label">Padding</span>
+                <input type="range" class="demo-range-input" id="demo-padding" min="0" max="100" value="20">
+                <span class="demo-range-value" id="demo-padding-val">20</span>
+              </div>
+              <div class="demo-range-row">
+                <span class="demo-range-label">Radius</span>
+                <input type="range" class="demo-range-input" id="demo-radius" min="0" max="100" value="16">
+                <span class="demo-range-value" id="demo-radius-val">16</span>
+              </div>
+
+              <span class="demo-section-label">Colors</span>
+              <div class="demo-color-row">
+                <div class="demo-color-field" id="demo-bgColor-field">
+                  <label>BG</label>
+                  <input type="color" class="demo-color-input" id="demo-bgColor" value="#15202b">
+                  <button class="demo-color-reset" title="Reset to theme default">&times;</button>
+                </div>
+                <div class="demo-color-field" id="demo-textColor-field">
+                  <label>Text</label>
+                  <input type="color" class="demo-color-input" id="demo-textColor" value="#f7f9f9">
+                  <button class="demo-color-reset" title="Reset to theme default">&times;</button>
+                </div>
+                <div class="demo-color-field" id="demo-linkColor-field">
+                  <label>Link</label>
+                  <input type="color" class="demo-color-input" id="demo-linkColor" value="#1d9bf0">
+                  <button class="demo-color-reset" title="Reset to theme default">&times;</button>
+                </div>
+              </div>
 
               <span class="demo-section-label">Display</span>
               <div class="demo-toggles-grid">
@@ -787,6 +915,7 @@
                 <label class="demo-switch"><input type="checkbox" id="demo-hideVerified"><span class="demo-switch-track"></span>Hide verified</label>
                 <label class="demo-switch"><input type="checkbox" id="demo-hideQuoteTweet"><span class="demo-switch-track"></span>Hide quote tweet</label>
                 <label class="demo-switch"><input type="checkbox" id="demo-hideShadow"><span class="demo-switch-track"></span>Hide shadow</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-showUrl"><span class="demo-switch-track"></span>Show URL</label>
               </div>
             </div>
           </div>
@@ -800,7 +929,7 @@
               </svg>
               <p>Your screenshot will appear here</p>
             </div>
-            <div id="demo-result" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:320px;">
+            <div id="demo-result" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%;">
               <div id="demo-loading" class="demo-preview-loading" style="display:none;">
                 <div class="demo-spinner"></div>
                 <p id="demo-loading-text" style="color:var(--text-secondary); font-size:0.875rem;">Generating screenshot...</p>
@@ -943,10 +1072,22 @@
     var dimensionSelect = document.getElementById('demo-dimension');
     var advancedToggle = document.getElementById('demo-advanced-toggle');
     var advancedContent = document.getElementById('demo-advanced-content');
+    var paddingSlider = document.getElementById('demo-padding');
+    var paddingVal = document.getElementById('demo-padding-val');
+    var radiusSlider = document.getElementById('demo-radius');
+    var radiusVal = document.getElementById('demo-radius-val');
 
     var currentBlobUrl = null;
     var loadingTextEl = document.getElementById('demo-loading-text');
     var loadingTimer = null;
+
+    // Theme default colors — used to detect when user has customized
+    var themeColors = {
+      dark:  { bg: '#15202b', text: '#f7f9f9', link: '#1d9bf0' },
+      light: { bg: '#ffffff', text: '#0f1419', link: '#1d9bf0' },
+      dim:   { bg: '#1e2732', text: '#f7f9f9', link: '#1d9bf0' },
+      black: { bg: '#000000', text: '#e7e9ea', link: '#1d9bf0' },
+    };
 
     // Advanced options toggle
     advancedToggle.addEventListener('click', function() {
@@ -964,6 +1105,45 @@
       });
     });
 
+    // Range sliders — live value display
+    paddingSlider.addEventListener('input', function() { paddingVal.textContent = paddingSlider.value; });
+    radiusSlider.addEventListener('input', function() { radiusVal.textContent = radiusSlider.value; });
+
+    // Color inputs — mark dirty on change, reset button clears
+    document.querySelectorAll('.demo-color-field').forEach(function(field) {
+      var input = field.querySelector('.demo-color-input');
+      var resetBtn = field.querySelector('.demo-color-reset');
+      input.addEventListener('input', function() { field.classList.add('dirty'); });
+      resetBtn.addEventListener('click', function() {
+        field.classList.remove('dirty');
+        // Reset to current theme defaults
+        var theme = getSelectedValue('demo-theme') || 'dark';
+        var defaults = themeColors[theme] || themeColors.dark;
+        if (input.id === 'demo-bgColor') input.value = defaults.bg;
+        else if (input.id === 'demo-textColor') input.value = defaults.text;
+        else if (input.id === 'demo-linkColor') input.value = defaults.link;
+      });
+    });
+
+    // When theme changes, update color pickers to theme defaults (if not dirty)
+    document.getElementById('demo-theme').addEventListener('click', function(e) {
+      var chip = e.target.closest('.demo-chip');
+      if (!chip) return;
+      var theme = chip.dataset.value;
+      var defaults = themeColors[theme] || themeColors.dark;
+      var fields = [
+        { id: 'demo-bgColor-field', input: 'demo-bgColor', key: 'bg' },
+        { id: 'demo-textColor-field', input: 'demo-textColor', key: 'text' },
+        { id: 'demo-linkColor-field', input: 'demo-linkColor', key: 'link' },
+      ];
+      fields.forEach(function(f) {
+        var field = document.getElementById(f.id);
+        if (!field.classList.contains('dirty')) {
+          document.getElementById(f.input).value = defaults[f.key];
+        }
+      });
+    });
+
     function getSelectedValue(groupId) {
       var active = document.querySelector('#' + groupId + ' .demo-chip.active');
       return active ? active.dataset.value : '';
@@ -975,16 +1155,42 @@
       var theme = getSelectedValue('demo-theme');
       if (theme && theme !== 'dark') params.set('theme', theme);
 
+      var format = getSelectedValue('demo-format');
+      if (format && format !== 'png') params.set('format', format);
+
+      var scale = getSelectedValue('demo-scale');
+      if (scale && scale !== '2') params.set('scale', scale);
+
       var gradient = getSelectedValue('demo-gradient');
       if (gradient) params.set('gradient', gradient);
 
       var dimension = dimensionSelect.value;
       if (dimension !== 'auto') params.set('dimension', dimension);
 
+      var padding = paddingSlider.value;
+      if (padding !== '20') params.set('padding', padding);
+
+      var radius = radiusSlider.value;
+      if (radius !== '16') params.set('radius', radius);
+
+      // Colors — only send if user has customized (dirty)
+      var colorFields = [
+        { fieldId: 'demo-bgColor-field', inputId: 'demo-bgColor', param: 'bgColor' },
+        { fieldId: 'demo-textColor-field', inputId: 'demo-textColor', param: 'textColor' },
+        { fieldId: 'demo-linkColor-field', inputId: 'demo-linkColor', param: 'linkColor' },
+      ];
+      colorFields.forEach(function(cf) {
+        if (document.getElementById(cf.fieldId).classList.contains('dirty')) {
+          params.set(cf.param, document.getElementById(cf.inputId).value);
+        }
+      });
+
       var toggles = ['hideMetrics', 'hideMedia', 'hideDate', 'hideVerified', 'hideQuoteTweet', 'hideShadow'];
       toggles.forEach(function(id) {
         if (document.getElementById('demo-' + id).checked) params.set(id, 'true');
       });
+
+      if (document.getElementById('demo-showUrl').checked) params.set('showUrl', 'true');
 
       return params.toString();
     }
@@ -1034,8 +1240,12 @@
       void imageContainer.offsetWidth; // force reflow for animation restart
       imageContainer.classList.add('demo-fade-in');
 
+      var format = getSelectedValue('demo-format') || 'png';
+      var ext = format === 'svg' ? 'svg' : 'png';
       imageEl.src = blobUrl;
       downloadLink.href = blobUrl;
+      downloadLink.download = 'tweet-screenshot.' + ext;
+      downloadLink.textContent = 'Download ' + ext.toUpperCase();
       generateBtn.disabled = false;
       generateBtn.textContent = 'Generate';
     }

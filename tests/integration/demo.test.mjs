@@ -245,17 +245,84 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
     );
   });
 
-  // ── Always PNG ──────────────────────────────────────────────────────────
+  // ── Format ──────────────────────────────────────────────────────────────
 
-  it('always renders as PNG regardless of format query param (format stripped by validation)', async () => {
-    // demoQuerySchema does not include format — unknown params are stripped by Zod
-    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?format=svg`);
+  it('defaults to PNG when format not specified', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890`);
     expect(res.status).toBe(200);
     expect(renderTweetToImage).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ format: 'png' })
     );
     expect(res.headers.get('content-type')).toContain('image/png');
+  });
+
+  it('respects ?format=svg and returns SVG content type', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?format=svg`);
+    expect(res.status).toBe(200);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ format: 'svg' })
+    );
+    expect(res.headers.get('content-type')).toContain('image/svg+xml');
+  });
+
+  // ── Scale ──────────────────────────────────────────────────────────────
+
+  it('respects ?scale=3 query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=3`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scale: 3 })
+    );
+  });
+
+  it('respects ?scale=1 query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=1`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scale: 1 })
+    );
+  });
+
+  it('returns 400 for invalid scale (scale=5)', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=5`);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  // ── Colors ─────────────────────────────────────────────────────────────
+
+  it('respects ?bgColor=%2315202b query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?bgColor=%2315202b`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ backgroundColor: '#15202b' })
+    );
+  });
+
+  it('respects ?textColor=%23ffffff query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?textColor=%23ffffff`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ textColor: '#ffffff' })
+    );
+  });
+
+  it('respects ?linkColor=%2300ff00 query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?linkColor=%2300ff00`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ linkColor: '#00ff00' })
+    );
+  });
+
+  it('returns 400 for invalid bgColor', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?bgColor=red`);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
   });
 
   // ── URL-encoded tweet URL as path param ─────────────────────────────────

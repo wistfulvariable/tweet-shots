@@ -63,6 +63,34 @@ function pickImageSize(width, scale) {
 }
 
 const IMAGE_FETCH_TIMEOUT_MS = 10_000;
+const FONT_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Fetch a remote font file and return its data as an ArrayBuffer.
+ * Returns null on any failure (non-OK response, network error, timeout).
+ * @param {string} url - Font file URL (.ttf, .woff, .otf)
+ * @returns {Promise<ArrayBuffer|null>}
+ */
+export async function fetchFontAsArrayBuffer(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FONT_FETCH_TIMEOUT_MS);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      console.error(`Font fetch failed: HTTP ${response.status} for ${url.substring(0, 80)}`);
+      return null;
+    }
+    const buffer = await response.arrayBuffer();
+    return buffer;
+  } catch (e) {
+    const reason = e.name === 'AbortError' ? 'timed out' : e.message;
+    console.error(`Font fetch error for ${url.substring(0, 80)}: ${reason}`);
+    return null;
+  }
+}
 
 /**
  * Fetch a remote image and convert it to a base64 data URI.
@@ -354,6 +382,10 @@ export async function renderTweetToImage(tweet, options = {}) {
     // Canvas dimensions from dimension presets (e.g. instagramFeed 1080x1080)
     canvasWidth: canvasWidthOverride = null,
     canvasHeight: canvasHeightOverride = null,
+    // Custom fonts
+    fontFamily = null,
+    fontUrl = null,
+    fontBoldUrl = null,
   } = options;
 
   // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants.
@@ -408,6 +440,7 @@ export async function renderTweetToImage(tweet, options = {}) {
     textColor,
     linkColor,
     borderRadius,
+    fontFamily,
     canvasWidth: needsWrapper ? canvasWidth : null,
     canvasHeight: needsWrapper ? canvasHeight : null,
   });
@@ -423,8 +456,26 @@ export async function renderTweetToImage(tweet, options = {}) {
   // Inject base64 images into the VDOM tree (bypasses satori-html's O(n²) parser)
   injectImageSources(markup, imageMap);
 
-  // Load fonts (cached after first call)
-  const fonts = await loadFonts();
+  // Load fonts — use custom fonts if fontUrl provided, otherwise cached Inter
+  let fonts;
+  if (fontUrl) {
+    const customName = fontFamily || 'CustomFont';
+    const [regularData, boldData] = await Promise.all([
+      fetchFontAsArrayBuffer(fontUrl),
+      fontBoldUrl ? fetchFontAsArrayBuffer(fontBoldUrl) : Promise.resolve(null),
+    ]);
+    if (regularData) {
+      fonts = [
+        { name: customName, data: regularData, weight: 400, style: 'normal' },
+        { name: customName, data: boldData || regularData, weight: 700, style: 'normal' },
+      ];
+    } else {
+      // Custom font fetch failed — fall back to default Inter
+      fonts = await loadFonts();
+    }
+  } else {
+    fonts = await loadFonts();
+  }
 
   // Apply scale
   const scaledWidth = canvasWidth * scale;

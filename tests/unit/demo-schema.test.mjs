@@ -1,6 +1,6 @@
 /**
  * Unit tests for demoQuerySchema — validates GET query parameters for the demo endpoint.
- * Subset of screenshotQuerySchema: no format, scale, or custom colors.
+ * Matches screenshotQuerySchema minus font URLs (SSRF risk on public endpoint).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -15,8 +15,13 @@ describe('demoQuerySchema', () => {
       expect(result.success).toBe(true);
       expect(result.data.theme).toBe('dark');
       expect(result.data.dimension).toBe('auto');
+      expect(result.data.format).toBe('png');
+      expect(result.data.scale).toBe(2);
       expect(result.data.padding).toBe(20);
       expect(result.data.radius).toBe(16);
+      expect(result.data.bgColor).toBeUndefined();
+      expect(result.data.textColor).toBeUndefined();
+      expect(result.data.linkColor).toBeUndefined();
       // NOTE: Zod .default('false') injects the raw string BEFORE .transform() runs,
       // so omitted boolean fields get the string "false" rather than boolean false.
       // This is a known Zod behavior — the transform only fires on explicitly provided values.
@@ -279,37 +284,136 @@ describe('demoQuerySchema', () => {
     });
   });
 
+  // ── Format ─────────────────────────────────────────────────────────
+
+  describe('format', () => {
+    it('accepts png', () => {
+      const result = demoQuerySchema.safeParse({ format: 'png' });
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('png');
+    });
+
+    it('accepts svg', () => {
+      const result = demoQuerySchema.safeParse({ format: 'svg' });
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('svg');
+    });
+
+    it('defaults to png when omitted', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('png');
+    });
+
+    it('rejects invalid format', () => {
+      const result = demoQuerySchema.safeParse({ format: 'pdf' });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // ── Scale ─────────────────────────────────────────────────────────
+
+  describe('scale', () => {
+    it('accepts 1, 2, and 3', () => {
+      for (const scale of [1, 2, 3]) {
+        const result = demoQuerySchema.safeParse({ scale });
+        expect(result.success, `scale ${scale} should be valid`).toBe(true);
+        expect(result.data.scale).toBe(scale);
+      }
+    });
+
+    it('defaults to 2 when omitted', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.scale).toBe(2);
+    });
+
+    it('coerces string to number', () => {
+      const result = demoQuerySchema.safeParse({ scale: '3' });
+      expect(result.success).toBe(true);
+      expect(result.data.scale).toBe(3);
+    });
+
+    it('rejects 0', () => {
+      const result = demoQuerySchema.safeParse({ scale: 0 });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects 4', () => {
+      const result = demoQuerySchema.safeParse({ scale: 4 });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects non-integer', () => {
+      const result = demoQuerySchema.safeParse({ scale: '1.5' });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // ── Colors ────────────────────────────────────────────────────────
+
+  describe('colors (bgColor, textColor, linkColor)', () => {
+    const colorFields = ['bgColor', 'textColor', 'linkColor'];
+
+    it('accepts valid hex colors', () => {
+      for (const field of colorFields) {
+        const result = demoQuerySchema.safeParse({ [field]: '#ff0000' });
+        expect(result.success, `${field} #ff0000 should be valid`).toBe(true);
+        expect(result.data[field]).toBe('#ff0000');
+      }
+    });
+
+    it('accepts uppercase hex colors', () => {
+      for (const field of colorFields) {
+        const result = demoQuerySchema.safeParse({ [field]: '#AABB00' });
+        expect(result.success, `${field} #AABB00 should be valid`).toBe(true);
+        expect(result.data[field]).toBe('#AABB00');
+      }
+    });
+
+    it('is undefined when omitted', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      for (const field of colorFields) {
+        expect(result.data[field], `${field} should be undefined`).toBeUndefined();
+      }
+    });
+
+    it('rejects invalid color strings', () => {
+      for (const field of colorFields) {
+        const result = demoQuerySchema.safeParse({ [field]: 'red' });
+        expect(result.success, `${field} "red" should be rejected`).toBe(false);
+      }
+    });
+
+    it('rejects hex without #', () => {
+      for (const field of colorFields) {
+        const result = demoQuerySchema.safeParse({ [field]: 'ff0000' });
+        expect(result.success, `${field} without # should be rejected`).toBe(false);
+      }
+    });
+
+    it('rejects 3-digit hex shorthand', () => {
+      for (const field of colorFields) {
+        const result = demoQuerySchema.safeParse({ [field]: '#f00' });
+        expect(result.success, `${field} 3-digit hex should be rejected`).toBe(false);
+      }
+    });
+  });
+
   // ── Unknown fields stripped ─────────────────────────────────────────
 
   describe('unknown fields', () => {
-    it('strips format field (not part of demo schema)', () => {
-      const result = demoQuerySchema.safeParse({ format: 'svg' });
+    it('strips fontUrl field (not part of demo schema — SSRF risk)', () => {
+      const result = demoQuerySchema.safeParse({ fontUrl: 'https://example.com/font.woff' });
       expect(result.success).toBe(true);
-      expect(result.data).not.toHaveProperty('format');
+      expect(result.data).not.toHaveProperty('fontUrl');
     });
 
-    it('strips scale field (not part of demo schema)', () => {
-      const result = demoQuerySchema.safeParse({ scale: '2' });
+    it('strips fontFamily field (not part of demo schema)', () => {
+      const result = demoQuerySchema.safeParse({ fontFamily: 'Roboto' });
       expect(result.success).toBe(true);
-      expect(result.data).not.toHaveProperty('scale');
-    });
-
-    it('strips bgColor field (not part of demo schema)', () => {
-      const result = demoQuerySchema.safeParse({ bgColor: '#ff0000' });
-      expect(result.success).toBe(true);
-      expect(result.data).not.toHaveProperty('bgColor');
-    });
-
-    it('strips textColor field (not part of demo schema)', () => {
-      const result = demoQuerySchema.safeParse({ textColor: '#00ff00' });
-      expect(result.success).toBe(true);
-      expect(result.data).not.toHaveProperty('textColor');
-    });
-
-    it('strips linkColor field (not part of demo schema)', () => {
-      const result = demoQuerySchema.safeParse({ linkColor: '#0000ff' });
-      expect(result.success).toBe(true);
-      expect(result.data).not.toHaveProperty('linkColor');
+      expect(result.data).not.toHaveProperty('fontFamily');
     });
 
     it('strips arbitrary unknown fields', () => {
@@ -327,7 +431,12 @@ describe('demoQuerySchema', () => {
       const result = demoQuerySchema.safeParse({
         theme: 'dim',
         dimension: 'instagramStory',
+        format: 'svg',
+        scale: '3',
         gradient: 'ocean',
+        bgColor: '#1a1a2e',
+        textColor: '#e0e0e0',
+        linkColor: '#00bcd4',
         hideMetrics: 'true',
         hideMedia: 'false',
         hideDate: 'true',
@@ -342,7 +451,12 @@ describe('demoQuerySchema', () => {
       expect(result.data).toEqual({
         theme: 'dim',
         dimension: 'instagramStory',
+        format: 'svg',
+        scale: 3,
         gradient: 'ocean',
+        bgColor: '#1a1a2e',
+        textColor: '#e0e0e0',
+        linkColor: '#00bcd4',
         hideMetrics: true,
         hideMedia: false,
         hideDate: true,

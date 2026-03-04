@@ -27,6 +27,7 @@ Rendering logic is split across focused modules (all re-exported via `core.mjs` 
 **Primary (Latin):** Bundled `fonts/Inter-Regular.woff` + `fonts/Inter-Bold.woff` (always loaded).
 **Fallback (Latin):** Google Fonts CDN URLs (Inter TTF v20). Only used if bundled fonts are missing.
 **Multilingual:** 13 Noto Sans fonts in `fonts/` — lazy-loaded by `loadLanguageFont()` when Satori encounters non-Latin text. Cached per-process per-language in module-level Map.
+**Custom fonts:** Users can provide `fontUrl` (+ optional `fontBoldUrl`) to fetch a custom font at render time via `fetchFontAsArrayBuffer()` (10s timeout). Custom fonts replace Inter in the Satori `fonts` array. If fetch fails, falls back to default Inter silently. `fontFamily` option overrides the CSS `font-family` in generated HTML (default fallback stack: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ...`). If `fontUrl` given without `fontFamily`, the Satori font name defaults to `"CustomFont"`. Custom fonts are NOT cached across requests (per-render fetch).
 
 Fonts are cached in `_cachedFonts` (Inter) and `_fontCache` (Noto Sans) module-level variables. Node `Buffer.buffer` is a shared ArrayBuffer pool — must copy to a new `ArrayBuffer` before passing to Satori.
 

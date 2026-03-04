@@ -115,6 +115,45 @@ describe('screenshotQuerySchema', () => {
     // Query schemas use boolString which defaults to raw string "false" (Zod .default bypasses .transform)
     expect(result.data.showUrl).toBe('false');
   });
+
+  it('accepts valid fontFamily', () => {
+    const result = screenshotQuerySchema.safeParse({ fontFamily: 'Roboto' });
+    expect(result.success).toBe(true);
+    expect(result.data.fontFamily).toBe('Roboto');
+  });
+
+  it('rejects fontFamily longer than 100 characters', () => {
+    const result = screenshotQuerySchema.safeParse({ fontFamily: 'A'.repeat(101) });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid fontUrl', () => {
+    const result = screenshotQuerySchema.safeParse({ fontUrl: 'https://fonts.example.com/roboto.woff' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects fontUrl that is not a URL', () => {
+    const result = screenshotQuerySchema.safeParse({ fontUrl: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid fontBoldUrl', () => {
+    const result = screenshotQuerySchema.safeParse({ fontBoldUrl: 'https://fonts.example.com/roboto-bold.woff' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects fontBoldUrl that is not a URL', () => {
+    const result = screenshotQuerySchema.safeParse({ fontBoldUrl: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  it('font fields are optional (not required)', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data.fontFamily).toBeUndefined();
+    expect(result.data.fontUrl).toBeUndefined();
+    expect(result.data.fontBoldUrl).toBeUndefined();
+  });
 });
 
 describe('screenshotBodySchema', () => {
@@ -176,6 +215,35 @@ describe('screenshotBodySchema', () => {
     const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
     expect(result.success).toBe(true);
     expect(result.data.showUrl).toBe(false);
+  });
+
+  it('accepts fontFamily, fontUrl, and fontBoldUrl in POST body', () => {
+    const result = screenshotBodySchema.safeParse({
+      tweetId: '12345',
+      fontFamily: 'Roboto',
+      fontUrl: 'https://fonts.example.com/roboto.woff',
+      fontBoldUrl: 'https://fonts.example.com/roboto-bold.woff',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.fontFamily).toBe('Roboto');
+    expect(result.data.fontUrl).toBe('https://fonts.example.com/roboto.woff');
+    expect(result.data.fontBoldUrl).toBe('https://fonts.example.com/roboto-bold.woff');
+  });
+
+  it('rejects invalid fontUrl in POST body', () => {
+    const result = screenshotBodySchema.safeParse({
+      tweetId: '12345',
+      fontUrl: 'not-a-url',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('font fields are optional in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.fontFamily).toBeUndefined();
+    expect(result.data.fontUrl).toBeUndefined();
+    expect(result.data.fontBoldUrl).toBeUndefined();
   });
 });
 

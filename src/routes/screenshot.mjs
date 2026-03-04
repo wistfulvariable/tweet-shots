@@ -57,6 +57,9 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       showUrl: params.showUrl === true || params.showUrl === 'true',
       padding: params.padding ?? 20,
       borderRadius: params.radius ?? params.borderRadius ?? 16,
+      fontFamily: params.fontFamily,
+      fontUrl: params.fontUrl,
+      fontBoldUrl: params.fontBoldUrl,
       canvasWidth,
       canvasHeight,
     };

@@ -35,8 +35,13 @@
 | `radius` | `borderRadius` | Renamed |
 | `gradient` | `backgroundGradient` | Renamed |
 | `bgColor` | `backgroundColor` | Renamed |
+| `fontFamily` | `fontFamily` | CSS font name (max 100 chars) |
+| `fontUrl` | `fontUrl` | URL to custom font file (.ttf/.woff/.otf) |
+| `fontBoldUrl` | `fontBoldUrl` | URL to custom bold font file (optional) |
 
 Boolean query params use string `"true"`/`"false"` (Zod `boolString` transform).
+
+Font params available on GET/POST `/screenshot` and batch routes. NOT on `/demo` (no arbitrary URL fetching from public endpoints).
 
 ## POST /screenshot Response Types
 

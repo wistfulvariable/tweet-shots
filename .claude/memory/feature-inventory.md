@@ -53,6 +53,9 @@
 | hideQuoteTweet | `false` | Show/hide quoted tweet |
 | hideShadow | `false` | Show/hide drop shadow |
 | showUrl | `false` | Show tweet URL at bottom of image |
+| fontFamily | — | Custom CSS font-family name (max 100 chars) |
+| fontUrl | — | URL to custom font file (.ttf/.woff/.otf) |
+| fontBoldUrl | — | URL to custom bold font file (optional) |
 
 ## Font & Emoji Support
 
@@ -60,6 +63,7 @@
 - **Multilingual** — 13 bundled Noto Sans fonts, lazy-loaded from disk when Satori detects non-Latin text
 - **Supported scripts:** Japanese, Korean, Chinese (Simplified + Traditional), Thai, Arabic, Hebrew, Bengali, Tamil, Malayalam, Telugu, Devanagari, Kannada
 - **Latin:** Inter Regular + Bold (always loaded)
+- **Custom fonts** — `fontUrl` fetches a font at render time (10s timeout), replaces Inter. `fontBoldUrl` optional (regular used for bold if omitted). Falls back to Inter silently on fetch failure. Not available on demo route.
 
 ## Not Supported
 

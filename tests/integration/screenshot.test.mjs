@@ -452,4 +452,31 @@ describe('POST /screenshot', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('image/svg+xml');
   });
+
+  it('passes custom font options to render', async () => {
+    await postScreenshot({
+      tweetId: '1234567890',
+      fontFamily: 'Roboto',
+      fontUrl: 'https://fonts.example.com/roboto.woff',
+      fontBoldUrl: 'https://fonts.example.com/roboto-bold.woff',
+    });
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        fontFamily: 'Roboto',
+        fontUrl: 'https://fonts.example.com/roboto.woff',
+        fontBoldUrl: 'https://fonts.example.com/roboto-bold.woff',
+      })
+    );
+  });
+
+  it('validates fontUrl must be a valid URL', async () => {
+    const res = await postScreenshot({
+      tweetId: '1234567890',
+      fontUrl: 'not-a-url',
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
 });

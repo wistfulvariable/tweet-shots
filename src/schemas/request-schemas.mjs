@@ -43,6 +43,9 @@ export const screenshotQuerySchema = z.object({
   showUrl: boolString,
   padding: z.coerce.number().int().min(0).max(100).default(20),
   radius: z.coerce.number().int().min(0).max(100).default(16),
+  fontFamily: z.string().max(100).optional(),
+  fontUrl: z.string().url().optional(),
+  fontBoldUrl: z.string().url().optional(),
 });
 
 /**
@@ -73,6 +76,9 @@ export const screenshotBodySchema = z.object({
   padding: z.number().int().min(0).max(100).default(20),
   radius: z.number().int().min(0).max(100).optional(),
   borderRadius: z.number().int().min(0).max(100).optional(),
+  fontFamily: z.string().max(100).optional(),
+  fontUrl: z.string().url().optional(),
+  fontBoldUrl: z.string().url().optional(),
 }).refine(data => data.tweetId || data.tweetUrl, {
   message: 'Either tweetId or tweetUrl is required',
 });
@@ -135,6 +141,9 @@ const batchRenderOptions = {
   padding: z.number().int().min(0).max(100).default(20),
   radius: z.number().int().min(0).max(100).optional(),
   borderRadius: z.number().int().min(0).max(100).optional(),
+  fontFamily: z.string().max(100).optional(),
+  fontUrl: z.string().url().optional(),
+  fontBoldUrl: z.string().url().optional(),
 };
 
 /**
@@ -159,12 +168,17 @@ export const batchMultipartOptionsSchema = z.object({
 
 /**
  * GET /demo/screenshot/:tweetIdOrUrl query parameters.
- * Subset of screenshotQuerySchema — no format, scale, or custom colors.
+ * Matches screenshotQuerySchema minus font URLs (SSRF risk on public endpoint).
  */
 export const demoQuerySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
+  format: z.enum(['png', 'svg']).default('png'),
+  scale: z.coerce.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
+  bgColor: hexColor,
+  textColor: hexColor,
+  linkColor: hexColor,
   hideMetrics: boolString,
   hideMedia: boolString,
   hideDate: boolString,

@@ -63,6 +63,9 @@ Styling Options:
   --link-color <hex>       Link/mention color
   --padding <px>           Padding around tweet (default: 20)
   --radius <px>            Border radius (default: 16)
+  --font-family <name>     Custom font family name (e.g., Roboto)
+  --font-url <url>         URL to custom font file (.ttf, .woff, .otf)
+  --font-bold-url <url>    URL to custom bold font file (optional)
 
 Dimension Presets:
   auto              Auto height (default, 550px wide)
@@ -139,6 +142,10 @@ function parseArgs(args) {
     logo: null,
     logoPosition: 'bottom-right',
     logoSize: 40,
+    // Custom fonts
+    fontFamily: null,
+    fontUrl: null,
+    fontBoldUrl: null,
   };
 
   // Map of flags to their handler: [key, transform?]
@@ -151,6 +158,9 @@ function parseArgs(args) {
     '--bg-image': 'backgroundImage',
     '--text-color': 'textColor',
     '--link-color': 'linkColor',
+    '--font-family': 'fontFamily',
+    '--font-url': 'fontUrl',
+    '--font-bold-url': 'fontBoldUrl',
     '--batch': 'batchFile',
     '--batch-dir': 'batchDir',
     '--translate': 'translate',
@@ -236,6 +246,9 @@ function buildRenderOptions(options) {
     logoPosition: options.logoPosition,
     logoSize: options.logoSize,
     translate: options.translate,
+    fontFamily: options.fontFamily,
+    fontUrl: options.fontUrl,
+    fontBoldUrl: options.fontBoldUrl,
     canvasWidth: options.canvasWidth || null,
     canvasHeight: options.canvasHeight || null,
   };

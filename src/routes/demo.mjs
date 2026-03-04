@@ -3,7 +3,7 @@
  * GET /demo/screenshot/:tweetIdOrUrl
  *
  * Reuses the same rendering pipeline as /screenshot but restricted to
- * PNG format, scale 2, and no custom colors — to limit abuse surface.
+ * no custom fonts or logo URLs — to limit SSRF abuse surface.
  */
 
 import { Router } from 'express';
@@ -34,9 +34,12 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
     return {
       theme: params.theme || 'dark',
       width,
-      format: 'png',
-      scale: 2,
+      format: params.format || 'png',
+      scale: params.scale ?? 2,
       backgroundGradient: params.gradient,
+      backgroundColor: params.bgColor,
+      textColor: params.textColor,
+      linkColor: params.linkColor,
       showMetrics: params.hideMetrics !== true,
       hideMedia: params.hideMedia === true,
       hideDate: params.hideDate === true,
