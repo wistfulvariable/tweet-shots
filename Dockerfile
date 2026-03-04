@@ -32,6 +32,7 @@ COPY tweet-fonts.mjs ./
 COPY tweet-utils.mjs ./
 COPY tweet-shots.mjs ./
 COPY landing.html ./
+COPY landing.js ./
 COPY favicon.svg ./
 COPY fonts/ ./fonts/
 COPY src/ ./src/

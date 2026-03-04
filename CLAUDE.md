@@ -42,7 +42,8 @@ tweet-shots/
 ├── tweet-fonts.mjs              # Multilingual font loading (Noto Sans, lazy from disk)
 ├── tweet-utils.mjs              # CLI-only utilities (translation, batch, PDF)
 ├── tweet-shots.mjs              # CLI entry point
-├── landing.html                 # Landing page with interactive demo (vanilla JS)
+├── landing.html                 # Landing page (inline CSS, loads landing.js)
+├── landing.js                   # Landing page demo JS (external, 24h browser cache)
 ├── fonts/                       # Bundled fonts (Inter + 13 Noto Sans variants)
 │   ├── Inter-Regular.woff       # Latin (always loaded)
 │   ├── Inter-Bold.woff          # Latin bold (always loaded)

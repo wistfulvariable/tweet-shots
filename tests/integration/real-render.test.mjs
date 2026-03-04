@@ -329,5 +329,41 @@ describe('Real tweet rendering', { timeout: 30_000 }, () => {
       });
       assertValidPng(result);
     });
+
+    it('renders with phone frame', async () => {
+      globalThis.fetch = createFixtureFetchMock('text-only');
+      const tweet = loadTweetFixture('text-only');
+      const result = await renderTweetToImage(tweet, {
+        theme: 'dark',
+        frame: 'phone',
+        format: 'png',
+      });
+      assertValidPng(result);
+    });
+
+    it('renders with phone frame + gradient', async () => {
+      globalThis.fetch = createFixtureFetchMock('text-only');
+      const tweet = loadTweetFixture('text-only');
+      const result = await renderTweetToImage(tweet, {
+        theme: 'dark',
+        frame: 'phone',
+        backgroundGradient: 'ocean',
+        format: 'png',
+      });
+      assertValidPng(result);
+    });
+
+    it('renders with phone frame + dimension preset', async () => {
+      globalThis.fetch = createFixtureFetchMock('text-only');
+      const tweet = loadTweetFixture('text-only');
+      const result = await renderTweetToImage(tweet, {
+        theme: 'dark',
+        frame: 'phone',
+        canvasWidth: 1080,
+        canvasHeight: 1080,
+        format: 'png',
+      });
+      assertValidPng(result);
+    });
   });
 });

@@ -506,7 +506,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
       <div style="display: flex; flex-direction: column; background: #0d0d0d; border-radius: ${44 + PHONE_CHROME.border}px; padding: ${PHONE_CHROME.border}px;">
         <div style="display: flex; flex-direction: column; background: #1a1a1a; border-radius: 44px; overflow: hidden; width: ${width}px;">
           <div style="display: flex; justify-content: center; align-items: center; height: ${PHONE_CHROME.notch}px; background: #1a1a1a;">
-            <div style="width: 80px; height: 8px; background: #0d0d0d; border-radius: 10px;" />
+            <div style="display: flex; width: 80px; height: 8px; background: #0d0d0d; border-radius: 10px;"></div>
           </div>
           <div style="display: flex; flex-direction: column; background: ${cardBg};">
             <div style="display: flex; flex-direction: column; padding: ${padding}px;">
@@ -514,7 +514,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
             </div>
           </div>
           <div style="display: flex; justify-content: center; align-items: center; height: ${PHONE_CHROME.homeBar}px; background: #1a1a1a;">
-            <div style="width: 100px; height: 4px; background: #3a3a3a; border-radius: 4px;" />
+            <div style="display: flex; width: 100px; height: 4px; background: #3a3a3a; border-radius: 4px;"></div>
           </div>
         </div>
       </div>

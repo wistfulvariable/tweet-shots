@@ -39,6 +39,10 @@ GET `/screenshot` uses `hideMetrics=true` → internally maps to `showMetrics: f
 
 Phone frame adds `PHONE_CHROME.notch (40) + PHONE_CHROME.homeBar (28) + PHONE_CHROME.border*2 (20)` px to canvas height. If you change the inner card layout, re-check total canvas height calculation in `renderTweetToImage()`.
 
+## landing.js Has 24-Hour Browser Cache
+
+`/landing.js` is served with `Cache-Control: public, max-age=86400`. Changes to `landing.js` won't be visible to returning users for up to 24 hours. `landing.html` (inline CSS) has no such cache and updates immediately on deploy. If you need JS changes to propagate instantly, add a cache-busting query param to the `<script src>` tag in `landing.html`.
+
 ## Custom Font Not Cached
 
 `fontUrl` fonts are fetched fresh on every request (10s timeout). High-traffic endpoints or slow font CDNs will add latency proportional to font file size. Fallback to Inter is silent — no error surfaced to caller.

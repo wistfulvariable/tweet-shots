@@ -10,6 +10,7 @@ import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LANDING_PATH = path.resolve(__dirname, '../../landing.html');
+const LANDING_JS_PATH = path.resolve(__dirname, '../../landing.js');
 const FAVICON_PATH = path.resolve(__dirname, '../../favicon.svg');
 
 export function landingRoutes() {
@@ -17,6 +18,11 @@ export function landingRoutes() {
 
   router.get('/favicon.svg', (req, res) => {
     res.sendFile(FAVICON_PATH);
+  });
+
+  router.get('/landing.js', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(LANDING_JS_PATH);
   });
 
   router.get('/', (req, res) => {
