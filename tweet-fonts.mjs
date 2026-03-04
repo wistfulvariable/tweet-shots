@@ -10,6 +10,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from './src/logger.mjs';
+
+const logger = createLogger();
 
 // ============================================================================
 // CONFIGURATION
@@ -70,7 +73,7 @@ export function loadLanguageFont(languageCode) {
 
   try {
     if (!fs.existsSync(filePath)) {
-      console.error(`Multilingual font missing: ${mapping.file} for ${languageCode}`);
+      logger.error({ file: mapping.file, languageCode }, 'Multilingual font missing');
       return undefined;
     }
 
@@ -90,7 +93,7 @@ export function loadLanguageFont(languageCode) {
     _fontCache.set(languageCode, fontOptions);
     return fontOptions;
   } catch (e) {
-    console.error(`Failed to load font ${mapping.file} for ${languageCode}: ${e.message}`);
+    logger.error({ file: mapping.file, languageCode, err: e.message }, 'Multilingual font load failed');
     return undefined;
   }
 }

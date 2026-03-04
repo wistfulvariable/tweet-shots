@@ -7,6 +7,19 @@ import { MOCK_TWEET } from '../helpers/test-fixtures.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
+// Mock logger used by core modules (tweet-render, tweet-fetch, tweet-fonts)
+const mockLogger = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(function () { return this; }),
+}));
+
+vi.mock('../../src/logger.mjs', () => ({
+  createLogger: vi.fn(() => mockLogger),
+}));
+
 // Mock satori default export
 vi.mock('satori', () => ({
   default: vi.fn(async () => '<svg>mock</svg>'),
@@ -531,11 +544,10 @@ describe('fetchThread', () => {
       return mockFetchResponse({}, { ok: false, status: 404, statusText: 'Not Found' });
     });
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockLogger.warn.mockClear();
     const result = await fetchThread('100');
     expect(result).toHaveLength(1);
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
   it('logs warning and stops walking on non-404 error (e.g., 429 rate limit)', async () => {
@@ -548,13 +560,12 @@ describe('fetchThread', () => {
       return mockFetchResponse({}, { ok: false, status: 429, statusText: 'Too Many Requests' });
     });
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockLogger.warn.mockClear();
     const result = await fetchThread('100');
     expect(result).toHaveLength(1);
     expect(result[0].text).toBe('child');
-    expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy.mock.calls[0][0]).toContain('Thread walk halted');
-    warnSpy.mockRestore();
+    expect(mockLogger.warn).toHaveBeenCalledOnce();
+    expect(mockLogger.warn.mock.calls[0][1]).toBe('Thread walk halted');
   });
 
   it('returns tweets in chronological order (parents first)', async () => {

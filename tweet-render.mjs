@@ -9,6 +9,9 @@ import { html } from 'satori-html';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from './src/logger.mjs';
+
+const logger = createLogger();
 import {
   generateTweetHtml,
   generateThreadHtml,
@@ -86,14 +89,14 @@ export async function fetchFontAsArrayBuffer(url) {
     clearTimeout(timer);
 
     if (!response.ok) {
-      console.error(`Font fetch failed: HTTP ${response.status} for ${url.substring(0, 80)}`);
+      logger.error({ status: response.status, url: url.substring(0, 80) }, 'Font fetch failed');
       return null;
     }
     const buffer = await response.arrayBuffer();
     return buffer;
   } catch (e) {
     const reason = e.name === 'AbortError' ? 'timed out' : e.message;
-    console.error(`Font fetch error for ${url.substring(0, 80)}: ${reason}`);
+    logger.error({ url: url.substring(0, 80), reason }, 'Font fetch error');
     return null;
   }
 }
@@ -115,7 +118,7 @@ export async function fetchImageAsBase64(url) {
     clearTimeout(timer);
 
     if (!response.ok) {
-      console.error(`Image pre-fetch failed: HTTP ${response.status} for ${url.substring(0, 80)}`);
+      logger.error({ status: response.status, url: url.substring(0, 80) }, 'Image pre-fetch failed');
       return null;
     }
     const buffer = await response.arrayBuffer();
@@ -124,7 +127,7 @@ export async function fetchImageAsBase64(url) {
     return `data:${contentType};base64,${base64}`;
   } catch (e) {
     const reason = e.name === 'AbortError' ? 'timed out' : e.message;
-    console.error(`Image pre-fetch error for ${url.substring(0, 80)}: ${reason}`);
+    logger.error({ url: url.substring(0, 80), reason }, 'Image pre-fetch error');
     return null;
   }
 }
@@ -282,7 +285,7 @@ export async function loadFonts() {
         fonts.push({ name: 'Inter', data: ab, weight, style: 'normal' });
       }
     } catch (e) {
-      console.error(`Font loading: failed to read bundled font file=${file}: ${e.message}`);
+      logger.error({ file, err: e.message }, 'Bundled font read failed');
     }
   }
 
@@ -301,7 +304,7 @@ export async function loadFonts() {
         fonts.push({ name: 'Inter', data: await boldResponse.arrayBuffer(), weight: 700, style: 'normal' });
       }
     } catch (e) {
-      console.error(`Font loading: network font fetch failed (bundled fonts missing): ${e.message}`);
+      logger.error({ err: e.message }, 'Network font fetch failed');
     }
   }
 

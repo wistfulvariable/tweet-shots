@@ -45,7 +45,21 @@ const app = express();
 
 // ─── Global middleware ──────────────────────────────────────────────
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://www.gstatic.com'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://lh3.googleusercontent.com'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com'],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+}));
 app.use(cors());
 
 // Raw body for Stripe webhook signature verification — must run before express.json()
@@ -78,6 +92,21 @@ app.use((req, res, next) => {
   res.set('X-Request-ID', req.id);
   req.log = logger.child({ reqId: req.id });
   req.log.info({ method: req.method, path: req.path }, 'request');
+  next();
+});
+
+// Response-complete logging — status, duration, render time
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    if (req.path === '/health') return;
+    const durationMs = Date.now() - start;
+    const data = { method: req.method, path: req.path, status: res.statusCode, durationMs };
+    const renderTime = res.getHeader('X-Render-Time-Ms');
+    if (renderTime) data.renderTimeMs = Number(renderTime);
+    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    req.log[level](data, 'response');
+  });
   next();
 });
 

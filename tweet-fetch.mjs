@@ -4,6 +4,9 @@
  */
 
 import { AppError } from './src/errors.mjs';
+import { createLogger } from './src/logger.mjs';
+
+const logger = createLogger();
 
 // ============================================================================
 // TWEET ID EXTRACTION
@@ -106,7 +109,7 @@ export async function fetchThread(tweetId) {
         // 404 = parent deleted/unavailable — silently end chain
         // Other errors (429, 502) = transient — log so truncation is visible
         if (!(err instanceof AppError && err.statusCode === 404)) {
-          console.warn(`Thread walk halted at parent=${parentTweet.parent?.id_str}: ${err.message || err}`);
+          logger.warn({ parentId: parentTweet.parent?.id_str, err: err.message || String(err) }, 'Thread walk halted');
         }
         break;
       }
