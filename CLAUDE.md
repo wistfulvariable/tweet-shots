@@ -46,6 +46,8 @@ tweet-shots/
 ├── landing.js                   # Landing page demo JS (external, 24h browser cache)
 ├── docs.html                    # API documentation page (inline CSS, loads docs.js)
 ├── docs.js                      # Docs page JS (tabs, copy, sidebar nav, 24h cache)
+├── dashboard.js                 # Dashboard JS (Firebase auth, API calls, 24h cache)
+├── signup.js                    # Signup form JS (form submit, copy key, 24h cache)
 ├── llm-docs.txt                 # LLM-optimized plain-text API reference
 ├── fonts/                       # Bundled fonts (Inter + 13 Noto Sans variants)
 │   ├── Inter-Regular.woff       # Latin (always loaded)
@@ -122,7 +124,7 @@ tweet-shots/
 - Check `findKeyByEmail()` before creating new keys in signup — prevents orphaned duplicate keys
 - Include `...(req.id && { requestId: req.id })` in all middleware error JSON responses — enables support correlation. Route handlers get this automatically via `sendRouteError()` and the global error handler.
 - Use `loadAdditionalAsset` in Satori for emoji and multilingual fonts — `tweet-emoji.mjs` fetches Twemoji SVGs from CDN (5s timeout, LRU cache), `tweet-fonts.mjs` lazy-loads bundled Noto Sans from `fonts/`. Both modules are imported by `tweet-render.mjs` and used per-render.
-- When adding new root-level `.mjs` files, add a `COPY` line to the Dockerfile — each root `.mjs` must be explicitly listed (includes `tweet-emoji.mjs`, `tweet-fonts.mjs`)
+- When adding new root-level `.mjs` or `.js` files, add a `COPY` line to the Dockerfile — each root file must be explicitly listed
 - Use `createLogger()` from `./src/logger.mjs` for logging in core modules — never use `console.*` (breaks structured logging, severity mapping, and Cloud Logging queries). `createLogger()` works without a config arg (defaults to `process.env.NODE_ENV`, silent in tests)
 - Update CSP directives in `server.mjs` helmet config when adding new external resources to HTML pages — currently allows `gstatic.com` (Firebase SDK), `lh3.googleusercontent.com` (avatars), `identitytoolkit.googleapis.com` + `securetoken.googleapis.com` (Firebase Auth API)
 - When adding or changing API endpoints/parameters, update `docs.html` and `llm-docs.txt` — these are static files that must be manually kept in sync with the actual API
@@ -140,6 +142,7 @@ tweet-shots/
 - Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `tweet-html.mjs`
 - Forward raw `err.message` from Stripe or external APIs to clients — use generic error messages, log the real error server-side
 - Throw `new AppError(message)` without an explicit `statusCode` when the error isn't a 400 — always specify the correct HTTP status (e.g. `404` for not-found)
+- Use inline `<script>` tags in HTML pages — helmet CSP (`script-src 'self'`) blocks them. Extract to external `.js` files served with `res.sendFile()` + `Cache-Control: public, max-age=86400`. Pass dynamic config via `<meta>` tags (see `dashboard.js` pattern)
 
 ---
 
