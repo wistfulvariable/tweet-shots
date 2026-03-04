@@ -274,7 +274,7 @@
     }
 
     .demo-advanced-content.open {
-      max-height: 800px;
+      max-height: 1000px;
       padding-top: 20px;
     }
 
@@ -840,6 +840,24 @@
               <button class="demo-chip" data-value="sky"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#2980b9,#6dd5fa)"></span>Sky</button>
               <button class="demo-chip" data-value="candy"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#d53369,#daae51)"></span>Candy</button>
               <button class="demo-chip" data-value="peach"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)"></span>Peach</button>
+              <button class="demo-chip" data-value="custom"><span class="demo-gradient-swatch" style="background:linear-gradient(135deg,#6366f1,#ec4899);border:1px dashed rgba(255,255,255,0.3)"></span>Custom</button>
+            </div>
+            <div id="demo-custom-gradient" style="display:none; margin-bottom:24px; padding:12px 16px; background:rgba(15,23,42,0.4); border:1px solid rgba(255,255,255,0.08); border-radius:10px;">
+              <div class="demo-color-row" style="margin-bottom:12px;">
+                <div class="demo-color-field">
+                  <label>From</label>
+                  <input type="color" class="demo-color-input" id="demo-gradientFrom" value="#6366f1">
+                </div>
+                <div class="demo-color-field">
+                  <label>To</label>
+                  <input type="color" class="demo-color-input" id="demo-gradientTo" value="#ec4899">
+                </div>
+              </div>
+              <div class="demo-range-row" style="margin-bottom:0;">
+                <span class="demo-range-label">Angle</span>
+                <input type="range" class="demo-range-input" id="demo-gradientAngle" min="0" max="360" value="135">
+                <span class="demo-range-value" id="demo-gradientAngle-val">135</span>
+              </div>
             </div>
 
             <button class="demo-advanced-trigger" id="demo-advanced-toggle">
@@ -888,6 +906,12 @@
                 <span class="demo-range-value" id="demo-radius-val">16</span>
               </div>
 
+              <span class="demo-section-label">Frame</span>
+              <div class="demo-chips" id="demo-frame" style="margin-bottom:20px;">
+                <button class="demo-chip active" data-value="">None</button>
+                <button class="demo-chip" data-value="phone">Phone mockup</button>
+              </div>
+
               <span class="demo-section-label">Colors</span>
               <div class="demo-color-row">
                 <div class="demo-color-field" id="demo-bgColor-field">
@@ -916,6 +940,7 @@
                 <label class="demo-switch"><input type="checkbox" id="demo-hideQuoteTweet"><span class="demo-switch-track"></span>Hide quote tweet</label>
                 <label class="demo-switch"><input type="checkbox" id="demo-hideShadow"><span class="demo-switch-track"></span>Hide shadow</label>
                 <label class="demo-switch"><input type="checkbox" id="demo-showUrl"><span class="demo-switch-track"></span>Show URL</label>
+                <label class="demo-switch"><input type="checkbox" id="demo-thread"><span class="demo-switch-track"></span>Thread mode</label>
               </div>
             </div>
           </div>
@@ -1105,9 +1130,21 @@
       });
     });
 
+    var gradientAngleSlider = document.getElementById('demo-gradientAngle');
+    var gradientAngleVal = document.getElementById('demo-gradientAngle-val');
+    var customGradientPanel = document.getElementById('demo-custom-gradient');
+
+    // Show/hide custom gradient panel when "Custom" chip is selected
+    document.getElementById('demo-gradient').addEventListener('click', function(e) {
+      var chip = e.target.closest('.demo-chip');
+      if (!chip) return;
+      customGradientPanel.style.display = chip.dataset.value === 'custom' ? 'block' : 'none';
+    });
+
     // Range sliders — live value display
     paddingSlider.addEventListener('input', function() { paddingVal.textContent = paddingSlider.value; });
     radiusSlider.addEventListener('input', function() { radiusVal.textContent = radiusSlider.value; });
+    gradientAngleSlider.addEventListener('input', function() { gradientAngleVal.textContent = gradientAngleSlider.value; });
 
     // Color inputs — mark dirty on change, reset button clears
     document.querySelectorAll('.demo-color-field').forEach(function(field) {
@@ -1162,7 +1199,19 @@
       if (scale && scale !== '2') params.set('scale', scale);
 
       var gradient = getSelectedValue('demo-gradient');
-      if (gradient) params.set('gradient', gradient);
+      if (gradient && gradient !== 'custom') params.set('gradient', gradient);
+
+      // Custom gradient colors + angle
+      if (gradient === 'custom') {
+        params.set('gradientFrom', document.getElementById('demo-gradientFrom').value);
+        params.set('gradientTo', document.getElementById('demo-gradientTo').value);
+        var angle = gradientAngleSlider.value;
+        if (angle !== '135') params.set('gradientAngle', angle);
+      }
+
+      // Phone frame
+      var frame = getSelectedValue('demo-frame');
+      if (frame) params.set('frame', frame);
 
       var dimension = dimensionSelect.value;
       if (dimension !== 'auto') params.set('dimension', dimension);
@@ -1191,6 +1240,8 @@
       });
 
       if (document.getElementById('demo-showUrl').checked) params.set('showUrl', 'true');
+
+      if (document.getElementById('demo-thread').checked) params.set('thread', 'true');
 
       return params.toString();
     }
