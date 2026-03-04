@@ -22,7 +22,8 @@ const LOGO_POSITION_VALUES = ['top-left', 'top-right', 'bottom-left', 'bottom-ri
 const FRAME_VALUES = ['phone'];
 
 // Boolean string transform for query params ("true"/"false" → boolean)
-const boolString = z.enum(['true', 'false']).transform(v => v === 'true').default('false');
+// default(false) uses the post-transform type — default('false') would bypass the transform
+const boolString = z.enum(['true', 'false']).transform(v => v === 'true').default(false);
 
 /**
  * GET /screenshot/:tweetIdOrUrl query parameters.
