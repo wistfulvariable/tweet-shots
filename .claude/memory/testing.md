@@ -53,38 +53,21 @@ vi.mock('@resvg/resvg-js', () => {
   });
   return { Resvg: MockResvg };
 });
-```
-
-Mock sub-modules directly: `vi.mock('../../tweet-fetch.mjs', ...)`, `vi.mock('../../tweet-render.mjs', ...)`. Routes import from sub-modules, not `core.mjs`. Use `structuredClone(MOCK_TWEET)` per test — rendering tests need fresh tweet objects.
-
-## Mocking Emoji & Font Modules
-
-Tests that import `tweet-render.mjs` or `core.mjs` must mock the emoji/font sub-modules to avoid CDN calls and disk reads:
-
-```js
 vi.mock('../../tweet-emoji.mjs', () => ({
   fetchEmoji: vi.fn(async () => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='),
-  emojiToCodepoint: vi.fn((emoji) => '1f600'),
-  clearEmojiCache: vi.fn(),
-  getEmojiCacheSize: vi.fn(() => 0),
+  emojiToCodepoint: vi.fn(() => '1f600'), clearEmojiCache: vi.fn(), getEmojiCacheSize: vi.fn(() => 0),
 }));
-
 vi.mock('../../tweet-fonts.mjs', () => ({
   loadLanguageFont: vi.fn(() => undefined),
-  getSupportedLanguages: vi.fn(() => ['ja-JP', 'ko-KR', 'zh-CN']),
-  clearFontCache: vi.fn(),
+  getSupportedLanguages: vi.fn(() => ['ja-JP', 'ko-KR', 'zh-CN']), clearFontCache: vi.fn(),
 }));
 ```
 
-Both modules have module-level caches — call `clearEmojiCache()` / `clearFontCache()` in `beforeEach` when testing them directly (`tweet-emoji.test.mjs`, `tweet-fonts.test.mjs`).
+Mock sub-modules directly (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs`. Use `structuredClone(MOCK_TWEET)` per test. Call `clearEmojiCache()` / `clearFontCache()` in `beforeEach` when testing those modules directly.
 
-## Batch Testing
+## Batch Route Testing
 
-`tests/integration/batch-screenshot.test.mjs` (38 tests) — follows same mock pattern as `screenshot.test.mjs` but with key differences:
-- No `billingGuard` in middleware chain — batch does its own credit check via `checkAndReserveCredits()`
-- CSV upload tests use manually-built multipart bodies (no external dependency needed)
-- Per-item error tests: mock `fetchTweet` to fail for specific IDs, verify mixed success/error results array
-- Batch limit tests need all three tier fixtures (free/pro/business key data)
+`batch-screenshot.test.mjs`: no `billingGuard` in middleware chain (batch calls `checkAndReserveCredits()` internally). CSV upload tests use manually-built multipart bodies. Batch limit tests need all three tier fixtures (free/pro/business).
 
 ## Pitfalls
 

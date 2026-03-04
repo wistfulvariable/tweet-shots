@@ -70,7 +70,7 @@ Pipeline: `.github/workflows/ci.yml` — runs on push/PR to master.
 | **secrets-scan** | gitleaks v2 against full git history |
 | **lint-security** | eslint with eslint-plugin-security |
 
-All three jobs run in parallel. PRs blocked if any job fails.
+All three jobs run in parallel. Branch protection on `master` enforces all three as required status checks — merges blocked until all pass.
 
 ## Stripe Webhook
 

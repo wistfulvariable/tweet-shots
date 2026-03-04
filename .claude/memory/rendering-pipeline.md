@@ -6,13 +6,7 @@
 fetchTweet(id) → pre-fetch images to base64 → generateTweetHtml() → html() → satori() → Resvg → PNG/SVG
 ```
 
-Rendering logic is split across focused modules (all re-exported via `core.mjs` for backward compatibility):
-- `tweet-fetch.mjs` — `fetchTweet`, `extractTweetId`, `fetchThread`
-- `tweet-html.mjs` — `generateTweetHtml`, themes, gradients, formatting
-- `tweet-render.mjs` — `renderTweetToImage`, `loadFonts`, image pre-fetching
-- `tweet-emoji.mjs` — `fetchEmoji`, `emojiToCodepoint`, Twemoji CDN fetch + cache
-- `tweet-fonts.mjs` — `loadLanguageFont`, `getSupportedLanguages`, Noto Sans lazy loading
-- `tweet-utils.mjs` — `translateText`, `processBatch`, `generatePDF` (CLI-only)
+Modules: `tweet-fetch.mjs` (fetch/extract), `tweet-html.mjs` (HTML template), `tweet-render.mjs` (pipeline), `tweet-emoji.mjs` (Twemoji CDN), `tweet-fonts.mjs` (Noto Sans lazy), `tweet-utils.mjs` (CLI-only).
 
 ## Satori Constraints (CRITICAL)
 
@@ -24,54 +18,43 @@ Rendering logic is split across focused modules (all re-exported via `core.mjs` 
 
 ## Font Loading
 
-**Primary (Latin):** Bundled `fonts/Inter-Regular.woff` + `fonts/Inter-Bold.woff` (always loaded).
-**Fallback (Latin):** Google Fonts CDN URLs (Inter TTF v20). Only used if bundled fonts are missing.
-**Multilingual:** 13 Noto Sans fonts in `fonts/` — lazy-loaded by `loadLanguageFont()` when Satori encounters non-Latin text. Cached per-process per-language in module-level Map.
-**Custom fonts:** Users can provide `fontUrl` (+ optional `fontBoldUrl`) to fetch a custom font at render time via `fetchFontAsArrayBuffer()` (10s timeout). Custom fonts replace Inter in the Satori `fonts` array. If fetch fails, falls back to default Inter silently. `fontFamily` option overrides the CSS `font-family` in generated HTML (default fallback stack: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ...`). If `fontUrl` given without `fontFamily`, the Satori font name defaults to `"CustomFont"`. Custom fonts are NOT cached across requests (per-render fetch).
-
-Fonts are cached in `_cachedFonts` (Inter) and `_fontCache` (Noto Sans) module-level variables. Node `Buffer.buffer` is a shared ArrayBuffer pool — must copy to a new `ArrayBuffer` before passing to Satori.
+**Primary (Latin):** Bundled `fonts/Inter-Regular.woff` + `fonts/Inter-Bold.woff` (always loaded). Falls back to Google Fonts CDN if bundled files missing.
+**Multilingual:** 13 Noto Sans fonts in `fonts/` — lazy-loaded per-language by `loadLanguageFont()`, cached per-process.
+**Custom fonts:** `fontUrl` fetched at render time (10s timeout), replaces Inter. If `fontUrl` without `fontFamily`, Satori font name defaults to `"CustomFont"`. Not cached across requests.
 
 ## Emoji Rendering
 
-`tweet-emoji.mjs` handles `loadAdditionalAsset(code='emoji', segment)`:
-- Converts emoji grapheme → Twemoji hex codepoint format (hyphen-joined, FE0F stripped)
-- Fetches SVG from jsdelivr CDN (`jdecked/twemoji@latest`) with 5s timeout
-- In-memory LRU cache (max 500 entries) per-process/per-worker
-- Negative 404 results cached (unknown emoji). Network errors NOT cached (transient).
-- Graceful fallback: returns null → Satori renders empty box (no crash).
+`tweet-emoji.mjs`: emoji grapheme → Twemoji hex codepoint → SVG from jsdelivr CDN (5s timeout). LRU cache (500 entries). 404s cached; network errors not. Returns null on failure → Satori renders empty box.
 
 ## Image Pre-fetching
 
-Before Satori call, `renderTweetToImage()` replaces all URLs with base64 data URIs:
-- Profile pic: `_normal` → `_400x400` for high-res
-- Media: from `mediaDetails[].media_url_https` or `photos[].url`
-- Quote tweet: profile pic + first media image
-- Logo (if provided)
-
-`fetchImageAsBase64()` has 10s per-image timeout via AbortController. Returns `null` on failure (silent degradation — image simply missing). Twitter CDN images capped at `medium` size (1200px) — `large` (2048px) causes timeouts on multi-image tweets.
+Before Satori call: profile pic (`_normal` → `_400x400`), media, quote tweet images, logo (if any) — all fetched to base64. `fetchImageAsBase64()`: 10s timeout, returns null on failure. Twitter CDN capped at `medium` (1200px) — `large` causes timeouts on multi-image tweets.
 
 ## Height Estimation
 
-Calculated, not measured. **Can overflow** (Satori clips silently at declared height):
-
+Calculated, not measured. **Satori clips silently** if content exceeds declared height:
 ```
 header=76, text=ceil(len/45)*28, media=300, quote=120, metrics=56, date=40, url=36, +2*padding
 ```
+Thread mode uses narrower constants: `THREAD_HEADER_HEIGHT=56`, `THREAD_CHARS_PER_LINE=42`.
 
-No retry or overflow detection. Known limitation — CJK text and heavy newlines are worst case.
+## Advanced Rendering Modes
+
+**Thread** (`thread: true`): `renderThreadToImage()` fetches thread via `fetchThread()`, calls `generateThreadHtml()` — 48px avatar column + 2px connector lines. NOT run via worker pool — called directly.
+
+**Phone frame** (`frame: 'phone'`): Dark chrome with notch (40px) + homeBar (28px) + border (10px each side). Canvas height += `notch + homeBar + border×2`.
+
+**Logo watermark** (`logo` URL): Pre-fetched to base64 with tweet images, placed as flex row. NOT `position: absolute`. Auth routes only — excluded from demo (SSRF protection).
+
+**Custom gradient** (`gradientFrom`/`gradientTo`/`gradientAngle`): Takes priority over named presets. Outer container uses CSS `linear-gradient()`. `GRADIENT_FRAME_PADDING = 40` added when gradient/canvas wraps card.
 
 ## Worker Thread Pool
 
-`render-pool.mjs` manages N workers (default: `cpus - 1`, min 2). Each worker imports `tweet-render.mjs` directly (which imports tweet-emoji.mjs and tweet-fonts.mjs — each worker gets its own emoji/font caches). Image buffers are transferred (not copied) via `postMessage` transferable. Pool auto-replaces crashed workers. Skipped in test env (`NODE_ENV=test`).
+`render-pool.mjs`: N workers (`cpus - 1`, min 2). Each worker has its own emoji/font caches. PNG buffers transferred (not copied) as Transferable. Dynamic timeout: `30s + 5s × media_count`, max 60s → 504 `RENDER_TIMEOUT`. Skipped in test env.
 
-Dynamic timeout: `30s base + 5s per media image, max 60s`. `countMediaImages()` counts main + quote tweet images. Timeout errors return 504 with `RENDER_TIMEOUT` code. `settled` flag prevents race between timeout and successful completion.
+## Scale & Constants
 
-## Scale Factor
-
-Satori always renders at 1x. Scale is applied by Resvg: `fitTo: { mode: 'width', value: scaledWidth }`.
-
-## Constants
-
-- **THEMES:** light, dark (default), dim, black → `{ bg, text, textSecondary, border, link }`
-- **DIMENSIONS:** auto (550px), instagramFeed (1080x1080), instagramStory (1080x1920), etc.
+Scale applied by Resvg (`fitTo: { mode: 'width', value: scaledWidth }`), not Satori. Default scale: 1.
+- **THEMES:** light, dark (default), dim, black
+- **DIMENSIONS:** auto (550px), instagramFeed, instagramStory, instagramVertical, tiktok, linkedin, twitter, facebook, youtube
 - **GRADIENTS:** sunset, ocean, forest, fire, midnight, sky, candy, peach

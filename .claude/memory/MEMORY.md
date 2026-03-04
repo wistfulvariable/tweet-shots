@@ -6,7 +6,7 @@ tweet-shots: CLI + REST API for generating tweet screenshots via Satori/Resvg (n
 
 - **Architecture:** Modular Express 5 app with Firestore, Cloud Run deployment, worker thread rendering
 - **Deployment:** `https://tweet-shots-api-1084185199991.us-central1.run.app`
-- **Tests:** ~508 tests passing across 26 files (17 unit + 8 integration + 1 smoke)
+- **Tests:** ~670 tests passing across 26 files (19 unit + 10 integration + 1 smoke)
 - **GCP:** Project `tweet-shots-api`, Firestore + GCS in `us-central1`
 - **CI:** GitHub Actions — tests + npm audit + gitleaks + eslint-plugin-security
 - **Test API Key:** `ts_free_3958a9cac86343c5b62d0c2e7d928302`
@@ -26,3 +26,4 @@ tweet-shots: CLI + REST API for generating tweet screenshots via Satori/Resvg (n
 | security.md | Auth boundaries, input validation, accepted risks |
 | feature-inventory.md | CLI/API features, rendering options, unsupported |
 | twitter-api.md | Syndication API, tweet data shapes, limitations |
+| debugging.md | Rendering failures, font/emoji issues, auth/config diagnosis |

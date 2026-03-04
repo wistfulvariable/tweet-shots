@@ -5,8 +5,8 @@
 
 import { Router } from 'express';
 import Busboy from 'busboy';
-import { extractTweetId, fetchTweet } from '../../tweet-fetch.mjs';
-import { renderTweetToImage, DIMENSIONS } from '../../tweet-render.mjs';
+import { extractTweetId, fetchTweet, fetchThread } from '../../tweet-fetch.mjs';
+import { renderTweetToImage, renderThreadToImage, DIMENSIONS } from '../../tweet-render.mjs';
 import { screenshotQuerySchema, screenshotBodySchema, batchScreenshotSchema, batchMultipartOptionsSchema } from '../schemas/request-schemas.mjs';
 import { validate } from '../middleware/validate.mjs';
 import { upload } from '../services/storage.mjs';
@@ -60,6 +60,18 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       fontFamily: params.fontFamily,
       fontUrl: params.fontUrl,
       fontBoldUrl: params.fontBoldUrl,
+      // Watermark/logo
+      logo: params.logo,
+      logoPosition: params.logoPosition,
+      logoSize: params.logoSize ?? 40,
+      // Phone mockup frame
+      frame: params.frame,
+      // Custom gradient colors
+      gradientFrom: params.gradientFrom,
+      gradientTo: params.gradientTo,
+      gradientAngle: params.gradientAngle,
+      // Thread rendering
+      thread: params.thread === true || params.thread === 'true',
       canvasWidth,
       canvasHeight,
     };
@@ -75,6 +87,13 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
     return renderTweetToImage(tweet, options);
   }
 
+  /**
+   * Render a thread directly (thread rendering bypasses the worker pool).
+   */
+  async function renderThread(tweets, options) {
+    return renderThreadToImage(tweets, options);
+  }
+
   // ─── GET /screenshot/:tweetIdOrUrl ────────────────────────────────
   router.get(
     '/screenshot/:tweetIdOrUrl',
@@ -86,13 +105,22 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       try {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
-        const tweet = await fetchTweet(tweetId);
         const options = { ...buildRenderOptions(req.validated), tweetId };
-        const result = await render(tweet, options);
+
+        let result, author;
+        if (options.thread) {
+          const tweets = await fetchThread(tweetId);
+          result = await renderThread(tweets, options);
+          author = tweets[tweets.length - 1]?.user?.screen_name || 'unknown';
+        } else {
+          const tweet = await fetchTweet(tweetId);
+          result = await render(tweet, options);
+          author = tweet.user?.screen_name || 'unknown';
+        }
 
         res.set('Content-Type', result.contentType);
         res.set('X-Tweet-ID', tweetId);
-        res.set('X-Tweet-Author', tweet.user?.screen_name || 'unknown');
+        res.set('X-Tweet-Author', author);
         res.set('X-Render-Time-Ms', String(Date.now() - start));
         res.send(result.data);
       } catch (err) {
@@ -121,9 +149,19 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         const start = Date.now();
         const { tweetId: rawId, tweetUrl, response: responseType = 'image', ...rest } = req.validated;
         const tweetId = extractTweetId(rawId || tweetUrl);
-        const tweet = await fetchTweet(tweetId);
         const options = { ...buildRenderOptions(rest), tweetId };
-        const result = await render(tweet, options);
+
+        let result, author;
+        if (options.thread) {
+          const tweets = await fetchThread(tweetId);
+          result = await renderThread(tweets, options);
+          author = tweets[tweets.length - 1]?.user?.screen_name;
+        } else {
+          const tweet = await fetchTweet(tweetId);
+          result = await render(tweet, options);
+          author = tweet.user?.screen_name;
+        }
+
         const renderTimeMs = String(Date.now() - start);
 
         // Base64 response
@@ -132,7 +170,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
           return res.json({
             success: true,
             tweetId,
-            author: tweet.user?.screen_name,
+            author,
             format: result.format,
             data: result.data.toString('base64'),
           });
@@ -152,7 +190,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
           return res.json({
             success: true,
             tweetId,
-            author: tweet.user?.screen_name,
+            author,
             format: result.format,
             url: publicUrl,
           });
@@ -161,7 +199,7 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         // Default: return image binary
         res.set('Content-Type', result.contentType);
         res.set('X-Tweet-ID', tweetId);
-        res.set('X-Tweet-Author', tweet.user?.screen_name || 'unknown');
+        res.set('X-Tweet-Author', author || 'unknown');
         res.set('X-Render-Time-Ms', renderTimeMs);
         res.send(result.data);
       } catch (err) {
