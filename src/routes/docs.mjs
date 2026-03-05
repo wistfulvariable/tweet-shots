@@ -59,7 +59,9 @@ export function buildDocsData() {
       },
     },
     rateLimits: Object.fromEntries(
-      Object.entries(TIERS).map(([tier, c]) => [tier, `${c.rateLimit} req/min`])
+      Object.entries(TIERS)
+        .filter(([tier]) => tier !== 'owner')
+        .map(([tier, c]) => [tier, `${c.rateLimit} req/min`])
     ),
   };
 }

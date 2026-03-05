@@ -14,6 +14,7 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | Express | 5.2 | REST API server |
 | Satori | 0.24 | HTML/CSS → SVG rendering |
 | @resvg/resvg-js | 2.6 | SVG → PNG conversion |
+| sharp | 0.33 | SSAA downscale (Lanczos3) + sharpening |
 | satori-html | 0.3 | HTML string → Satori VDOM |
 | Firebase Admin | 13.4 | Server-side ID token verification (dashboard) |
 | Firestore | 8.3 | API keys, usage, customer data |
@@ -112,6 +113,7 @@ tweet-shots/
 ## Architectural Rules
 
 **DO:**
+- All PNG output uses SSAA (Super-Sample Anti-Aliasing) — `resvgToPng()` renders at 3x target width via Resvg, then downscales with `sharp` Lanczos3 + `sharpen({ sigma: 0.5 })`. Skips SSAA when internal width > `SSAA_MAX_INTERNAL_WIDTH` (8000px). Always-on for PNG, skipped for SVG. Both `renderTweetToImage` and `renderThreadToImage` use this shared helper.
 - Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time. `preFetchAllImages()` returns a `Map<url, base64>` (does NOT mutate the tweet object). After `satori-html` parses the small HTML, `injectImageSources()` walks the VDOM tree to replace URL `src` values with base64. This avoids satori-html's O(n²) parsing on large base64 strings. Uses `twitterImageUrl()` to request optimally-sized Twitter CDN variants (`?name=small|medium`)
 - Pass `display: flex` on every container element — Satori only supports Flexbox layout
 - Use `extractTweetId()` from `tweet-fetch.mjs` to normalize both URLs and raw IDs — import directly from sub-modules (`tweet-fetch.mjs`, `tweet-render.mjs`), not `core.mjs`
@@ -128,6 +130,7 @@ tweet-shots/
 - Use `createLogger()` from `./src/logger.mjs` for logging in core modules — never use `console.*` (breaks structured logging, severity mapping, and Cloud Logging queries). `createLogger()` works without a config arg (defaults to `process.env.NODE_ENV`, silent in tests)
 - Update CSP directives in `server.mjs` helmet config when adding new external resources to HTML pages — currently allows `gstatic.com` (Firebase SDK), `lh3.googleusercontent.com` (avatars), `identitytoolkit.googleapis.com` + `securetoken.googleapis.com` (Firebase Auth API)
 - When adding or changing API endpoints/parameters, update `docs.html` and `llm-docs.txt` — these are static files that must be manually kept in sync with the actual API
+- The `watermark` option is an **internal boolean** injected by route handlers — it is NOT in any Zod schema and must never be exposed as a user-facing API parameter. Route handlers set `watermark: req.keyData.tier === 'free'` (screenshot routes) or `watermark: true` (demo route). `WATERMARK_COLORS` and `HEIGHT_WATERMARK` are exported from `tweet-html.mjs`. The watermark renders inside the card as a centered "tweet-shots.com" text row at the bottom, after the logo (if any)
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them

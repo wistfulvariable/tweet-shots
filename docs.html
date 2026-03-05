@@ -910,7 +910,7 @@
       <p>All query parameters are optional. See the <a href="#parameters">Parameters Reference</a> for the full list with types and allowed values.</p>
 
       <div class="inline-list">
-        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>fontFamily</code>, <code>fontUrl</code>, <code>fontBoldUrl</code>, <code>logo</code>, <code>logoPosition</code>, <code>logoSize</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>fontFamily</code>, <code>fontUrl</code>, <code>fontBoldUrl</code>, <code>logo</code>, <code>logoPosition</code>, <code>logoSize</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
       </div>
 
       <h3>Response Headers</h3>
@@ -1192,7 +1192,7 @@ https://x.com/elonmusk/status/1617979122625712128
 
       <h3>Supported Parameters</h3>
       <div class="inline-list">
-        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
       </div>
 
       <h3>Example</h3>
@@ -1358,6 +1358,13 @@ https://x.com/elonmusk/status/1617979122625712128
               <td><code>2</code></td>
               <td><code>1</code>, <code>2</code>, <code>3</code></td>
               <td>Resolution multiplier</td>
+            </tr>
+            <tr>
+              <td>outputWidth</td>
+              <td>number</td>
+              <td>&mdash;</td>
+              <td><code>50</code>&ndash;<code>5000</code></td>
+              <td>Final PNG pixel width (overrides scale)</td>
             </tr>
             <tr>
               <td>gradient</td>

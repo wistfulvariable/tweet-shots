@@ -48,9 +48,10 @@ export function loadConfig() {
  * Combines rate limits (per-minute), monthly credits, and pricing.
  */
 export const TIERS = Object.freeze({
-  free:     { rateLimit: 10,   monthlyCredits: 50,    price: 0,  batchLimit: 10  },
-  pro:      { rateLimit: 100,  monthlyCredits: 1000,  price: 9,  batchLimit: 100 },
-  business: { rateLimit: 1000, monthlyCredits: 10000, price: 49, batchLimit: 500 },
+  free:     { rateLimit: 10,   monthlyCredits: 50,                      price: 0,  batchLimit: 10   },
+  pro:      { rateLimit: 100,  monthlyCredits: 1000,                    price: 9,  batchLimit: 100  },
+  business: { rateLimit: 1000, monthlyCredits: 10000,                   price: 49, batchLimit: 500  },
+  owner:    { rateLimit: 1000, monthlyCredits: Number.MAX_SAFE_INTEGER, price: 0,  batchLimit: 500  },
 });
 
 /** Max concurrent renders within a single batch request. */

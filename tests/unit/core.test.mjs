@@ -33,6 +33,19 @@ vi.mock('@resvg/resvg-js', () => {
   return { Resvg: MockResvg };
 });
 
+// Mock sharp — chainable API returning a buffer
+vi.mock('sharp', () => {
+  const sharpInstance = {
+    resize: vi.fn().mockReturnThis(),
+    sharpen: vi.fn().mockReturnThis(),
+    png: vi.fn().mockReturnThis(),
+    toBuffer: vi.fn(async () => Buffer.from('ssaa-png-data')),
+  };
+  const sharpFn = vi.fn(() => sharpInstance);
+  sharpFn._instance = sharpInstance;
+  return { default: sharpFn };
+});
+
 // Mock satori-html
 vi.mock('satori-html', () => ({
   html: vi.fn((input) => ({ type: 'div', props: { children: input } })),
@@ -101,6 +114,8 @@ vi.mock('pdfkit', () => {
 
 const satori = (await import('satori')).default;
 const { Resvg } = await import('@resvg/resvg-js');
+const sharpMod = await import('sharp');
+const sharpFn = sharpMod.default;
 const { html } = await import('satori-html');
 
 const {
@@ -117,6 +132,8 @@ const {
   THEMES,
   DIMENSIONS,
   GRADIENTS,
+  SSAA_MULTIPLIER,
+  SSAA_MAX_INTERNAL_WIDTH,
 } = await import('../../core.mjs');
 
 const { AppError } = await import('../../src/errors.mjs');
@@ -1106,15 +1123,81 @@ describe('renderTweetToImage', () => {
     );
   });
 
-  it('applies scale factor to Resvg width', async () => {
+  it('applies scale factor with SSAA multiplier to Resvg width', async () => {
     const tweet = cloneTweet();
     await renderTweetToImage(tweet, { scale: 2, width: 550, padding: 20 });
+    const targetWidth = (550 + 40) * 2; // 1180
     expect(Resvg).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        fitTo: { mode: 'width', value: (550 + 40) * 2 },
+        fitTo: { mode: 'width', value: targetWidth * SSAA_MULTIPLIER },
       })
     );
+  });
+
+  describe('SSAA pipeline', () => {
+    beforeEach(() => {
+      sharpFn.mockClear();
+      sharpFn._instance.resize.mockClear();
+      sharpFn._instance.sharpen.mockClear();
+      sharpFn._instance.png.mockClear();
+      sharpFn._instance.toBuffer.mockClear();
+    });
+
+    it('downscales from 3x to target width with Lanczos3', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { scale: 2, width: 550, padding: 20 });
+      const targetWidth = (550 + 40) * 2; // 1180
+      expect(sharpFn).toHaveBeenCalled();
+      expect(sharpFn._instance.resize).toHaveBeenCalledWith(
+        targetWidth, null, { kernel: 'lanczos3' }
+      );
+    });
+
+    it('applies subtle sharpening after downscale', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { scale: 1 });
+      expect(sharpFn._instance.sharpen).toHaveBeenCalledWith({ sigma: 0.5 });
+    });
+
+    it('outputs PNG format through sharp', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { scale: 1 });
+      expect(sharpFn._instance.png).toHaveBeenCalled();
+      expect(sharpFn._instance.toBuffer).toHaveBeenCalled();
+    });
+
+    it('skips SSAA when internal width exceeds cap', async () => {
+      const tweet = cloneTweet();
+      // outputWidth=5000 → internal would be 10000 > SSAA_MAX_INTERNAL_WIDTH (8000)
+      await renderTweetToImage(tweet, { outputWidth: 5000 });
+      expect(Resvg).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          fitTo: { mode: 'width', value: 5000 },
+        })
+      );
+      expect(sharpFn).not.toHaveBeenCalled();
+    });
+
+    it('does not invoke sharp for SVG format', async () => {
+      const tweet = cloneTweet();
+      const result = await renderTweetToImage(tweet, { format: 'svg' });
+      expect(result.format).toBe('svg');
+      expect(sharpFn).not.toHaveBeenCalled();
+    });
+
+    it('returns a Buffer from the SSAA pipeline', async () => {
+      const tweet = cloneTweet();
+      const result = await renderTweetToImage(tweet);
+      expect(result.format).toBe('png');
+      expect(Buffer.isBuffer(result.data)).toBe(true);
+    });
+
+    it('exports SSAA constants', () => {
+      expect(SSAA_MULTIPLIER).toBe(3);
+      expect(SSAA_MAX_INTERNAL_WIDTH).toBe(8000);
+    });
   });
 
   it('passes loadAdditionalAsset that handles emoji and language codes', async () => {

@@ -185,6 +185,7 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
         format: 'png',
         scale: 2,
         width: 550,
+        watermark: true, // free tier gets watermarked
       })
     );
   });
@@ -296,6 +297,33 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
         tweetId: '1234567890',
       })
     );
+  });
+
+  it('passes outputWidth to render when provided via query', async () => {
+    await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=800`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 800 })
+    );
+  });
+
+  it('omits outputWidth from render options when not provided', async () => {
+    await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    const options = renderTweetToImage.mock.calls[0][1];
+    expect(options.outputWidth).toBeUndefined();
+  });
+
+  it('returns validation error for outputWidth below minimum', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=10`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns validation error for invalid scale', async () => {
@@ -419,6 +447,20 @@ describe('POST /screenshot', () => {
         backgroundGradient: 'ocean',
       })
     );
+  });
+
+  it('passes outputWidth to render when provided in POST body', async () => {
+    await postScreenshot({ tweetId: '1234567890', outputWidth: 600 });
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 600 })
+    );
+  });
+
+  it('omits outputWidth from render options when not provided in POST', async () => {
+    await postScreenshot({ tweetId: '1234567890' });
+    const options = renderTweetToImage.mock.calls[0][1];
+    expect(options.outputWidth).toBeUndefined();
   });
 
   it('returns 500 when rendering fails (internal error)', async () => {

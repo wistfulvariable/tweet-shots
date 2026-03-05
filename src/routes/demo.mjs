@@ -56,6 +56,7 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       thread: params.thread === true,
       canvasWidth,
       canvasHeight,
+      outputWidth: params.outputWidth,
     };
   }
 
@@ -72,7 +73,7 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       try {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
-        const options = { ...buildDemoRenderOptions(req.validated), tweetId };
+        const options = { ...buildDemoRenderOptions(req.validated), tweetId, watermark: true };
 
         let result;
         if (options.thread) {

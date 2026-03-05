@@ -100,7 +100,8 @@ describe('getUsageStats', () => {
     expect(stats.used).toBe(0);
     expect(stats.remaining).toBe(50);
     expect(stats.limit).toBe(50);
-    expect(stats.total).toBe(0);
+    expect(stats.currentMonth).toBe(currentMonth());
+    expect(stats.resetDate).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
   });
 
   it('returns current month stats', async () => {
@@ -114,7 +115,7 @@ describe('getUsageStats', () => {
     const stats = await getUsageStats('ts_free_active', 'free');
     expect(stats.used).toBe(10);
     expect(stats.remaining).toBe(40);
-    expect(stats.total).toBe(25);
+    expect(stats.currentMonth).toBe(currentMonth());
   });
 
   it('returns zero used for stale month', async () => {
@@ -128,7 +129,7 @@ describe('getUsageStats', () => {
     const stats = await getUsageStats('ts_free_stale', 'free');
     expect(stats.used).toBe(0);
     expect(stats.remaining).toBe(50);
-    expect(stats.total).toBe(100);
+    expect(stats.currentMonth).toBe(currentMonth());
   });
 
   it('uses correct limits per tier', async () => {

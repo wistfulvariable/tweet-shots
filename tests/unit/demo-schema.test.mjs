@@ -420,6 +420,60 @@ describe('demoQuerySchema', () => {
     });
   });
 
+  // ── outputWidth ─────────────────────────────────────────────────────
+
+  describe('outputWidth', () => {
+    it('accepts valid outputWidth', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '800' });
+      expect(result.success).toBe(true);
+      expect(result.data.outputWidth).toBe(800);
+    });
+
+    it('coerces string to integer', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '1200' });
+      expect(result.success).toBe(true);
+      expect(result.data.outputWidth).toBe(1200);
+    });
+
+    it('accepts minimum value (50)', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '50' });
+      expect(result.success).toBe(true);
+      expect(result.data.outputWidth).toBe(50);
+    });
+
+    it('accepts maximum value (5000)', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '5000' });
+      expect(result.success).toBe(true);
+      expect(result.data.outputWidth).toBe(5000);
+    });
+
+    it('rejects below minimum (50)', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '10' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects above maximum (5000)', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '6000' });
+      expect(result.success).toBe(false);
+    });
+
+    it('is undefined when omitted', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.outputWidth).toBeUndefined();
+    });
+
+    it('rejects non-integer', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: '800.5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects non-numeric string', () => {
+      const result = demoQuerySchema.safeParse({ outputWidth: 'wide' });
+      expect(result.success).toBe(false);
+    });
+  });
+
   // ── Full valid input ────────────────────────────────────────────────
 
   describe('full valid input', () => {

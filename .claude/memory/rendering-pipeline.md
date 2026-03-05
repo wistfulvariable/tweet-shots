@@ -34,9 +34,9 @@ Before Satori call: profile pic (`_normal` → `_400x400`), media, quote tweet i
 
 Calculated, not measured. **Satori clips silently** if content exceeds declared height:
 ```
-header=76, text=ceil(len/45)*28, media=300, quote=120, metrics=56, date=40, url=36, +2*padding
+header=76, text=ceil(len/45)*28, media=300, quote=120, metrics=56, date=40, url=36, watermark=28, +2*padding
 ```
-Thread mode uses narrower constants: `THREAD_HEADER_HEIGHT=56`, `THREAD_CHARS_PER_LINE=42`.
+Thread mode uses narrower constants: `THREAD_HEADER_HEIGHT=56`, `THREAD_CHARS_PER_LINE=42`. Watermark adds `HEIGHT_WATERMARK` once (not per tweet in threads).
 
 ## Advanced Rendering Modes
 
@@ -44,7 +44,9 @@ Thread mode uses narrower constants: `THREAD_HEADER_HEIGHT=56`, `THREAD_CHARS_PE
 
 **Phone frame** (`frame: 'phone'`): Dark chrome with notch (40px) + homeBar (28px) + border (10px each side). Canvas height += `notch + homeBar + border×2`.
 
-**Logo watermark** (`logo` URL): Pre-fetched to base64 with tweet images, placed as flex row. NOT `position: absolute`. Auth routes only — excluded from demo (SSRF protection).
+**Logo** (`logo` URL): User-supplied branding image, pre-fetched to base64 with tweet images, placed as flex row. NOT `position: absolute`. Auth routes only — excluded from demo (SSRF protection).
+
+**Watermark** (internal `watermark: true`): Automatic "tweet-shots.com" text at card bottom, after logo. Injected server-side by route handlers — NOT a user-facing API parameter. Free tier + demo = watermarked; pro/business/owner = clean. Colors per theme via `WATERMARK_COLORS` from `tweet-html.mjs`.
 
 **Custom gradient** (`gradientFrom`/`gradientTo`/`gradientAngle`): Takes priority over named presets. Outer container uses CSS `linear-gradient()`. `GRADIENT_FRAME_PADDING = 40` added when gradient/canvas wraps card.
 
@@ -54,7 +56,7 @@ Thread mode uses narrower constants: `THREAD_HEADER_HEIGHT=56`, `THREAD_CHARS_PE
 
 ## Scale & Constants
 
-Scale applied by Resvg (`fitTo: { mode: 'width', value: scaledWidth }`), not Satori. Default scale: 1.
+Scale applied by Resvg (`fitTo: { mode: 'width', value: rasterWidth }`), not Satori. Default scale: 2. `rasterWidth = outputWidth || canvasWidth * scale` — when `outputWidth` is set (50–5000), it overrides `scale` for the final PNG pixel width. Since SVG is vector, Resvg rasterizes at any target width without quality loss.
 - **THEMES:** light, dark (default), dim, black
 - **DIMENSIONS:** auto (550px), instagramFeed, instagramStory, instagramVertical, tiktok, linkedin, twitter, facebook, youtube
 - **GRADIENTS:** sunset, ocean, forest, fire, midnight, sky, candy, peach

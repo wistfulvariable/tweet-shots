@@ -39,7 +39,7 @@
 
 ## Zod Schemas (`src/schemas/request-schemas.mjs`)
 
-`screenshotQuerySchema`, `screenshotBodySchema`, `createKeySchema`, `signupSchema`, `checkoutSchema`, `portalSchema`, `demoQuerySchema` (subset — no format/scale/custom colors), `batchScreenshotSchema`, `batchMultipartOptionsSchema`.
+`screenshotQuerySchema`, `screenshotBodySchema`, `createKeySchema`, `signupSchema`, `checkoutSchema`, `portalSchema`, `demoQuerySchema` (subset — supports format/scale/bgColor/textColor/linkColor/outputWidth but excludes fontUrl/fontBoldUrl/fontFamily/logo for SSRF prevention), `batchScreenshotSchema`, `batchMultipartOptionsSchema`.
 
 ## Error Response Format
 

@@ -141,6 +141,7 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
         showUrl: false,
         padding: 20,
         borderRadius: 16,
+        watermark: true, // demo always gets watermarked
       })
     );
   });
@@ -320,6 +321,29 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
 
   it('returns 400 for invalid bgColor', async () => {
     const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?bgColor=red`);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  // ── Query param: outputWidth ──────────────────────────────────────────────
+
+  it('respects ?outputWidth=800 query param', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=800`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 800 })
+    );
+  });
+
+  it('omits outputWidth when not provided', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890`);
+    const options = renderTweetToImage.mock.calls[0][1];
+    expect(options.outputWidth).toBeUndefined();
+  });
+
+  it('returns 400 for outputWidth below minimum (50)', async () => {
+    const res = await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=10`);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe('VALIDATION_ERROR');

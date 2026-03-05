@@ -39,7 +39,8 @@
 | theme | `dark` | light, dark, dim, black |
 | dimension | `auto` | auto, instagramFeed, instagramStory, instagramVertical, tiktok, linkedin, twitter, facebook, youtube |
 | format | `png` | png, svg |
-| scale | `1` | 1, 2, 3 |
+| scale | `2` | 1, 2, 3 |
+| outputWidth | — | 50–5000 (final PNG px width; overrides scale) |
 | gradient | — | sunset, ocean, forest, fire, midnight, sky, candy, peach |
 | gradientFrom | — | Hex color (custom gradient start; takes priority over named gradient) |
 | gradientTo | — | Hex color (custom gradient end) |
@@ -64,6 +65,10 @@
 | fontFamily | — | Custom CSS font-family name (max 100 chars) |
 | fontUrl | — | URL to custom font file (.ttf/.woff/.otf) |
 | fontBoldUrl | — | URL to custom bold font file (optional) |
+
+## Internal Features (not user-facing)
+
+**Watermark:** Automatic "tweet-shots.com" branding text at card bottom. Controlled by internal `watermark` boolean — injected server-side, never in Zod schemas or API docs. Free tier + demo = watermarked; pro/business/owner = no watermark. Theme-aware colors via `WATERMARK_COLORS` exported from `tweet-html.mjs`.
 
 ## Notes
 

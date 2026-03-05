@@ -38,6 +38,15 @@ export const THEMES = {
   }
 };
 
+// Watermark colors per theme — muted, subtle branding text
+export const WATERMARK_COLORS = {
+  light: '#b0b8bf',
+  dark:  '#4a545e',
+  dim:   '#4a545e',
+  black: '#3a3e42',
+};
+export const HEIGHT_WATERMARK = 28;
+
 // Gradient backgrounds
 export const GRADIENTS = {
   sunset: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)',
@@ -392,6 +401,8 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     gradientFrom = null,
     gradientTo = null,
     gradientAngle = 135,
+    // Internal watermark flag (injected server-side, not user-facing)
+    watermark = false,
   } = options;
 
   const resolvedFontFamily = fontFamily || DEFAULT_FONT_FAMILY;
@@ -471,6 +482,14 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   const logoTop = (logo && logoPosition.startsWith('top-')) ? logoRow : '';
   const logoBottom = (logo && logoPosition.startsWith('bottom-')) ? logoRow : '';
 
+  // Watermark row — subtle branding for free-tier / demo renders
+  const watermarkColor = WATERMARK_COLORS[theme] || WATERMARK_COLORS.dark;
+  const watermarkRow = watermark ? `
+    <div style="display: flex; justify-content: center; margin-top: 8px; padding-top: 6px;">
+      <span style="font-size: 11px; color: ${watermarkColor}; letter-spacing: 0.5px;">tweet-shots.com</span>
+    </div>
+  ` : '';
+
   // Build the tweet card content (shared between wrapper and standalone modes)
   const cardContent = `
       ${logoTop}
@@ -498,6 +517,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
       ${metricsHtml}
       ${urlHtml}
       ${logoBottom}
+      ${watermarkRow}
   `;
 
   // Phone mockup frame wraps the card content
@@ -611,6 +631,7 @@ export function generateThreadHtml(tweets, theme, options = {}) {
     gradientFrom = null,
     gradientTo = null,
     gradientAngle = 135,
+    watermark = false,
   } = options;
 
   const resolvedFontFamily = fontFamily || DEFAULT_FONT_FAMILY;
@@ -624,6 +645,14 @@ export function generateThreadHtml(tweets, theme, options = {}) {
 
   const cardBg = finalColors.bg;
   const shadow = hideShadow ? '' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+
+  // Watermark row for threads
+  const watermarkColor = WATERMARK_COLORS[theme] || WATERMARK_COLORS.dark;
+  const watermarkRow = watermark ? `
+    <div style="display: flex; justify-content: center; margin-top: 8px; padding-top: 6px;">
+      <span style="font-size: 11px; color: ${watermarkColor}; letter-spacing: 0.5px;">tweet-shots.com</span>
+    </div>
+  ` : '';
 
   // Content column width: card width minus padding on each side, minus avatar col (48px) and gap (12px)
   const threadContentWidth = width - padding * 2 - 48 - 12;
@@ -722,6 +751,7 @@ export function generateThreadHtml(tweets, theme, options = {}) {
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${wrapperW}px; ${heightStyle} background: ${outerBg}; font-family: ${resolvedFontFamily};">
       <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
         ${threadContent}
+        ${watermarkRow}
       </div>
     </div>
     `;
@@ -730,6 +760,7 @@ export function generateThreadHtml(tweets, theme, options = {}) {
   return `
     <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
       ${threadContent}
+      ${watermarkRow}
     </div>
   `;
 }

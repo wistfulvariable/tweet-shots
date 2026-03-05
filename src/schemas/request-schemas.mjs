@@ -61,6 +61,8 @@ export const screenshotQuerySchema = z.object({
   gradientAngle: z.coerce.number().int().min(0).max(360).optional(),
   // Thread rendering
   thread: boolString,
+  // Output width override (final PNG pixel width, bypasses scale)
+  outputWidth: z.coerce.number().int().min(50).max(5000).optional(),
 });
 
 /**
@@ -106,6 +108,8 @@ export const screenshotBodySchema = z.object({
   gradientAngle: z.number().int().min(0).max(360).optional(),
   // Thread rendering
   thread: z.boolean().default(false),
+  // Output width override (final PNG pixel width, bypasses scale)
+  outputWidth: z.number().int().min(50).max(5000).optional(),
 }).refine(data => data.tweetId || data.tweetUrl, {
   message: 'Either tweetId or tweetUrl is required',
 });
@@ -183,6 +187,8 @@ const batchRenderOptions = {
   gradientAngle: z.number().int().min(0).max(360).optional(),
   // Thread rendering
   thread: z.boolean().default(false),
+  // Output width override (final PNG pixel width, bypasses scale)
+  outputWidth: z.number().int().min(50).max(5000).optional(),
 };
 
 /**
@@ -235,4 +241,6 @@ export const demoQuerySchema = z.object({
   gradientAngle: z.coerce.number().int().min(0).max(360).optional(),
   // Thread rendering
   thread: boolString,
+  // Output width override (final PNG pixel width, bypasses scale)
+  outputWidth: z.coerce.number().int().min(50).max(5000).optional(),
 });

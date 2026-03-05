@@ -74,6 +74,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       thread: params.thread === true || params.thread === 'true',
       canvasWidth,
       canvasHeight,
+      // Output width override (final PNG pixel width)
+      outputWidth: params.outputWidth,
     };
   }
 
@@ -105,7 +107,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       try {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
-        const options = { ...buildRenderOptions(req.validated), tweetId };
+        const watermark = req.keyData.tier === 'free';
+        const options = { ...buildRenderOptions(req.validated), tweetId, watermark };
 
         let result, author;
         if (options.thread) {
@@ -149,7 +152,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         const start = Date.now();
         const { tweetId: rawId, tweetUrl, response: responseType = 'image', ...rest } = req.validated;
         const tweetId = extractTweetId(rawId || tweetUrl);
-        const options = { ...buildRenderOptions(rest), tweetId };
+        const watermark = req.keyData.tier === 'free';
+        const options = { ...buildRenderOptions(rest), tweetId, watermark };
 
         let result, author;
         if (options.thread) {
@@ -294,7 +298,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         }
 
         // ── Step 4: Build shared render options ──
-        const options = buildRenderOptions(renderParams);
+        const watermark = tier === 'free';
+        const options = { ...buildRenderOptions(renderParams), watermark };
 
         // ── Step 5: Process batch with concurrency control ──
         const results = await processBatch(urls, options, responseType, config);

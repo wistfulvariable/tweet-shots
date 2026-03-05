@@ -18,6 +18,12 @@ function getCurrentMonth() {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Get the UTC midnight ISO string for the 1st of next month. */
+function getResetDate() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
+}
+
 /**
  * Track usage AND enforce monthly credit limit in one call.
  * Uses Firestore FieldValue.increment() for safe concurrent writes.
@@ -162,13 +168,14 @@ export async function checkAndReserveCredits(keyString, tier, count) {
 export async function getUsageStats(keyString, tier) {
   const doc = await usageCollection().doc(keyString).get();
   const limit = TIERS[tier]?.monthlyCredits ?? TIERS.free.monthlyCredits;
+  const currentMonth = getCurrentMonth();
+  const resetDate = getResetDate();
 
   if (!doc.exists) {
-    return { tier, used: 0, limit, remaining: limit, total: 0 };
+    return { tier, used: 0, limit, remaining: limit, currentMonth, resetDate };
   }
 
   const data = doc.data();
-  const currentMonth = getCurrentMonth();
 
   // If stored month differs from current month, usage is effectively 0
   const used = data.currentMonth === currentMonth ? data.currentMonthCount : 0;
@@ -178,7 +185,7 @@ export async function getUsageStats(keyString, tier) {
     used,
     limit,
     remaining: Math.max(0, limit - used),
-    total: data.total || 0,
-    lastUsed: data.lastUsed,
+    currentMonth,
+    resetDate,
   };
 }

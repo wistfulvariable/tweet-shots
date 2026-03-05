@@ -10,6 +10,8 @@ import {
   generateThreadHtml,
   GRADIENTS,
   PHONE_CHROME,
+  WATERMARK_COLORS,
+  HEIGHT_WATERMARK,
 } from '../../tweet-html.mjs';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -359,5 +361,115 @@ describe('generateThreadHtml', () => {
     // The connector is a 2px wide vertical line between tweets
     expect(html).not.toContain('width: 2px');
     expect(html).toContain('First tweet in thread');
+  });
+});
+
+// ─── Watermark ─────────────────────────────────────────────────────────────────
+
+describe('watermark', () => {
+  describe('generateTweetHtml', () => {
+    it('does not render watermark by default (watermark=false)', () => {
+      const html = generateTweetHtml(baseTweet, 'dark', {});
+      expect(html).not.toContain('tweet-shots.com');
+    });
+
+    it('renders watermark text when watermark=true', () => {
+      const html = generateTweetHtml(baseTweet, 'dark', { watermark: true });
+      expect(html).toContain('tweet-shots.com');
+    });
+
+    it('uses correct color for light theme', () => {
+      const html = generateTweetHtml(baseTweet, 'light', { watermark: true });
+      expect(html).toContain(WATERMARK_COLORS.light);
+      expect(html).toContain('tweet-shots.com');
+    });
+
+    it('uses correct color for dark theme', () => {
+      const html = generateTweetHtml(baseTweet, 'dark', { watermark: true });
+      expect(html).toContain(WATERMARK_COLORS.dark);
+    });
+
+    it('uses correct color for dim theme', () => {
+      const html = generateTweetHtml(baseTweet, 'dim', { watermark: true });
+      expect(html).toContain(WATERMARK_COLORS.dim);
+    });
+
+    it('uses correct color for black theme', () => {
+      const html = generateTweetHtml(baseTweet, 'black', { watermark: true });
+      expect(html).toContain(WATERMARK_COLORS.black);
+    });
+
+    it('watermark appears after logo when both are present', () => {
+      const logoUrl = 'https://example.com/logo.png';
+      const html = generateTweetHtml(baseTweet, 'dark', {
+        watermark: true,
+        logo: logoUrl,
+        logoPosition: 'bottom-right',
+      });
+      const logoIdx = html.indexOf(logoUrl);
+      const watermarkIdx = html.indexOf('tweet-shots.com');
+      expect(logoIdx).toBeGreaterThan(-1);
+      expect(watermarkIdx).toBeGreaterThan(-1);
+      expect(watermarkIdx).toBeGreaterThan(logoIdx);
+    });
+
+    it('watermark uses only flexbox layout (Satori-compatible)', () => {
+      const html = generateTweetHtml(baseTweet, 'dark', { watermark: true });
+      // Watermark section should not use position: absolute (Satori rejects it)
+      const watermarkStart = html.indexOf('tweet-shots.com');
+      // Check the watermark container div (within ~200 chars before the text)
+      const watermarkSection = html.slice(Math.max(0, watermarkStart - 200), watermarkStart);
+      expect(watermarkSection).not.toContain('position: absolute');
+      expect(watermarkSection).toContain('display: flex');
+    });
+
+    it('watermark renders with gradient background', () => {
+      const html = generateTweetHtml(baseTweet, 'dark', {
+        watermark: true,
+        backgroundGradient: 'sunset',
+      });
+      expect(html).toContain('tweet-shots.com');
+      expect(html).toContain('linear-gradient');
+    });
+  });
+
+  describe('generateThreadHtml', () => {
+    const threadTweets = [
+      { ...baseTweet, id_str: '1', text: 'Thread tweet 1' },
+      { ...baseTweet, id_str: '2', text: 'Thread tweet 2' },
+    ];
+
+    it('renders watermark when watermark=true', () => {
+      const html = generateThreadHtml(threadTweets, 'dark', { watermark: true });
+      expect(html).toContain('tweet-shots.com');
+    });
+
+    it('does not render watermark when watermark=false (default)', () => {
+      const html = generateThreadHtml(threadTweets, 'dark', {});
+      expect(html).not.toContain('tweet-shots.com');
+    });
+
+    it('uses correct theme color for watermark', () => {
+      const html = generateThreadHtml(threadTweets, 'light', { watermark: true });
+      expect(html).toContain(WATERMARK_COLORS.light);
+    });
+
+    it('watermark appears after all thread content', () => {
+      const html = generateThreadHtml(threadTweets, 'dark', { watermark: true });
+      const lastTweetIdx = html.lastIndexOf('Thread tweet 2');
+      const watermarkIdx = html.indexOf('tweet-shots.com');
+      expect(watermarkIdx).toBeGreaterThan(lastTweetIdx);
+    });
+  });
+
+  describe('HEIGHT_WATERMARK constant', () => {
+    it('is a positive number', () => {
+      expect(HEIGHT_WATERMARK).toBeGreaterThan(0);
+    });
+
+    it('is reasonable size (20-40px)', () => {
+      expect(HEIGHT_WATERMARK).toBeGreaterThanOrEqual(20);
+      expect(HEIGHT_WATERMARK).toBeLessThanOrEqual(40);
+    });
   });
 });

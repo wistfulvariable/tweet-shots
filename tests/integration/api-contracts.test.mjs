@@ -676,7 +676,8 @@ describe('Contract: GET /billing/usage', () => {
     expect(typeof body.limit).toBe('number');
     expect(typeof body.used).toBe('number');
     expect(typeof body.remaining).toBe('number');
-    expect(typeof body.total).toBe('number');
+    expect(typeof body.currentMonth).toBe('string');
+    expect(typeof body.resetDate).toBe('string');
 
     // remaining should be non-negative
     expect(body.remaining).toBeGreaterThanOrEqual(0);
@@ -894,8 +895,10 @@ describe('Contract: GET /admin/usage', () => {
       expect(typeof stat.usage.remaining).toBe('number');
       expect(stat.usage).toHaveProperty('used');
       expect(typeof stat.usage.used).toBe('number');
-      expect(stat.usage).toHaveProperty('total');
-      expect(typeof stat.usage.total).toBe('number');
+      expect(stat.usage).toHaveProperty('currentMonth');
+      expect(typeof stat.usage.currentMonth).toBe('string');
+      expect(stat.usage).toHaveProperty('resetDate');
+      expect(typeof stat.usage.resetDate).toBe('string');
     }
   });
 });

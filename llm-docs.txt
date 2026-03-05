@@ -139,6 +139,7 @@ dimension       string    auto      auto, instagramFeed, instagramStory, instagr
                                     tiktok, linkedin, twitter, facebook, youtube
 format          string    png       png, svg                                                        Output format
 scale           number    2         1, 2, 3                                                         Resolution multiplier
+outputWidth     number    —         50–5000                                                         Final PNG pixel width (overrides scale)
 gradient        string    —         sunset, ocean, forest, fire, midnight, sky, candy, peach         Background gradient preset
 bgColor         string    —         #rrggbb                                                         Custom background color
 textColor       string    —         #rrggbb                                                         Custom text color

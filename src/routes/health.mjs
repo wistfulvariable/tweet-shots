@@ -14,11 +14,12 @@ export function healthRoutes() {
   });
 
   router.get('/pricing', (req, res) => {
-    const pricing = Object.entries(TIERS).map(([name, config]) => ({
+    const PUBLIC_TIERS = ['free', 'pro', 'business'];
+    const pricing = PUBLIC_TIERS.map(name => ({
       tier: name,
-      price: config.price,
-      rateLimit: `${config.rateLimit} requests/min`,
-      monthlyCredits: config.monthlyCredits,
+      price: TIERS[name].price,
+      rateLimit: `${TIERS[name].rateLimit} requests/min`,
+      monthlyCredits: TIERS[name].monthlyCredits,
     }));
     res.json({ tiers: pricing });
   });

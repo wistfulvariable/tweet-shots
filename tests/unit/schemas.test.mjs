@@ -153,6 +153,39 @@ describe('screenshotQuerySchema', () => {
     expect(result.data.fontUrl).toBeUndefined();
     expect(result.data.fontBoldUrl).toBeUndefined();
   });
+
+  it('accepts valid outputWidth', () => {
+    const result = screenshotQuerySchema.safeParse({ outputWidth: '800' });
+    expect(result.success).toBe(true);
+    expect(result.data.outputWidth).toBe(800);
+  });
+
+  it('coerces outputWidth string to number', () => {
+    const result = screenshotQuerySchema.safeParse({ outputWidth: '1200' });
+    expect(result.success).toBe(true);
+    expect(result.data.outputWidth).toBe(1200);
+  });
+
+  it('rejects outputWidth below minimum (50)', () => {
+    const result = screenshotQuerySchema.safeParse({ outputWidth: '10' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects outputWidth above maximum (5000)', () => {
+    const result = screenshotQuerySchema.safeParse({ outputWidth: '6000' });
+    expect(result.success).toBe(false);
+  });
+
+  it('outputWidth is optional (undefined when omitted)', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data.outputWidth).toBeUndefined();
+  });
+
+  it('rejects non-integer outputWidth', () => {
+    const result = screenshotQuerySchema.safeParse({ outputWidth: '800.5' });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('screenshotBodySchema', () => {
@@ -243,6 +276,28 @@ describe('screenshotBodySchema', () => {
     expect(result.data.fontFamily).toBeUndefined();
     expect(result.data.fontUrl).toBeUndefined();
     expect(result.data.fontBoldUrl).toBeUndefined();
+  });
+
+  it('accepts valid outputWidth in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', outputWidth: 800 });
+    expect(result.success).toBe(true);
+    expect(result.data.outputWidth).toBe(800);
+  });
+
+  it('rejects outputWidth below minimum (50) in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', outputWidth: 30 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects outputWidth above maximum (5000) in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', outputWidth: 10000 });
+    expect(result.success).toBe(false);
+  });
+
+  it('outputWidth is optional in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.outputWidth).toBeUndefined();
   });
 });
 

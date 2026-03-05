@@ -75,10 +75,11 @@ describe('loadConfig', () => {
 });
 
 describe('TIERS', () => {
-  it('defines free, pro, and business tiers', () => {
+  it('defines free, pro, business, and owner tiers', () => {
     expect(TIERS).toHaveProperty('free');
     expect(TIERS).toHaveProperty('pro');
     expect(TIERS).toHaveProperty('business');
+    expect(TIERS).toHaveProperty('owner');
   });
 
   it('has increasing rate limits', () => {
@@ -101,10 +102,11 @@ describe('TIERS', () => {
 });
 
 describe('VALID_TIERS', () => {
-  it('contains exactly three tiers', () => {
-    expect(VALID_TIERS).toHaveLength(3);
+  it('contains all four tiers', () => {
+    expect(VALID_TIERS).toHaveLength(4);
     expect(VALID_TIERS).toContain('free');
     expect(VALID_TIERS).toContain('pro');
     expect(VALID_TIERS).toContain('business');
+    expect(VALID_TIERS).toContain('owner');
   });
 });

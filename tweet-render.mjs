@@ -5,6 +5,7 @@
 
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
+import sharp from 'sharp';
 import { html } from 'satori-html';
 import fs from 'fs';
 import path from 'path';
@@ -18,6 +19,7 @@ import {
   getHighResProfileUrl,
   GRADIENT_FRAME_PADDING,
   PHONE_CHROME,
+  HEIGHT_WATERMARK,
 } from './tweet-html.mjs';
 import { fetchEmoji } from './tweet-emoji.mjs';
 import { loadLanguageFont } from './tweet-fonts.mjs';
@@ -345,7 +347,7 @@ function mediaHeight(count) {
  * Estimate canvas height based on tweet content and visibility options.
  * Satori requires explicit dimensions — this avoids clipping or excess whitespace.
  */
-function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl }) {
+function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl, watermark }) {
   const textLength = tweet.text?.length || 0;
   const mediaCount = hideMedia ? 0 : (tweet.mediaDetails?.length || tweet.photos?.length || 0);
   const hasQuoteTweet = !hideQuoteTweet && !!tweet.quoted_tweet;
@@ -357,7 +359,8 @@ function calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetric
     (hasQuoteTweet ? HEIGHT_QUOTE_TWEET : 0) +
     (showMetrics ? HEIGHT_METRICS : 0) +
     (hideDate ? 0 : HEIGHT_DATE) +
-    (showUrl ? HEIGHT_URL : 0)
+    (showUrl ? HEIGHT_URL : 0) +
+    (watermark ? HEIGHT_WATERMARK : 0)
   );
 }
 
@@ -382,12 +385,13 @@ function calculateThreadTweetHeight(tweet, { hideMedia, showMetrics }) {
 
 /** Estimate total canvas height for a thread of tweets. */
 function calculateThreadHeight(tweets, options) {
-  const { padding, hideMedia, showMetrics } = options;
+  const { padding, hideMedia, showMetrics, watermark } = options;
   let total = padding * 2;
   tweets.forEach((tweet, i) => {
     total += calculateThreadTweetHeight(tweet, { hideMedia, showMetrics });
     if (i < tweets.length - 1) total += THREAD_CONNECTOR_HEIGHT;
   });
+  if (watermark) total += HEIGHT_WATERMARK;
   return total;
 }
 
@@ -413,29 +417,38 @@ async function resolveFonts(fontUrl, fontBoldUrl, fontFamily) {
   return loadFonts();
 }
 
-/** Run Satori + optional Resvg conversion for a given HTML string and canvas dimensions. */
-async function satoriRender(htmlContent, canvasWidth, canvasHeight, scale, format, fonts) {
-  const markup = html(htmlContent);
+// SSAA (Super-Sample Anti-Aliasing) constants
+// Render at 3x target width then downscale with Lanczos3 for razor-sharp output
+export const SSAA_MULTIPLIER = 3;
+export const SSAA_MAX_INTERNAL_WIDTH = 8000;
 
-  const svg = await satori(markup, {
-    width: canvasWidth,
-    height: canvasHeight,
-    fonts,
-    loadAdditionalAsset: async (code, segment) => {
-      if (code === 'emoji') return fetchEmoji(segment);
-      return loadLanguageFont(code);
-    },
-  });
+/**
+ * Convert an SVG string to a sharp PNG buffer using Resvg + SSAA.
+ * Renders at 3x target width, then downscales with Lanczos3 + sharpening.
+ * Skips SSAA when internal width would exceed the safety cap.
+ * @param {string} svg - SVG string from Satori
+ * @param {number} targetWidth - Desired final PNG width in pixels
+ * @returns {Promise<Buffer>} PNG buffer
+ */
+async function resvgToPng(svg, targetWidth) {
+  const internalWidth = targetWidth * SSAA_MULTIPLIER;
 
-  if (format === 'svg') {
-    return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
+  if (internalWidth > SSAA_MAX_INTERNAL_WIDTH) {
+    // Skip SSAA — already very high resolution, bilinear artifacts invisible
+    const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: targetWidth } });
+    return Buffer.from(resvg.render().asPng());
   }
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: 'width', value: canvasWidth * scale },
-  });
-  const pngBuffer = resvg.render().asPng();
-  return { data: pngBuffer, format: 'png', contentType: 'image/png' };
+  // Render at 3x target width for supersampling
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: internalWidth } });
+  const oversizedPng = resvg.render().asPng();
+
+  // Downscale to target width with Lanczos3 + subtle sharpening
+  return sharp(Buffer.from(oversizedPng))
+    .resize(targetWidth, null, { kernel: 'lanczos3' })
+    .sharpen({ sigma: 0.5 })
+    .png()
+    .toBuffer();
 }
 
 // ============================================================================
@@ -488,6 +501,10 @@ export async function renderTweetToImage(tweet, options = {}) {
     gradientFrom = null,
     gradientTo = null,
     gradientAngle = 135,
+    // Output width override — final PNG pixel width (bypasses scale)
+    outputWidth = null,
+    // Internal watermark flag (injected server-side, not user-facing)
+    watermark = false,
   } = options;
 
   // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants.
@@ -506,7 +523,7 @@ export async function renderTweetToImage(tweet, options = {}) {
   const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
   const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
 
-  const contentHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl });
+  const contentHeight = calculateHeight(tweet, { padding, hideMedia, hideQuoteTweet, showMetrics, hideDate, showUrl, watermark });
 
   // Phone chrome adds fixed pixel amounts to canvas dimensions
   const phoneExtraWidth = frame === 'phone' ? PHONE_CHROME.border * 2 : 0;
@@ -556,6 +573,7 @@ export async function renderTweetToImage(tweet, options = {}) {
     gradientFrom,
     gradientTo,
     gradientAngle,
+    watermark,
     canvasWidth: needsWrapper ? canvasWidth : null,
     canvasHeight: needsWrapper ? canvasHeight : null,
   });
@@ -583,15 +601,9 @@ export async function renderTweetToImage(tweet, options = {}) {
     return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
   }
 
-  // Convert to PNG with Resvg
-  const resvg = new Resvg(svg, {
-    fitTo: {
-      mode: 'width',
-      value: canvasWidth * scale,
-    },
-  });
-  const pngData = resvg.render();
-  const pngBuffer = pngData.asPng();
+  // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
+  const rasterWidth = outputWidth || canvasWidth * scale;
+  const pngBuffer = await resvgToPng(svg, rasterWidth);
 
   return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }
@@ -628,6 +640,8 @@ export async function renderThreadToImage(tweets, options = {}) {
     gradientFrom = null,
     gradientTo = null,
     gradientAngle = 135,
+    outputWidth = null,
+    watermark = false,
   } = options;
 
   // Use 'small' images for threads — many tweets means many images, avoid timeouts
@@ -648,7 +662,7 @@ export async function renderThreadToImage(tweets, options = {}) {
   const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
   const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
 
-  const contentHeight = calculateThreadHeight(tweets, { padding, hideMedia, showMetrics });
+  const contentHeight = calculateThreadHeight(tweets, { padding, hideMedia, showMetrics, watermark });
 
   let canvasWidth, canvasHeight;
   if (hasFixedDimensions) {
@@ -681,6 +695,7 @@ export async function renderThreadToImage(tweets, options = {}) {
     gradientFrom,
     gradientTo,
     gradientAngle,
+    watermark,
     canvasWidth: needsWrapper ? canvasWidth : null,
     canvasHeight: needsWrapper ? canvasHeight : null,
   });
@@ -704,9 +719,8 @@ export async function renderThreadToImage(tweets, options = {}) {
     return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
   }
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: 'width', value: canvasWidth * scale },
-  });
-  const pngBuffer = resvg.render().asPng();
+  // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
+  const rasterWidth = outputWidth || canvasWidth * scale;
+  const pngBuffer = await resvgToPng(svg, rasterWidth);
   return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }
