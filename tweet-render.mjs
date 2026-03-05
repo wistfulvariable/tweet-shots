@@ -422,6 +422,11 @@ async function resolveFonts(fontUrl, fontBoldUrl, fontFamily) {
 export const SSAA_MULTIPLIER = 3;
 export const SSAA_MAX_INTERNAL_WIDTH = 8000;
 
+// sharp.trim() uses top-left pixel as background reference by default.
+// For standalone cards, the top-left is card-bg (opaque), not transparent,
+// so trim must be told explicitly to remove transparent edges.
+const TRIM_TRANSPARENT = { background: { r: 0, g: 0, b: 0, alpha: 0 } };
+
 /**
  * Convert an SVG string to a sharp PNG buffer using Resvg + SSAA.
  * Renders at 3x target width, then downscales with Lanczos3 + sharpening.
@@ -439,7 +444,7 @@ async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
     // Skip SSAA — already very high resolution, bilinear artifacts invisible
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: targetWidth } });
     const png = Buffer.from(resvg.render().asPng());
-    if (shouldTrim) return sharp(png).trim().png().toBuffer();
+    if (shouldTrim) return sharp(png).trim(TRIM_TRANSPARENT).png().toBuffer();
     return png;
   }
 
@@ -452,7 +457,7 @@ async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
     .resize(targetWidth, null, { kernel: 'lanczos3' })
     .sharpen({ sigma: 0.5 });
 
-  if (shouldTrim) pipeline = pipeline.trim();
+  if (shouldTrim) pipeline = pipeline.trim(TRIM_TRANSPARENT);
 
   return pipeline.png().toBuffer();
 }

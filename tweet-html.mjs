@@ -429,10 +429,10 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   // Card always gets a solid background (gradient goes on outer wrapper)
   const cardBg = finalColors.bg;
 
-  // Stronger shadow when card floats on a gradient/canvas
-  const shadow = hideShadow ? '' : (needsWrapper
-    ? 'box-shadow: 0 8px 32px rgba(0,0,0,0.35);'
-    : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);');
+  // Shadow only when card floats on a gradient/canvas — on transparent
+  // backgrounds, shadow pixels bleed out and create visible border artifacts
+  const shadow = (hideShadow || !needsWrapper) ? '' :
+    'box-shadow: 0 8px 32px rgba(0,0,0,0.35);';
 
   const userName = tweet.user?.name || 'Unknown';
   const userHandle = tweet.user?.screen_name || 'unknown';
@@ -591,11 +591,12 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   }
 
   // Standard single-layer card (no gradient, no fixed dimensions, no phone frame)
-  // Outer div: transparent root (Satori stretches it to canvas dimensions).
-  // Inner div: card sizes to content — prevents card bg from filling excess height.
+  // No border-radius on standalone cards — rounded corners on a transparent background
+  // create anti-aliased fringe pixels visible when composited on any surface.
+  // Outer div stays transparent so sharp.trim() can remove height overestimation.
   return `
     <div style="display: flex; flex-direction: column; font-family: ${resolvedFontFamily};">
-      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; width: ${width}px; ${shadow}">
         ${cardContent}
       </div>
     </div>
@@ -648,7 +649,6 @@ export function generateThreadHtml(tweets, theme, options = {}) {
   };
 
   const cardBg = finalColors.bg;
-  const shadow = hideShadow ? '' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
 
   // Watermark row for threads
   const watermarkColor = WATERMARK_COLORS[theme] || WATERMARK_COLORS.dark;
@@ -738,6 +738,11 @@ export function generateThreadHtml(tweets, theme, options = {}) {
   const hasCanvasDimensions = !!(canvasWidth && canvasHeight);
   const needsWrapper = hasGradientFrame || hasCanvasDimensions;
 
+  // Shadow only when card floats on a gradient/canvas — on transparent
+  // backgrounds, shadow pixels bleed out and create visible border artifacts
+  const shadow = (hideShadow || !needsWrapper) ? '' :
+    'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+
   if (needsWrapper) {
     let outerBg;
     if (resolvedGradient) {
@@ -761,11 +766,12 @@ export function generateThreadHtml(tweets, theme, options = {}) {
     `;
   }
 
-  // Outer div: transparent root (Satori stretches it to canvas dimensions).
-  // Inner div: card sizes to content — prevents card bg from filling excess height.
+  // No border-radius on standalone cards — rounded corners on a transparent background
+  // create anti-aliased fringe pixels visible when composited on any surface.
+  // Outer div stays transparent so sharp.trim() can remove height overestimation.
   return `
     <div style="display: flex; flex-direction: column; font-family: ${resolvedFontFamily};">
-      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; width: ${width}px; ${shadow}">
         ${threadContent}
         ${watermarkRow}
       </div>
