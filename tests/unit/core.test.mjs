@@ -798,6 +798,80 @@ describe('generateTweetHtml', () => {
     expect(result).toContain(`color: ${THEMES.dark.link}`);
   });
 
+  it('trims reply-to mentions via display_text_range', () => {
+    // Simulates: "@glazeapps See @glazeapps in action" with display_text_range [11, 35]
+    // "@glazeapps " is 11 chars (0-10), visible text starts at index 11 ("See ...")
+    const tweet = cloneTweet({
+      text: '@glazeapps See @glazeapps in action',
+      display_text_range: [11, 35],
+      entities: {
+        urls: [],
+        user_mentions: [
+          { screen_name: 'glazeapps', indices: [0, 10] },
+          { screen_name: 'glazeapps', indices: [15, 25] },
+        ],
+        hashtags: [],
+      },
+    });
+    const result = generateTweetHtml(tweet, 'dark');
+    // Only "See @glazeapps in action" should remain
+    expect(result).toContain('See');
+    expect(result).toContain('in action');
+    // Count @glazeapps occurrences — should appear exactly once (the inline one)
+    const matches = result.match(/@glazeapps/gi);
+    expect(matches).toHaveLength(1);
+  });
+
+  it('preserves full text when display_text_range starts at 0', () => {
+    const tweet = cloneTweet({
+      text: 'Hello world, @someone!',
+      display_text_range: [0, 22],
+      entities: {
+        urls: [],
+        user_mentions: [{ screen_name: 'someone', indices: [13, 21] }],
+        hashtags: [],
+      },
+    });
+    const result = generateTweetHtml(tweet, 'dark');
+    expect(result).toContain('Hello world');
+    expect(result).toContain('@someone');
+  });
+
+  it('handles missing display_text_range gracefully', () => {
+    const tweet = cloneTweet({
+      text: '@user Hello from a reply',
+      entities: {
+        urls: [],
+        user_mentions: [{ screen_name: 'user', indices: [0, 5] }],
+        hashtags: [],
+      },
+    });
+    // No display_text_range — text should be unchanged (backward compat)
+    const result = generateTweetHtml(tweet, 'dark');
+    expect(result).toContain('@user');
+    expect(result).toContain('Hello from a reply');
+  });
+
+  it('does not double-wrap duplicate mention entities', () => {
+    const tweet = cloneTweet({
+      text: 'See @glazeapps in action',
+      display_text_range: [0, 24],
+      entities: {
+        urls: [],
+        user_mentions: [
+          { screen_name: 'glazeapps', indices: [4, 14] },
+          { screen_name: 'glazeapps', indices: [4, 14] },
+        ],
+        hashtags: [],
+      },
+    });
+    const result = generateTweetHtml(tweet, 'dark');
+    // Should have exactly one colored span wrapping @glazeapps, not nested spans
+    const spanPattern = /<span[^>]*>@glazeapps<\/span>/gi;
+    const spanMatches = result.match(spanPattern);
+    expect(spanMatches).toHaveLength(1);
+  });
+
   it('includes verified badge when is_blue_verified', () => {
     const tweet = cloneTweet();
     tweet.user.is_blue_verified = true;

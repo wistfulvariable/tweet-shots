@@ -111,6 +111,13 @@ function escapeRegExp(str) {
 function processTweetText(tweet, linkColor) {
   let text = tweet.text || '';
 
+  // Trim to display_text_range — hides reply-to @mentions that Twitter shows separately
+  // (e.g. "@user See @user in action" with range [6, 30] → "See @user in action")
+  const range = tweet.display_text_range;
+  if (range && Array.isArray(range) && range.length === 2 && range[0] > 0) {
+    text = text.substring(range[0]);
+  }
+
   // Remove t.co media URLs from text (they show as images instead)
   if (tweet.entities?.media) {
     for (const media of tweet.entities.media) {
@@ -149,8 +156,12 @@ function processTweetText(tweet, linkColor) {
 
 /** Replace entity occurrences (e.g. @mention, #hashtag) with colored spans. */
 function colorizeEntities(text, entities, prefix, textKey, linkColor) {
+  const seen = new Set();
   let result = text;
   for (const entity of entities) {
+    const key = entity[textKey].toLowerCase();
+    if (seen.has(key)) continue; // global regex already colored all occurrences
+    seen.add(key);
     result = result.replace(
       new RegExp(`${prefix}${escapeRegExp(entity[textKey])}`, 'gi'),
       `<span style="color: ${linkColor}">${prefix}${entity[textKey]}</span>`
@@ -247,6 +258,11 @@ function buildQuoteTweetHtml(quotedTweet, colors, finalColors) {
 
   // Process quote tweet text
   let qtText = quotedTweet.text || '';
+  // Trim reply-to prefix from quoted tweets that are replies
+  const qtRange = quotedTweet.display_text_range;
+  if (qtRange && Array.isArray(qtRange) && qtRange.length === 2 && qtRange[0] > 0) {
+    qtText = qtText.substring(qtRange[0]);
+  }
   if (quotedTweet.entities?.media) {
     for (const media of quotedTweet.entities.media) {
       qtText = qtText.replace(media.url, '');
