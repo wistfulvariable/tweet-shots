@@ -578,7 +578,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
       outerBg = cardBg; // Dimension preset without gradient — same bg color
     }
 
-    const wrapperW = canvasWidth || (width + padding * 2 + GRADIENT_FRAME_PADDING * 2);
+    const wrapperW = canvasWidth || (width + GRADIENT_FRAME_PADDING * 2);
     const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
 
     return `
@@ -591,9 +591,13 @@ export function generateTweetHtml(tweet, theme, options = {}) {
   }
 
   // Standard single-layer card (no gradient, no fixed dimensions, no phone frame)
+  // Outer div: transparent root (Satori stretches it to canvas dimensions).
+  // Inner div: card sizes to content — prevents card bg from filling excess height.
   return `
-    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
-      ${cardContent}
+    <div style="display: flex; flex-direction: column; font-family: ${resolvedFontFamily};">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+        ${cardContent}
+      </div>
     </div>
   `;
 }
@@ -744,7 +748,7 @@ export function generateThreadHtml(tweets, theme, options = {}) {
       outerBg = cardBg;
     }
 
-    const wrapperW = canvasWidth || (width + padding * 2 + GRADIENT_FRAME_PADDING * 2);
+    const wrapperW = canvasWidth || (width + GRADIENT_FRAME_PADDING * 2);
     const heightStyle = canvasHeight ? `height: ${canvasHeight}px;` : '';
 
     return `
@@ -757,10 +761,14 @@ export function generateThreadHtml(tweets, theme, options = {}) {
     `;
   }
 
+  // Outer div: transparent root (Satori stretches it to canvas dimensions).
+  // Inner div: card sizes to content — prevents card bg from filling excess height.
   return `
-    <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; font-family: ${resolvedFontFamily}; ${shadow}">
-      ${threadContent}
-      ${watermarkRow}
+    <div style="display: flex; flex-direction: column; font-family: ${resolvedFontFamily};">
+      <div style="display: flex; flex-direction: column; padding: ${padding}px; background: ${cardBg}; border-radius: ${borderRadius}px; width: ${width}px; ${shadow}">
+        ${threadContent}
+        ${watermarkRow}
+      </div>
     </div>
   `;
 }

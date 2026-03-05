@@ -428,15 +428,19 @@ export const SSAA_MAX_INTERNAL_WIDTH = 8000;
  * Skips SSAA when internal width would exceed the safety cap.
  * @param {string} svg - SVG string from Satori
  * @param {number} targetWidth - Desired final PNG width in pixels
+ * @param {object} [options]
+ * @param {boolean} [options.trim=false] - Trim transparent edges (for auto-sized renders)
  * @returns {Promise<Buffer>} PNG buffer
  */
-async function resvgToPng(svg, targetWidth) {
+async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
   const internalWidth = targetWidth * SSAA_MULTIPLIER;
 
   if (internalWidth > SSAA_MAX_INTERNAL_WIDTH) {
     // Skip SSAA — already very high resolution, bilinear artifacts invisible
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: targetWidth } });
-    return Buffer.from(resvg.render().asPng());
+    const png = Buffer.from(resvg.render().asPng());
+    if (shouldTrim) return sharp(png).trim().png().toBuffer();
+    return png;
   }
 
   // Render at 3x target width for supersampling
@@ -444,11 +448,13 @@ async function resvgToPng(svg, targetWidth) {
   const oversizedPng = resvg.render().asPng();
 
   // Downscale to target width with Lanczos3 + subtle sharpening
-  return sharp(Buffer.from(oversizedPng))
+  let pipeline = sharp(Buffer.from(oversizedPng))
     .resize(targetWidth, null, { kernel: 'lanczos3' })
-    .sharpen({ sigma: 0.5 })
-    .png()
-    .toBuffer();
+    .sharpen({ sigma: 0.5 });
+
+  if (shouldTrim) pipeline = pipeline.trim();
+
+  return pipeline.png().toBuffer();
 }
 
 // ============================================================================
@@ -536,13 +542,12 @@ export async function renderTweetToImage(tweet, options = {}) {
     canvasWidth = canvasWidthOverride;
     canvasHeight = Math.max(canvasHeightOverride, contentHeight + phoneExtraHeight + gradientPad * 2);
   } else if (hasGradient) {
-    const baseWidth = frame === 'phone'
-      ? width + phoneExtraWidth
-      : width + padding * 2;
+    // Satori (Yoga) uses border-box: width already includes padding
+    const baseWidth = frame === 'phone' ? width + phoneExtraWidth : width;
     canvasWidth = baseWidth + gradientPad * 2;
     canvasHeight = contentHeight + phoneExtraHeight + gradientPad * 2;
   } else {
-    canvasWidth = frame === 'phone' ? width + phoneExtraWidth : width + padding * 2;
+    canvasWidth = frame === 'phone' ? width + phoneExtraWidth : width;
     canvasHeight = contentHeight + phoneExtraHeight;
   }
 
@@ -602,8 +607,9 @@ export async function renderTweetToImage(tweet, options = {}) {
   }
 
   // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
+  // Trim transparent edges for auto-sized renders (not gradients or dimension presets)
   const rasterWidth = outputWidth || canvasWidth * scale;
-  const pngBuffer = await resvgToPng(svg, rasterWidth);
+  const pngBuffer = await resvgToPng(svg, rasterWidth, { trim: !needsWrapper });
 
   return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }
@@ -669,10 +675,11 @@ export async function renderThreadToImage(tweets, options = {}) {
     canvasWidth = canvasWidthOverride;
     canvasHeight = Math.max(canvasHeightOverride, contentHeight + gradientPad * 2);
   } else if (hasGradient) {
-    canvasWidth = width + padding * 2 + gradientPad * 2;
+    // Satori (Yoga) uses border-box: width already includes padding
+    canvasWidth = width + gradientPad * 2;
     canvasHeight = contentHeight + gradientPad * 2;
   } else {
-    canvasWidth = width + padding * 2;
+    canvasWidth = width;
     canvasHeight = contentHeight;
   }
 
@@ -721,6 +728,6 @@ export async function renderThreadToImage(tweets, options = {}) {
 
   // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
   const rasterWidth = outputWidth || canvasWidth * scale;
-  const pngBuffer = await resvgToPng(svg, rasterWidth);
+  const pngBuffer = await resvgToPng(svg, rasterWidth, { trim: !needsWrapper });
   return { data: pngBuffer, format: 'png', contentType: 'image/png' };
 }

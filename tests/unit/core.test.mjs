@@ -38,6 +38,7 @@ vi.mock('sharp', () => {
   const sharpInstance = {
     resize: vi.fn().mockReturnThis(),
     sharpen: vi.fn().mockReturnThis(),
+    trim: vi.fn().mockReturnThis(),
     png: vi.fn().mockReturnThis(),
     toBuffer: vi.fn(async () => Buffer.from('ssaa-png-data')),
   };
@@ -1115,10 +1116,11 @@ describe('renderTweetToImage', () => {
   it('calls satori with appropriate dimensions', async () => {
     const tweet = cloneTweet();
     await renderTweetToImage(tweet, { width: 600, padding: 20 });
+    // Satori uses border-box: canvasWidth = width (padding is inside)
     expect(satori).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        width: 640, // 600 + 20*2
+        width: 600,
       })
     );
   });
@@ -1126,7 +1128,8 @@ describe('renderTweetToImage', () => {
   it('applies scale factor with SSAA multiplier to Resvg width', async () => {
     const tweet = cloneTweet();
     await renderTweetToImage(tweet, { scale: 2, width: 550, padding: 20 });
-    const targetWidth = (550 + 40) * 2; // 1180
+    // Satori border-box: canvasWidth = 550, rasterWidth = 550 * 2 = 1100
+    const targetWidth = 550 * 2; // 1100
     expect(Resvg).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -1140,6 +1143,7 @@ describe('renderTweetToImage', () => {
       sharpFn.mockClear();
       sharpFn._instance.resize.mockClear();
       sharpFn._instance.sharpen.mockClear();
+      sharpFn._instance.trim.mockClear();
       sharpFn._instance.png.mockClear();
       sharpFn._instance.toBuffer.mockClear();
     });
@@ -1147,7 +1151,8 @@ describe('renderTweetToImage', () => {
     it('downscales from 3x to target width with Lanczos3', async () => {
       const tweet = cloneTweet();
       await renderTweetToImage(tweet, { scale: 2, width: 550, padding: 20 });
-      const targetWidth = (550 + 40) * 2; // 1180
+      // Satori uses border-box: canvasWidth = width (not width + padding*2)
+      const targetWidth = 550 * 2; // 1100
       expect(sharpFn).toHaveBeenCalled();
       expect(sharpFn._instance.resize).toHaveBeenCalledWith(
         targetWidth, null, { kernel: 'lanczos3' }
@@ -1169,7 +1174,7 @@ describe('renderTweetToImage', () => {
 
     it('skips SSAA when internal width exceeds cap', async () => {
       const tweet = cloneTweet();
-      // outputWidth=5000 → internal would be 10000 > SSAA_MAX_INTERNAL_WIDTH (8000)
+      // outputWidth=5000 → internal would be 15000 > SSAA_MAX_INTERNAL_WIDTH (8000)
       await renderTweetToImage(tweet, { outputWidth: 5000 });
       expect(Resvg).toHaveBeenCalledWith(
         expect.anything(),
@@ -1177,7 +1182,9 @@ describe('renderTweetToImage', () => {
           fitTo: { mode: 'width', value: 5000 },
         })
       );
-      expect(sharpFn).not.toHaveBeenCalled();
+      // SSAA resize/sharpen skipped, but trim still runs for standalone renders
+      expect(sharpFn._instance.resize).not.toHaveBeenCalled();
+      expect(sharpFn._instance.sharpen).not.toHaveBeenCalled();
     });
 
     it('does not invoke sharp for SVG format', async () => {
