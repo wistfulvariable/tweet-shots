@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import express from 'express';
 import { createFirestoreMock } from '../helpers/firestore-mock.mjs';
-import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
+import { TEST_CONFIG, MOCK_KEY_DATA, MOCK_API_KEY, MOCK_PRO_KEY_DATA, MOCK_PRO_API_KEY, MOCK_BUSINESS_KEY_DATA, MOCK_BUSINESS_API_KEY, MOCK_TWEET, currentMonth } from '../helpers/test-fixtures.mjs';
 import { AppError } from '../../src/errors.mjs';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       return {
         data: Buffer.from(`fake-${format}-data`),
         format,
-        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+        contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
       };
     }),
     renderThreadToImage: vi.fn(async (tweets, opts = {}) => {
@@ -55,7 +55,7 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       return {
         data: Buffer.from(`fake-thread-${format}-data`),
         format,
-        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+        contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
       };
     }),
   };
@@ -122,7 +122,7 @@ beforeEach(() => {
     return {
       data: Buffer.from(`fake-${format}-data`),
       format,
-      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
     };
   });
   renderThreadToImage.mockImplementation(async (tweets, opts = {}) => {
@@ -130,7 +130,7 @@ beforeEach(() => {
     return {
       data: Buffer.from(`fake-thread-${format}-data`),
       format,
-      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
     };
   });
   upload.mockImplementation(async (bucket, filename) =>
@@ -202,6 +202,22 @@ describe('GET /screenshot/:tweetIdOrUrl', () => {
         scale: 2,
       })
     );
+  });
+
+  it('returns JPEG image with correct Content-Type via GET', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?format=jpeg`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/jpeg');
+  });
+
+  it('returns WebP image with correct Content-Type via GET', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?format=webp`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/webp');
   });
 
   it('returns 400 for invalid tweet ID', async () => {
@@ -434,7 +450,7 @@ describe('POST /screenshot', () => {
       tweetId: '1234567890',
       theme: 'light',
       format: 'svg',
-      scale: 3,
+      scale: 2,
       gradient: 'ocean',
       hideMetrics: true,
     });
@@ -443,7 +459,7 @@ describe('POST /screenshot', () => {
       expect.objectContaining({
         theme: 'light',
         format: 'svg',
-        scale: 3,
+        scale: 2,
         backgroundGradient: 'ocean',
       })
     );
@@ -511,6 +527,18 @@ describe('POST /screenshot', () => {
     const res = await postScreenshot({ tweetId: '1234567890', format: 'svg' });
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('image/svg+xml');
+  });
+
+  it('sets correct Content-Type for JPEG format', async () => {
+    const res = await postScreenshot({ tweetId: '1234567890', format: 'jpeg' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/jpeg');
+  });
+
+  it('sets correct Content-Type for WebP format', async () => {
+    const res = await postScreenshot({ tweetId: '1234567890', format: 'webp' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/webp');
   });
 
   it('passes custom font options to render', async () => {
@@ -698,5 +726,212 @@ describe('custom gradient colors', () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ─── Resolution clamping by tier ────────────────────────────────────────────
+
+describe('resolution clamping by tier', () => {
+  /**
+   * Seed a tier-specific key in mock Firestore (apiKeys + usage).
+   */
+  function seedTierKey(apiKey, keyData) {
+    mock.collections.apiKeys._store.set(apiKey, { ...keyData });
+    mock.collections.usage._store.set(apiKey, {
+      total: 0,
+      currentMonth: currentMonth(),
+      currentMonthCount: 0,
+      lastUsed: null,
+    });
+  }
+
+  // ── Free tier clamping ──────────────────────────────────────────────────
+
+  it('GET free tier: outputWidth 2000 clamped to 1080', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=2000`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(1080);
+  });
+
+  it('GET free tier: scale 3 clamped to 2', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?scale=3`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.scale).toBe(2);
+  });
+
+  it('GET free tier: outputWidth within limit passes unchanged', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=800`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(800);
+  });
+
+  it('GET free tier: scale within limit passes unchanged', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?scale=2`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.scale).toBe(2);
+  });
+
+  // ── Pro tier clamping ──────────────────────────────────────────────────
+
+  it('GET pro tier: outputWidth 4500 clamped to 4000', async () => {
+    seedTierKey(MOCK_PRO_API_KEY, MOCK_PRO_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=4500`, {
+      headers: { 'X-API-KEY': MOCK_PRO_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(4000);
+  });
+
+  it('GET pro tier: scale 3 passes (within limit)', async () => {
+    seedTierKey(MOCK_PRO_API_KEY, MOCK_PRO_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?scale=3`, {
+      headers: { 'X-API-KEY': MOCK_PRO_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.scale).toBe(3);
+  });
+
+  it('GET pro tier: outputWidth within limit passes unchanged', async () => {
+    seedTierKey(MOCK_PRO_API_KEY, MOCK_PRO_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=3000`, {
+      headers: { 'X-API-KEY': MOCK_PRO_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(3000);
+  });
+
+  // ── Business tier (no clamping within allowed range) ────────────────────
+
+  it('GET business tier: outputWidth 5000 passes (at limit)', async () => {
+    seedTierKey(MOCK_BUSINESS_API_KEY, MOCK_BUSINESS_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=5000`, {
+      headers: { 'X-API-KEY': MOCK_BUSINESS_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(5000);
+  });
+
+  it('GET business tier: scale 3 passes (at limit)', async () => {
+    seedTierKey(MOCK_BUSINESS_API_KEY, MOCK_BUSINESS_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?scale=3`, {
+      headers: { 'X-API-KEY': MOCK_BUSINESS_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.scale).toBe(3);
+  });
+
+  // ── Response headers ────────────────────────────────────────────────────
+
+  it('GET: returns X-Max-Output-Width and X-Max-Scale headers (free tier)', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-max-output-width')).toBe('1080');
+    expect(res.headers.get('x-max-scale')).toBe('2');
+  });
+
+  it('GET: returns X-Max-Output-Width and X-Max-Scale headers (pro tier)', async () => {
+    seedTierKey(MOCK_PRO_API_KEY, MOCK_PRO_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_PRO_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-max-output-width')).toBe('4000');
+    expect(res.headers.get('x-max-scale')).toBe('3');
+  });
+
+  it('GET: returns X-Max-Output-Width and X-Max-Scale headers (business tier)', async () => {
+    seedTierKey(MOCK_BUSINESS_API_KEY, MOCK_BUSINESS_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_BUSINESS_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-max-output-width')).toBe('5000');
+    expect(res.headers.get('x-max-scale')).toBe('3');
+  });
+
+  // ── POST clamping ──────────────────────────────────────────────────────
+
+  it('POST free tier: outputWidth 2000 clamped to 1080', async () => {
+    const res = await fetch(`${baseUrl}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': MOCK_API_KEY },
+      body: JSON.stringify({ tweetId: '1234567890', outputWidth: 2000 }),
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(1080);
+  });
+
+  it('POST free tier: scale 3 clamped to 2', async () => {
+    const res = await fetch(`${baseUrl}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': MOCK_API_KEY },
+      body: JSON.stringify({ tweetId: '1234567890', scale: 3 }),
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.scale).toBe(2);
+  });
+
+  it('POST pro tier: outputWidth 4500 clamped to 4000', async () => {
+    seedTierKey(MOCK_PRO_API_KEY, MOCK_PRO_KEY_DATA);
+    const res = await fetch(`${baseUrl}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': MOCK_PRO_API_KEY },
+      body: JSON.stringify({ tweetId: '1234567890', outputWidth: 4500 }),
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(4000);
+  });
+
+  it('POST: returns X-Max-Output-Width and X-Max-Scale headers', async () => {
+    const res = await fetch(`${baseUrl}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': MOCK_API_KEY },
+      body: JSON.stringify({ tweetId: '1234567890' }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-max-output-width')).toBe('1080');
+    expect(res.headers.get('x-max-scale')).toBe('2');
+  });
+
+  // ── Clamping does not affect values within limits ──────────────────────
+
+  it('GET free tier: outputWidth exactly at limit passes unchanged', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?outputWidth=1080`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBe(1080);
+  });
+
+  it('GET: no outputWidth provided — not clamped to anything', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBeUndefined();
   });
 });

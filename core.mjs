@@ -21,7 +21,7 @@ export { extractTweetId, fetchTweet, fetchThread } from './tweet-fetch.mjs';
 export { THEMES, GRADIENTS, formatDate, formatNumber, generateTweetHtml } from './tweet-html.mjs';
 
 // Rendering pipeline
-export { DIMENSIONS, fetchImageAsBase64, loadFonts, renderTweetToImage, countMediaImages, SSAA_MULTIPLIER, SSAA_MAX_INTERNAL_WIDTH } from './tweet-render.mjs';
+export { DIMENSIONS, fetchImageAsBase64, fetchImageAsBuffer, loadFonts, renderTweetToImage, countMediaImages, SSAA_MULTIPLIER, SSAA_MAX_INTERNAL_WIDTH, FORMAT_CONTENT_TYPES } from './tweet-render.mjs';
 
 // Emoji rendering
 export { emojiToCodepoint, fetchEmoji } from './tweet-emoji.mjs';

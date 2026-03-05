@@ -47,7 +47,7 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       return {
         data: Buffer.from(`fake-${format}-data`),
         format,
-        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+        contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
       };
     }),
   };
@@ -139,7 +139,7 @@ beforeEach(() => {
     return {
       data: Buffer.from(`fake-${format}-data`),
       format,
-      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
     };
   });
   upload.mockImplementation(async (bucket, filename) =>
@@ -420,6 +420,22 @@ describe('Contract: GET /screenshot/:tweetIdOrUrl', () => {
     expect(res.headers.get('content-type')).toContain('image/svg+xml');
   });
 
+  it('returns image binary with correct Content-Type for JPEG', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?format=jpeg`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/jpeg');
+  });
+
+  it('returns image binary with correct Content-Type for WebP', async () => {
+    const res = await fetch(`${baseUrl}/screenshot/1234567890?format=webp`, {
+      headers: { 'X-API-KEY': MOCK_API_KEY },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/webp');
+  });
+
   it('sets X-Tweet-ID header as string', async () => {
     const res = await fetch(`${baseUrl}/screenshot/1234567890`, {
       headers: { 'X-API-KEY': MOCK_API_KEY },
@@ -503,7 +519,7 @@ describe('Contract: POST /screenshot', () => {
     expect(typeof body.tweetId).toBe('string');
     expect(typeof body.author).toBe('string');
     expect(typeof body.format).toBe('string');
-    expect(['png', 'svg']).toContain(body.format);
+    expect(['png', 'svg', 'jpeg', 'webp']).toContain(body.format);
     expect(typeof body.data).toBe('string');
     // data should be valid base64
     expect(() => Buffer.from(body.data, 'base64')).not.toThrow();

@@ -99,6 +99,40 @@ describe('TIERS', () => {
   it('is frozen', () => {
     expect(Object.isFrozen(TIERS)).toBe(true);
   });
+
+  it('each tier has maxOutputWidth and maxScale properties', () => {
+    for (const tier of Object.keys(TIERS)) {
+      expect(TIERS[tier]).toHaveProperty('maxOutputWidth');
+      expect(TIERS[tier]).toHaveProperty('maxScale');
+      expect(typeof TIERS[tier].maxOutputWidth).toBe('number');
+      expect(typeof TIERS[tier].maxScale).toBe('number');
+    }
+  });
+
+  it('free tier: maxOutputWidth=1080, maxScale=2', () => {
+    expect(TIERS.free.maxOutputWidth).toBe(1080);
+    expect(TIERS.free.maxScale).toBe(2);
+  });
+
+  it('pro tier: maxOutputWidth=4000, maxScale=3', () => {
+    expect(TIERS.pro.maxOutputWidth).toBe(4000);
+    expect(TIERS.pro.maxScale).toBe(3);
+  });
+
+  it('business tier: maxOutputWidth=5000, maxScale=3', () => {
+    expect(TIERS.business.maxOutputWidth).toBe(5000);
+    expect(TIERS.business.maxScale).toBe(3);
+  });
+
+  it('owner tier: maxOutputWidth=5000, maxScale=3', () => {
+    expect(TIERS.owner.maxOutputWidth).toBe(5000);
+    expect(TIERS.owner.maxScale).toBe(3);
+  });
+
+  it('free tier has the most restrictive resolution limits', () => {
+    expect(TIERS.free.maxOutputWidth).toBeLessThan(TIERS.pro.maxOutputWidth);
+    expect(TIERS.free.maxScale).toBeLessThanOrEqual(TIERS.pro.maxScale);
+  });
 });
 
 describe('VALID_TIERS', () => {

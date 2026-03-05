@@ -539,7 +539,37 @@
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    
+
+    .demo-api-preview {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 20px 32px;
+    }
+
+    .demo-api-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .demo-api-code {
+      background: #0d1117;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 0.8125rem;
+      line-height: 1.7;
+      color: #c9d1d9;
+      white-space: pre;
+      margin: 0;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .demo-api-code .ak { color: #ff7b72; }
+    .demo-api-code .as { color: #a5d6ff; }
+    .demo-api-code .af { color: #d2a8ff; }
+
     /* Features */
     .features {
       padding: 80px 0;
@@ -988,10 +1018,18 @@
             </div>
           </div>
         </div>
+
+        <div class="demo-api-preview">
+          <div class="demo-api-header">
+            <span class="demo-section-label" style="margin-bottom:0">API Call</span>
+            <button id="demo-copy-preview" class="demo-action-btn demo-action-secondary" style="padding:5px 14px; font-size:0.75rem;">Copy</button>
+          </div>
+          <pre class="demo-api-code"><code id="demo-api-code"></code></pre>
+        </div>
       </div>
     </div>
   </section>
-  
+
   <section class="features">
     <div class="container">
       <h2>Everything you need</h2>

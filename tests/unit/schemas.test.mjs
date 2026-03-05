@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   screenshotQuerySchema,
   screenshotBodySchema,
+  batchScreenshotSchema,
   createKeySchema,
   signupSchema,
   checkoutSchema,
@@ -49,6 +50,28 @@ describe('screenshotQuerySchema', () => {
     const result = screenshotQuerySchema.safeParse({ scale: '2' });
     expect(result.success).toBe(true);
     expect(result.data.scale).toBe(2);
+  });
+
+  it('accepts jpeg format', () => {
+    const result = screenshotQuerySchema.safeParse({ format: 'jpeg' });
+    expect(result.success).toBe(true);
+    expect(result.data.format).toBe('jpeg');
+  });
+
+  it('accepts webp format', () => {
+    const result = screenshotQuerySchema.safeParse({ format: 'webp' });
+    expect(result.success).toBe(true);
+    expect(result.data.format).toBe('webp');
+  });
+
+  it('rejects bmp format', () => {
+    const result = screenshotQuerySchema.safeParse({ format: 'bmp' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects gif format', () => {
+    const result = screenshotQuerySchema.safeParse({ format: 'gif' });
+    expect(result.success).toBe(false);
   });
 
   it('rejects scale > 3', () => {
@@ -186,6 +209,82 @@ describe('screenshotQuerySchema', () => {
     const result = screenshotQuerySchema.safeParse({ outputWidth: '800.5' });
     expect(result.success).toBe(false);
   });
+
+  // Shadow presets
+  it('accepts shadowStyle "spread"', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowStyle: 'spread' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('spread');
+  });
+
+  it('accepts shadowStyle "hug"', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowStyle: 'hug' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('hug');
+  });
+
+  it('accepts shadowStyle "none"', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowStyle: 'none' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('none');
+  });
+
+  it('rejects invalid shadowStyle', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowStyle: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all valid shadowIntensity values', () => {
+    for (const intensity of ['low', 'medium', 'high']) {
+      const result = screenshotQuerySchema.safeParse({ shadowIntensity: intensity });
+      expect(result.success, `shadowIntensity "${intensity}" should be valid`).toBe(true);
+      expect(result.data.shadowIntensity).toBe(intensity);
+    }
+  });
+
+  it('rejects invalid shadowIntensity', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowIntensity: 'max' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid shadowDirection values', () => {
+    for (const dir of ['center', 'top', 'bottom-right']) {
+      const result = screenshotQuerySchema.safeParse({ shadowDirection: dir });
+      expect(result.success, `shadowDirection "${dir}" should be valid`).toBe(true);
+      expect(result.data.shadowDirection).toBe(dir);
+    }
+  });
+
+  it('rejects invalid shadowDirection', () => {
+    const result = screenshotQuerySchema.safeParse({ shadowDirection: 'northwest' });
+    expect(result.success).toBe(false);
+  });
+
+  it('shadow fields are optional (undefined when omitted)', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBeUndefined();
+    expect(result.data.shadowIntensity).toBeUndefined();
+    expect(result.data.shadowDirection).toBeUndefined();
+  });
+
+  // ── bgImage ──────────────────────────────────────────────────────────
+  it('accepts valid bgImage URL', () => {
+    const result = screenshotQuerySchema.safeParse({ bgImage: 'https://example.com/bg.jpg' });
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBe('https://example.com/bg.jpg');
+  });
+
+  it('rejects bgImage that is not a URL', () => {
+    const result = screenshotQuerySchema.safeParse({ bgImage: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  it('bgImage is optional (undefined when omitted)', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBeUndefined();
+  });
 });
 
 describe('screenshotBodySchema', () => {
@@ -234,6 +333,23 @@ describe('screenshotBodySchema', () => {
 
   it('rejects scale > 3', () => {
     const result = screenshotBodySchema.safeParse({ tweetId: '12345', scale: 10 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts jpeg format in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', format: 'jpeg' });
+    expect(result.success).toBe(true);
+    expect(result.data.format).toBe('jpeg');
+  });
+
+  it('accepts webp format in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', format: 'webp' });
+    expect(result.success).toBe(true);
+    expect(result.data.format).toBe('webp');
+  });
+
+  it('rejects bmp format in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', format: 'bmp' });
     expect(result.success).toBe(false);
   });
 
@@ -298,6 +414,92 @@ describe('screenshotBodySchema', () => {
     const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
     expect(result.success).toBe(true);
     expect(result.data.outputWidth).toBeUndefined();
+  });
+
+  // Shadow presets in POST body
+  it('accepts shadowStyle "spread" in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowStyle: 'spread' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('spread');
+  });
+
+  it('accepts shadowStyle "hug" in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowStyle: 'hug' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('hug');
+  });
+
+  it('accepts shadowStyle "none" in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowStyle: 'none' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBe('none');
+  });
+
+  it('rejects invalid shadowStyle in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowStyle: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all valid shadowIntensity values in POST body', () => {
+    for (const intensity of ['low', 'medium', 'high']) {
+      const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowIntensity: intensity });
+      expect(result.success, `shadowIntensity "${intensity}" should be valid`).toBe(true);
+    }
+  });
+
+  it('rejects invalid shadowIntensity in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowIntensity: 'max' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid shadowDirection values in POST body', () => {
+    for (const dir of ['center', 'top', 'bottom-right']) {
+      const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowDirection: dir });
+      expect(result.success, `shadowDirection "${dir}" should be valid`).toBe(true);
+    }
+  });
+
+  it('rejects invalid shadowDirection in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', shadowDirection: 'northwest' });
+    expect(result.success).toBe(false);
+  });
+
+  it('shadow fields are optional in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.shadowStyle).toBeUndefined();
+    expect(result.data.shadowIntensity).toBeUndefined();
+    expect(result.data.shadowDirection).toBeUndefined();
+  });
+
+  // ── bgImage / backgroundImage ──────────────────────────────────────
+  it('accepts bgImage as URL in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', bgImage: 'https://example.com/bg.jpg' });
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBe('https://example.com/bg.jpg');
+  });
+
+  it('accepts backgroundImage as URL alias in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', backgroundImage: 'https://example.com/bg.jpg' });
+    expect(result.success).toBe(true);
+    expect(result.data.backgroundImage).toBe('https://example.com/bg.jpg');
+  });
+
+  it('rejects bgImage that is not a URL in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', bgImage: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects backgroundImage that is not a URL in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', backgroundImage: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  it('bgImage is optional in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBeUndefined();
+    expect(result.data.backgroundImage).toBeUndefined();
   });
 });
 
@@ -388,5 +590,184 @@ describe('portalSchema', () => {
       returnUrl: 'not-a-url',
     });
     expect(invalid.success).toBe(false);
+  });
+});
+
+describe('batchScreenshotSchema — bgImage', () => {
+  it('accepts bgImage as URL in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({
+      urls: ['123'],
+      bgImage: 'https://example.com/bg.jpg',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBe('https://example.com/bg.jpg');
+  });
+
+  it('accepts backgroundImage as URL alias in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({
+      urls: ['123'],
+      backgroundImage: 'https://example.com/bg.jpg',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.backgroundImage).toBe('https://example.com/bg.jpg');
+  });
+
+  it('rejects bgImage that is not a URL in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({
+      urls: ['123'],
+      bgImage: 'not-a-url',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('bgImage is optional in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'] });
+    expect(result.success).toBe(true);
+    expect(result.data.bgImage).toBeUndefined();
+  });
+});
+
+// ─── Pattern fields ────────────────────────────────────────────────────────
+
+describe('screenshotQuerySchema — pattern fields', () => {
+  it('accepts pattern "dots"', () => {
+    const result = screenshotQuerySchema.safeParse({ pattern: 'dots' });
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBe('dots');
+  });
+
+  it('accepts all valid pattern types', () => {
+    for (const p of ['dots', 'grid', 'stripes', 'waves', 'diagonal']) {
+      const result = screenshotQuerySchema.safeParse({ pattern: p });
+      expect(result.success, `pattern "${p}" should be valid`).toBe(true);
+      expect(result.data.pattern).toBe(p);
+    }
+  });
+
+  it('rejects invalid pattern type', () => {
+    const result = screenshotQuerySchema.safeParse({ pattern: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts patternColor as valid hex color', () => {
+    const result = screenshotQuerySchema.safeParse({ patternColor: '#ff0000' });
+    expect(result.success).toBe(true);
+    expect(result.data.patternColor).toBe('#ff0000');
+  });
+
+  it('rejects patternColor as named color', () => {
+    const result = screenshotQuerySchema.safeParse({ patternColor: 'red' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts patternSpacing within range (10-100)', () => {
+    const result = screenshotQuerySchema.safeParse({ patternSpacing: '50' });
+    expect(result.success).toBe(true);
+    expect(result.data.patternSpacing).toBe(50);
+  });
+
+  it('rejects patternSpacing below minimum (10)', () => {
+    const result = screenshotQuerySchema.safeParse({ patternSpacing: '5' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects patternSpacing above maximum (100)', () => {
+    const result = screenshotQuerySchema.safeParse({ patternSpacing: '150' });
+    expect(result.success).toBe(false);
+  });
+
+  it('all pattern fields are optional', () => {
+    const result = screenshotQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBeUndefined();
+    expect(result.data.patternColor).toBeUndefined();
+    expect(result.data.patternSpacing).toBeUndefined();
+  });
+
+  it('coerces patternSpacing string to number', () => {
+    const result = screenshotQuerySchema.safeParse({ patternSpacing: '30' });
+    expect(result.success).toBe(true);
+    expect(result.data.patternSpacing).toBe(30);
+  });
+});
+
+describe('screenshotBodySchema — pattern fields', () => {
+  it('accepts pattern "dots" in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', pattern: 'dots' });
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBe('dots');
+  });
+
+  it('rejects invalid pattern in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', pattern: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts patternColor as hex in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', patternColor: '#aabbcc' });
+    expect(result.success).toBe(true);
+    expect(result.data.patternColor).toBe('#aabbcc');
+  });
+
+  it('rejects patternColor as named color in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', patternColor: 'red' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts patternSpacing in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', patternSpacing: 50 });
+    expect(result.success).toBe(true);
+    expect(result.data.patternSpacing).toBe(50);
+  });
+
+  it('rejects patternSpacing below minimum in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', patternSpacing: 5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects patternSpacing above maximum in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345', patternSpacing: 150 });
+    expect(result.success).toBe(false);
+  });
+
+  it('all pattern fields are optional in POST body', () => {
+    const result = screenshotBodySchema.safeParse({ tweetId: '12345' });
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBeUndefined();
+    expect(result.data.patternColor).toBeUndefined();
+    expect(result.data.patternSpacing).toBeUndefined();
+  });
+});
+
+describe('batchScreenshotSchema — pattern fields', () => {
+  it('accepts pattern in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'], pattern: 'grid' });
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBe('grid');
+  });
+
+  it('rejects invalid pattern in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'], pattern: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts patternColor in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'], patternColor: '#112233' });
+    expect(result.success).toBe(true);
+    expect(result.data.patternColor).toBe('#112233');
+  });
+
+  it('accepts patternSpacing in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'], patternSpacing: 40 });
+    expect(result.success).toBe(true);
+    expect(result.data.patternSpacing).toBe(40);
+  });
+
+  it('all pattern fields are optional in batch schema', () => {
+    const result = batchScreenshotSchema.safeParse({ urls: ['123'] });
+    expect(result.success).toBe(true);
+    expect(result.data.pattern).toBeUndefined();
+    expect(result.data.patternColor).toBeUndefined();
+    expect(result.data.patternSpacing).toBeUndefined();
   });
 });

@@ -53,6 +53,12 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
       gradientFrom: params.gradientFrom,
       gradientTo: params.gradientTo,
       gradientAngle: params.gradientAngle,
+      shadowStyle: params.shadowStyle,
+      shadowIntensity: params.shadowIntensity,
+      shadowDirection: params.shadowDirection,
+      pattern: params.pattern,
+      patternColor: params.patternColor,
+      patternSpacing: params.patternSpacing,
       thread: params.thread === true,
       canvasWidth,
       canvasHeight,
@@ -74,6 +80,10 @@ export function demoRoutes({ demoRateLimit, renderPool, logger }) {
         const start = Date.now();
         const tweetId = extractTweetId(decodeURIComponent(req.params.tweetIdOrUrl));
         const options = { ...buildDemoRenderOptions(req.validated), tweetId, watermark: true };
+
+        // Clamp resolution to free-tier limits (demo is public/unauthenticated)
+        if (options.scale > 2) options.scale = 2;
+        if (options.outputWidth && options.outputWidth > 1080) options.outputWidth = 1080;
 
         let result;
         if (options.thread) {

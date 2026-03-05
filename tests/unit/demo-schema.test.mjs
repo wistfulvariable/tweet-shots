@@ -295,6 +295,18 @@ describe('demoQuerySchema', () => {
       expect(result.data.format).toBe('svg');
     });
 
+    it('accepts jpeg', () => {
+      const result = demoQuerySchema.safeParse({ format: 'jpeg' });
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('jpeg');
+    });
+
+    it('accepts webp', () => {
+      const result = demoQuerySchema.safeParse({ format: 'webp' });
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('webp');
+    });
+
     it('defaults to png when omitted', () => {
       const result = demoQuerySchema.safeParse({});
       expect(result.success).toBe(true);
@@ -303,6 +315,11 @@ describe('demoQuerySchema', () => {
 
     it('rejects invalid format', () => {
       const result = demoQuerySchema.safeParse({ format: 'pdf' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects bmp format', () => {
+      const result = demoQuerySchema.safeParse({ format: 'bmp' });
       expect(result.success).toBe(false);
     });
   });
@@ -418,6 +435,18 @@ describe('demoQuerySchema', () => {
       expect(result.data).not.toHaveProperty('foo');
       expect(result.data).not.toHaveProperty('baz');
     });
+
+    it('strips bgImage field (not part of demo schema — SSRF risk)', () => {
+      const result = demoQuerySchema.safeParse({ bgImage: 'https://example.com/bg.jpg' });
+      expect(result.success).toBe(true);
+      expect(result.data).not.toHaveProperty('bgImage');
+    });
+
+    it('strips backgroundImage field (not part of demo schema — SSRF risk)', () => {
+      const result = demoQuerySchema.safeParse({ backgroundImage: 'https://example.com/bg.jpg' });
+      expect(result.success).toBe(true);
+      expect(result.data).not.toHaveProperty('backgroundImage');
+    });
   });
 
   // ── outputWidth ─────────────────────────────────────────────────────
@@ -471,6 +500,158 @@ describe('demoQuerySchema', () => {
     it('rejects non-numeric string', () => {
       const result = demoQuerySchema.safeParse({ outputWidth: 'wide' });
       expect(result.success).toBe(false);
+    });
+  });
+
+  // ── Shadow presets ─────────────────────────────────────────────────
+
+  describe('shadow presets', () => {
+    it('accepts shadowStyle "spread"', () => {
+      const result = demoQuerySchema.safeParse({ shadowStyle: 'spread' });
+      expect(result.success).toBe(true);
+      expect(result.data.shadowStyle).toBe('spread');
+    });
+
+    it('accepts shadowStyle "hug"', () => {
+      const result = demoQuerySchema.safeParse({ shadowStyle: 'hug' });
+      expect(result.success).toBe(true);
+      expect(result.data.shadowStyle).toBe('hug');
+    });
+
+    it('accepts shadowStyle "none"', () => {
+      const result = demoQuerySchema.safeParse({ shadowStyle: 'none' });
+      expect(result.success).toBe(true);
+      expect(result.data.shadowStyle).toBe('none');
+    });
+
+    it('rejects invalid shadowStyle', () => {
+      const result = demoQuerySchema.safeParse({ shadowStyle: 'invalid' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts all valid shadowIntensity values', () => {
+      for (const intensity of ['low', 'medium', 'high']) {
+        const result = demoQuerySchema.safeParse({ shadowIntensity: intensity });
+        expect(result.success, `shadowIntensity "${intensity}" should be valid`).toBe(true);
+        expect(result.data.shadowIntensity).toBe(intensity);
+      }
+    });
+
+    it('rejects invalid shadowIntensity', () => {
+      const result = demoQuerySchema.safeParse({ shadowIntensity: 'max' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts valid shadowDirection values', () => {
+      for (const dir of ['center', 'top', 'bottom-right']) {
+        const result = demoQuerySchema.safeParse({ shadowDirection: dir });
+        expect(result.success, `shadowDirection "${dir}" should be valid`).toBe(true);
+        expect(result.data.shadowDirection).toBe(dir);
+      }
+    });
+
+    it('rejects invalid shadowDirection', () => {
+      const result = demoQuerySchema.safeParse({ shadowDirection: 'northwest' });
+      expect(result.success).toBe(false);
+    });
+
+    it('shadow fields are optional (undefined when omitted)', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.shadowStyle).toBeUndefined();
+      expect(result.data.shadowIntensity).toBeUndefined();
+      expect(result.data.shadowDirection).toBeUndefined();
+    });
+
+    it('accepts all 9 shadowDirection values', () => {
+      const directions = [
+        'center', 'top', 'top-right', 'right', 'bottom-right',
+        'bottom', 'bottom-left', 'left', 'top-left',
+      ];
+      for (const dir of directions) {
+        const result = demoQuerySchema.safeParse({ shadowDirection: dir });
+        expect(result.success, `shadowDirection "${dir}" should be valid`).toBe(true);
+      }
+    });
+  });
+
+  // ── Background pattern fields ──────────────────────────────────────
+
+  describe('pattern fields', () => {
+    it('accepts all valid pattern types', () => {
+      for (const p of ['dots', 'grid', 'stripes', 'waves', 'diagonal']) {
+        const result = demoQuerySchema.safeParse({ pattern: p });
+        expect(result.success, `pattern "${p}" should be valid on demo`).toBe(true);
+        expect(result.data.pattern).toBe(p);
+      }
+    });
+
+    it('rejects invalid pattern type', () => {
+      const result = demoQuerySchema.safeParse({ pattern: 'checkerboard' });
+      expect(result.success).toBe(false);
+    });
+
+    it('pattern is optional (undefined when omitted)', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.pattern).toBeUndefined();
+    });
+
+    it('accepts patternColor as valid hex', () => {
+      const result = demoQuerySchema.safeParse({ patternColor: '#ff0000' });
+      expect(result.success).toBe(true);
+      expect(result.data.patternColor).toBe('#ff0000');
+    });
+
+    it('rejects patternColor as named color', () => {
+      const result = demoQuerySchema.safeParse({ patternColor: 'red' });
+      expect(result.success).toBe(false);
+    });
+
+    it('patternColor is optional (undefined when omitted)', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.patternColor).toBeUndefined();
+    });
+
+    it('accepts patternSpacing within range (10-100)', () => {
+      const result = demoQuerySchema.safeParse({ patternSpacing: '50' });
+      expect(result.success).toBe(true);
+      expect(result.data.patternSpacing).toBe(50);
+    });
+
+    it('coerces patternSpacing string to number', () => {
+      const result = demoQuerySchema.safeParse({ patternSpacing: '30' });
+      expect(result.success).toBe(true);
+      expect(result.data.patternSpacing).toBe(30);
+    });
+
+    it('rejects patternSpacing below minimum (10)', () => {
+      const result = demoQuerySchema.safeParse({ patternSpacing: '5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects patternSpacing above maximum (100)', () => {
+      const result = demoQuerySchema.safeParse({ patternSpacing: '150' });
+      expect(result.success).toBe(false);
+    });
+
+    it('patternSpacing is optional (undefined when omitted)', () => {
+      const result = demoQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      expect(result.data.patternSpacing).toBeUndefined();
+    });
+
+    it('accepts all pattern fields together', () => {
+      const result = demoQuerySchema.safeParse({
+        pattern: 'dots',
+        patternColor: '#aabbcc',
+        patternSpacing: '40',
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.pattern).toBe('dots');
+      expect(result.data.patternColor).toBe('#aabbcc');
+      expect(result.data.patternSpacing).toBe(40);
     });
   });
 

@@ -381,6 +381,97 @@ function verifiedBadgeSvg(color, size = 18) {
 // Padding around the tweet card when displayed on a gradient/canvas background
 export const GRADIENT_FRAME_PADDING = 40;
 
+// Shadow preset system — configurable shadow styles, intensities, and directions
+export const SHADOW_STYLES = {
+  none:   null,
+  spread: { blur: 32, spread: 0 },   // wide diffuse shadow (default)
+  hug:    { blur: 8, spread: 2 },     // tight to card
+};
+
+export const SHADOW_INTENSITIES = { low: 0.15, medium: 0.35, high: 0.55 };
+
+export const SHADOW_DIRECTIONS = {
+  center: [0, 0], top: [0, -1], 'top-right': [1, -1],
+  right: [1, 0], 'bottom-right': [1, 1], bottom: [0, 1],
+  'bottom-left': [-1, 1], left: [-1, 0], 'top-left': [-1, -1],
+};
+
+const SHADOW_OFFSET_BASE = 8;
+
+export function buildShadowCss(opts = {}) {
+  const { shadowStyle = 'spread', shadowIntensity = 'medium',
+          shadowDirection = 'bottom', hideShadow = false, needsWrapper = true } = opts;
+  if (hideShadow || !needsWrapper || shadowStyle === 'none') return '';
+  const style = SHADOW_STYLES[shadowStyle] || SHADOW_STYLES.spread;
+  if (!style) return '';
+  const intensity = SHADOW_INTENSITIES[shadowIntensity] ?? 0.35;
+  const [dx, dy] = SHADOW_DIRECTIONS[shadowDirection] || [0, 1];
+  return `box-shadow: ${dx * SHADOW_OFFSET_BASE}px ${dy * SHADOW_OFFSET_BASE}px ${style.blur}px ${style.spread}px rgba(0,0,0,${intensity});`;
+}
+
+// ============================================================================
+// BACKGROUND PATTERNS
+// ============================================================================
+
+export const PATTERN_TYPES = ['dots', 'grid', 'stripes', 'waves', 'diagonal'];
+
+/**
+ * Generate a self-contained SVG string for a background pattern.
+ * @param {string} type - Pattern type (dots, grid, stripes, waves, diagonal)
+ * @param {number} width - Canvas width in px
+ * @param {number} height - Canvas height in px
+ * @param {object} [opts]
+ * @param {string} [opts.color='rgba(255,255,255,0.15)'] - Pattern element color
+ * @param {number} [opts.spacing=30] - Spacing between pattern elements
+ * @returns {string|null} SVG string, or null for unknown type
+ */
+export function generatePatternSvg(type, width, height, { color = 'rgba(255,255,255,0.15)', spacing = 30 } = {}) {
+  const s = spacing;
+  switch (type) {
+    case 'dots':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <defs><pattern id="p" width="${s}" height="${s}" patternUnits="userSpaceOnUse">
+          <circle cx="${s/2}" cy="${s/2}" r="2" fill="${color}"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#p)"/>
+      </svg>`;
+    case 'grid':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <defs><pattern id="p" width="${s}" height="${s}" patternUnits="userSpaceOnUse">
+          <path d="M ${s} 0 L 0 0 0 ${s}" fill="none" stroke="${color}" stroke-width="0.5"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#p)"/>
+      </svg>`;
+    case 'stripes':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <defs><pattern id="p" width="${s}" height="${s}" patternUnits="userSpaceOnUse">
+          <rect width="${s/4}" height="${s}" fill="${color}"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#p)"/>
+      </svg>`;
+    case 'waves': {
+      const amp = s / 3;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <defs><pattern id="p" width="${s * 2}" height="${s}" patternUnits="userSpaceOnUse">
+          <path d="M0 ${s/2} Q ${s/2} ${s/2 - amp} ${s} ${s/2} Q ${s*1.5} ${s/2 + amp} ${s*2} ${s/2}"
+                fill="none" stroke="${color}" stroke-width="1"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#p)"/>
+      </svg>`;
+    }
+    case 'diagonal':
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <defs><pattern id="p" width="${s}" height="${s}" patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="${s}" stroke="${color}" stroke-width="0.5"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#p)"/>
+      </svg>`;
+    default:
+      return null;
+  }
+}
+
 const DEFAULT_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export function generateTweetHtml(tweet, theme, options = {}) {
@@ -394,6 +485,9 @@ export function generateTweetHtml(tweet, theme, options = {}) {
     hideDate = false,
     hideQuoteTweet = false,
     hideShadow = false,
+    shadowStyle = null,
+    shadowIntensity = null,
+    shadowDirection = null,
     showUrl = false,
     tweetId = null,
     backgroundColor = null,
@@ -447,8 +541,7 @@ export function generateTweetHtml(tweet, theme, options = {}) {
 
   // Shadow only when card floats on a gradient/canvas — on transparent
   // backgrounds, shadow pixels bleed out and create visible border artifacts
-  const shadow = (hideShadow || !needsWrapper) ? '' :
-    'box-shadow: 0 8px 32px rgba(0,0,0,0.35);';
+  const shadow = buildShadowCss({ shadowStyle, shadowIntensity, shadowDirection, hideShadow, needsWrapper });
 
   const userName = tweet.user?.name || 'Unknown';
   const userHandle = tweet.user?.screen_name || 'unknown';
@@ -646,6 +739,9 @@ export function generateThreadHtml(tweets, theme, options = {}) {
     linkColor = null,
     borderRadius = 16,
     hideShadow = false,
+    shadowStyle = null,
+    shadowIntensity = null,
+    shadowDirection = null,
     fontFamily = null,
     canvasWidth = null,
     canvasHeight = null,
@@ -756,8 +852,7 @@ export function generateThreadHtml(tweets, theme, options = {}) {
 
   // Shadow only when card floats on a gradient/canvas — on transparent
   // backgrounds, shadow pixels bleed out and create visible border artifacts
-  const shadow = (hideShadow || !needsWrapper) ? '' :
-    'box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  const shadow = buildShadowCss({ shadowStyle, shadowIntensity, shadowDirection, hideShadow, needsWrapper });
 
   if (needsWrapper) {
     let outerBg;

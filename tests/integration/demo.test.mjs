@@ -33,7 +33,7 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       return {
         data: Buffer.from(`fake-${format}-data`),
         format,
-        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+        contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
       };
     }),
   };
@@ -82,7 +82,7 @@ beforeEach(() => {
     return {
       data: Buffer.from(`fake-${format}-data`),
       format,
-      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
     };
   });
 });
@@ -270,11 +270,11 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
 
   // ── Scale ──────────────────────────────────────────────────────────────
 
-  it('respects ?scale=3 query param', async () => {
+  it('clamps ?scale=3 to 2 (demo free-tier limit)', async () => {
     await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=3`);
     expect(renderTweetToImage).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ scale: 3 })
+      expect.objectContaining({ scale: 2 })
     );
   });
 
@@ -462,5 +462,61 @@ describe('GET /demo/screenshot/:tweetIdOrUrl', () => {
       expect.anything(),
       expect.objectContaining({ borderRadius: 0 })
     );
+  });
+
+  // ── Resolution clamping (free-tier limits for demo) ─────────────────────
+
+  it('clamps outputWidth 2000 to 1080 (demo free-tier limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=2000`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 1080 })
+    );
+  });
+
+  it('clamps outputWidth 1081 to 1080 (just over limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=1081`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 1080 })
+    );
+  });
+
+  it('passes outputWidth 1080 unchanged (exactly at limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=1080`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 1080 })
+    );
+  });
+
+  it('passes outputWidth 500 unchanged (within limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?outputWidth=500`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ outputWidth: 500 })
+    );
+  });
+
+  it('scale 1 passes unchanged (within limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=1`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scale: 1 })
+    );
+  });
+
+  it('scale 2 passes unchanged (at limit)', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890?scale=2`);
+    expect(renderTweetToImage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scale: 2 })
+    );
+  });
+
+  it('does not clamp outputWidth when not provided', async () => {
+    await fetch(`${baseUrl}/demo/screenshot/1234567890`);
+    const opts = renderTweetToImage.mock.calls[0][1];
+    expect(opts.outputWidth).toBeUndefined();
   });
 });

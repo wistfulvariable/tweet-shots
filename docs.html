@@ -808,7 +808,7 @@
       <!-- GETTING STARTED                                        -->
       <!-- ═══════════════════════════════════════════════════════ -->
       <h2 class="section-heading" id="getting-started">Getting Started</h2>
-      <p>tweet-shots converts tweet URLs or IDs into pixel-perfect PNG/SVG screenshots &mdash; no browser automation needed. Choose from multiple themes, gradient backgrounds, dimension presets, and styling options to create beautiful social media images programmatically.</p>
+      <p>tweet-shots converts tweet URLs or IDs into pixel-perfect screenshots in PNG, JPEG, WebP, or SVG &mdash; no browser automation needed. Choose from multiple themes, gradient backgrounds, dimension presets, shadow controls, background patterns, and styling options to create beautiful social media images programmatically.</p>
 
       <div class="step">
         <div class="step-number">1</div>
@@ -910,11 +910,11 @@
       <p>All query parameters are optional. See the <a href="#parameters">Parameters Reference</a> for the full list with types and allowed values.</p>
 
       <div class="inline-list">
-        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>fontFamily</code>, <code>fontUrl</code>, <code>fontBoldUrl</code>, <code>logo</code>, <code>logoPosition</code>, <code>logoSize</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>shadowStyle</code>, <code>shadowIntensity</code>, <code>shadowDirection</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>fontFamily</code>, <code>fontUrl</code>, <code>fontBoldUrl</code>, <code>logo</code>, <code>logoPosition</code>, <code>logoSize</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>bgImage</code>, <code>pattern</code>, <code>patternColor</code>, <code>patternSpacing</code>, <code>thread</code>
       </div>
 
       <h3>Response Headers</h3>
-      <p><code>Content-Type</code>, <code>X-Tweet-ID</code>, <code>X-Tweet-Author</code>, <code>X-Render-Time-Ms</code>, <code>X-Credits-Limit</code>, <code>X-Credits-Remaining</code></p>
+      <p><code>Content-Type</code>, <code>X-Tweet-ID</code>, <code>X-Tweet-Author</code>, <code>X-Render-Time-Ms</code>, <code>X-Credits-Limit</code>, <code>X-Credits-Remaining</code>, <code>X-Max-Output-Width</code>, <code>X-Max-Scale</code></p>
 
       <h3>Example</h3>
       <div class="code-wrapper">
@@ -964,7 +964,7 @@
       <h3>Response Modes</h3>
 
       <h4><code>response: "image"</code> (default)</h4>
-      <p>Returns the raw binary image with appropriate <code>Content-Type</code> header (<code>image/png</code> or <code>image/svg+xml</code>).</p>
+      <p>Returns the raw binary image with appropriate <code>Content-Type</code> header (<code>image/png</code>, <code>image/jpeg</code>, <code>image/webp</code>, or <code>image/svg+xml</code>).</p>
 
       <h4><code>response: "base64"</code></h4>
       <div class="response-block">
@@ -1192,7 +1192,7 @@ https://x.com/elonmusk/status/1617979122625712128
 
       <h3>Supported Parameters</h3>
       <div class="inline-list">
-        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>thread</code>
+        <code>theme</code>, <code>dimension</code>, <code>format</code>, <code>scale</code>, <code>outputWidth</code>, <code>gradient</code>, <code>bgColor</code>, <code>textColor</code>, <code>linkColor</code>, <code>hideMetrics</code>, <code>hideMedia</code>, <code>hideDate</code>, <code>hideVerified</code>, <code>hideShadow</code>, <code>shadowStyle</code>, <code>shadowIntensity</code>, <code>shadowDirection</code>, <code>hideQuoteTweet</code>, <code>showUrl</code>, <code>padding</code>, <code>radius</code>, <code>frame</code>, <code>gradientFrom</code>, <code>gradientTo</code>, <code>gradientAngle</code>, <code>pattern</code>, <code>patternColor</code>, <code>patternSpacing</code>, <code>thread</code>
       </div>
 
       <h3>Example</h3>
@@ -1349,22 +1349,22 @@ https://x.com/elonmusk/status/1617979122625712128
               <td>format</td>
               <td>string</td>
               <td><code>png</code></td>
-              <td><code>png</code>, <code>svg</code></td>
-              <td>Output image format</td>
+              <td><code>png</code>, <code>svg</code>, <code>jpeg</code>, <code>webp</code></td>
+              <td>Output image format. JPEG quality: 90 (no alpha &mdash; transparent backgrounds become white). WebP quality: 85.</td>
             </tr>
             <tr>
               <td>scale</td>
               <td>number</td>
               <td><code>2</code></td>
               <td><code>1</code>, <code>2</code>, <code>3</code></td>
-              <td>Resolution multiplier</td>
+              <td>Resolution multiplier. Clamped per tier (free: max 2, pro/business: max 3).</td>
             </tr>
             <tr>
               <td>outputWidth</td>
               <td>number</td>
               <td>&mdash;</td>
               <td><code>50</code>&ndash;<code>5000</code></td>
-              <td>Final PNG pixel width (overrides scale)</td>
+              <td>Final PNG pixel width (overrides scale). Clamped per tier (free: max 1080, pro: max 4000, business: max 5000).</td>
             </tr>
             <tr>
               <td>gradient</td>
@@ -1428,6 +1428,27 @@ https://x.com/elonmusk/status/1617979122625712128
               <td><code>false</code></td>
               <td><code>true</code>, <code>false</code></td>
               <td>Remove card drop shadow</td>
+            </tr>
+            <tr>
+              <td>shadowStyle</td>
+              <td>string</td>
+              <td><code>spread</code></td>
+              <td><code>none</code>, <code>spread</code>, <code>hug</code></td>
+              <td>Shadow spread style. Only visible with gradients or dimension presets.</td>
+            </tr>
+            <tr>
+              <td>shadowIntensity</td>
+              <td>string</td>
+              <td><code>medium</code></td>
+              <td><code>low</code>, <code>medium</code>, <code>high</code></td>
+              <td>Shadow opacity level. Only visible with gradients or dimension presets.</td>
+            </tr>
+            <tr>
+              <td>shadowDirection</td>
+              <td>string</td>
+              <td><code>bottom</code></td>
+              <td><code>center</code>, <code>top</code>, <code>top-right</code>, <code>right</code>, <code>bottom-right</code>, <code>bottom</code>, <code>bottom-left</code>, <code>left</code>, <code>top-left</code></td>
+              <td>Shadow direction. Only visible with gradients or dimension presets.</td>
             </tr>
             <tr>
               <td>hideQuoteTweet</td>
@@ -1526,6 +1547,34 @@ https://x.com/elonmusk/status/1617979122625712128
               <td>&mdash;</td>
               <td><code>0</code>&ndash;<code>360</code></td>
               <td>Custom gradient angle (degrees)</td>
+            </tr>
+            <tr>
+              <td>bgImage</td>
+              <td>URL</td>
+              <td>&mdash;</td>
+              <td>Valid URL</td>
+              <td>Background image URL, composited behind the tweet card. Requires a gradient or dimension preset. Not available on the demo endpoint (SSRF prevention). POST alias: <code>backgroundImage</code>.</td>
+            </tr>
+            <tr>
+              <td>pattern</td>
+              <td>string</td>
+              <td>&mdash;</td>
+              <td><code>dots</code>, <code>grid</code>, <code>stripes</code>, <code>waves</code>, <code>diagonal</code></td>
+              <td>Pattern overlay on gradient/canvas backgrounds. Ignored when <code>bgImage</code> is set.</td>
+            </tr>
+            <tr>
+              <td>patternColor</td>
+              <td>string</td>
+              <td>Semi-transparent white</td>
+              <td><code>#rrggbb</code></td>
+              <td>Pattern overlay color</td>
+            </tr>
+            <tr>
+              <td>patternSpacing</td>
+              <td>number</td>
+              <td><code>30</code></td>
+              <td><code>10</code>&ndash;<code>100</code></td>
+              <td>Spacing between pattern elements (px)</td>
             </tr>
             <tr>
               <td>thread</td>
@@ -1630,6 +1679,29 @@ https://x.com/elonmusk/status/1617979122625712128
 
       <h3>Branding</h3>
       <p>Add a logo watermark with the <code>logo</code> parameter (URL to an image). Control placement with <code>logoPosition</code> (e.g., <code>bottom-right</code>) and size with <code>logoSize</code> (default 40px, range 16-200px).</p>
+
+      <h3>Shadow Presets</h3>
+      <p>Fine-tune the card shadow with three independent controls. Shadows are only visible when using a gradient or dimension preset (standalone renders have no shadow).</p>
+      <ul class="doc-list">
+        <li><code>shadowStyle</code> &mdash; <code>none</code> (no shadow), <code>spread</code> (default, wide diffused shadow), or <code>hug</code> (tight shadow close to the card)</li>
+        <li><code>shadowIntensity</code> &mdash; <code>low</code>, <code>medium</code> (default), or <code>high</code> opacity</li>
+        <li><code>shadowDirection</code> &mdash; <code>center</code>, <code>top</code>, <code>top-right</code>, <code>right</code>, <code>bottom-right</code>, <code>bottom</code> (default), <code>bottom-left</code>, <code>left</code>, or <code>top-left</code></li>
+      </ul>
+      <div class="note">
+        <p>The existing <code>hideShadow=true</code> parameter still works and is equivalent to <code>shadowStyle=none</code>.</p>
+      </div>
+
+      <h3>Background Image</h3>
+      <p>Use <code>bgImage</code> (GET query) or <code>backgroundImage</code> (POST alias) to set a background image URL. The image is fetched and composited behind the tweet card. Requires a gradient or dimension preset context.</p>
+      <div class="note note-warning">
+        <p>Background images are not available on the demo endpoint to prevent SSRF abuse. Available on GET, POST, and batch endpoints only.</p>
+      </div>
+
+      <h3>Background Patterns</h3>
+      <p>Overlay a decorative pattern on gradient or canvas backgrounds with the <code>pattern</code> parameter. Choose from: <code>dots</code>, <code>grid</code>, <code>stripes</code>, <code>waves</code>, or <code>diagonal</code>. Customize with <code>patternColor</code> (default: semi-transparent white) and <code>patternSpacing</code> (10&ndash;100px, default: 30).</p>
+      <div class="note">
+        <p>When <code>bgImage</code> is set, the pattern is not applied &mdash; the background image takes priority.</p>
+      </div>
 
       <hr class="section-divider">
 
@@ -2074,6 +2146,8 @@ console.log(`Resets: ${usage.resetDate}`);</code></pre>
           <ul>
             <li>10 requests/min</li>
             <li>Batch: 10 URLs max</li>
+            <li>Max scale: 2x</li>
+            <li>Max output width: 1080px</li>
             <li>All themes &amp; gradients</li>
             <li>Custom fonts</li>
             <li>Branding/logo</li>
@@ -2087,6 +2161,8 @@ console.log(`Resets: ${usage.resetDate}`);</code></pre>
           <ul>
             <li>100 requests/min</li>
             <li>Batch: 100 URLs max</li>
+            <li>Max scale: 3x</li>
+            <li>Max output width: 4000px</li>
             <li>All themes &amp; gradients</li>
             <li>Custom fonts</li>
             <li>Branding/logo</li>
@@ -2100,6 +2176,8 @@ console.log(`Resets: ${usage.resetDate}`);</code></pre>
           <ul>
             <li>1,000 requests/min</li>
             <li>Batch: 500 URLs max</li>
+            <li>Max scale: 3x</li>
+            <li>Max output width: 5000px</li>
             <li>All themes &amp; gradients</li>
             <li>Custom fonts</li>
             <li>Branding/logo</li>
@@ -2108,7 +2186,7 @@ console.log(`Resets: ${usage.resetDate}`);</code></pre>
         </div>
       </div>
 
-      <p>All tiers include the same rendering features. Tiers differ in rate limits, monthly credit allowances, and batch sizes. <a href="/billing/signup">Sign up for free</a> or <a href="/billing/checkout?tier=pro">upgrade to Pro</a>.</p>
+      <p>All tiers include the same rendering features. Tiers differ in rate limits, monthly credit allowances, batch sizes, and resolution limits. The <code>scale</code> and <code>outputWidth</code> parameters are silently clamped to your tier's maximum &mdash; no error is returned. Response headers <code>X-Max-Scale</code> and <code>X-Max-Output-Width</code> indicate your tier's limits. <a href="/billing/signup">Sign up for free</a> or <a href="/billing/checkout?tier=pro">upgrade to Pro</a>.</p>
 
       <hr class="section-divider">
 
@@ -2206,9 +2284,19 @@ console.log(`Resets: ${usage.resetDate}`);</code></pre>
               <td>Remaining credits this month</td>
             </tr>
             <tr>
+              <td>X-Max-Output-Width</td>
+              <td>Authenticated requests</td>
+              <td>Maximum <code>outputWidth</code> for your tier</td>
+            </tr>
+            <tr>
+              <td>X-Max-Scale</td>
+              <td>Authenticated requests</td>
+              <td>Maximum <code>scale</code> for your tier</td>
+            </tr>
+            <tr>
               <td>Content-Type</td>
               <td>All requests</td>
-              <td><code>image/png</code>, <code>image/svg+xml</code>, or <code>application/json</code></td>
+              <td><code>image/png</code>, <code>image/jpeg</code>, <code>image/webp</code>, <code>image/svg+xml</code>, or <code>application/json</code></td>
             </tr>
             <tr>
               <td>Retry-After</td>

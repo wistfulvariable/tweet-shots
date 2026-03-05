@@ -29,6 +29,18 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
   /**
    * Build render options from validated params, normalizing both GET query and POST body formats.
    */
+  /**
+   * Clamp scale and outputWidth to tier limits. Mutates options in-place.
+   * @returns {object} The tier limits object (for setting response headers)
+   */
+  function clampResolution(options, tier) {
+    const tierLimits = TIERS[tier] || TIERS.free;
+    if (options.scale > tierLimits.maxScale) options.scale = tierLimits.maxScale;
+    if (options.outputWidth && options.outputWidth > tierLimits.maxOutputWidth)
+      options.outputWidth = tierLimits.maxOutputWidth;
+    return tierLimits;
+  }
+
   function buildRenderOptions(params) {
     const dimension = params.dimension || 'auto';
     const dim = DIMENSIONS[dimension];
@@ -70,6 +82,16 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
       gradientFrom: params.gradientFrom,
       gradientTo: params.gradientTo,
       gradientAngle: params.gradientAngle,
+      // Shadow presets
+      shadowStyle: params.shadowStyle,
+      shadowIntensity: params.shadowIntensity,
+      shadowDirection: params.shadowDirection,
+      // Background image
+      bgImage: params.bgImage || params.backgroundImage,
+      // Background pattern
+      pattern: params.pattern,
+      patternColor: params.patternColor,
+      patternSpacing: params.patternSpacing,
       // Thread rendering
       thread: params.thread === true || params.thread === 'true',
       canvasWidth,
@@ -110,6 +132,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         const watermark = req.keyData.tier === 'free';
         const options = { ...buildRenderOptions(req.validated), tweetId, watermark };
 
+        const tierLimits = clampResolution(options, req.keyData.tier);
+
         let result, author;
         if (options.thread) {
           const tweets = await fetchThread(tweetId);
@@ -124,6 +148,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         res.set('Content-Type', result.contentType);
         res.set('X-Tweet-ID', tweetId);
         res.set('X-Tweet-Author', author);
+        res.set('X-Max-Output-Width', String(tierLimits.maxOutputWidth));
+        res.set('X-Max-Scale', String(tierLimits.maxScale));
         res.set('X-Render-Time-Ms', String(Date.now() - start));
         res.send(result.data);
       } catch (err) {
@@ -155,6 +181,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         const watermark = req.keyData.tier === 'free';
         const options = { ...buildRenderOptions(rest), tweetId, watermark };
 
+        const tierLimits = clampResolution(options, req.keyData.tier);
+
         let result, author;
         if (options.thread) {
           const tweets = await fetchThread(tweetId);
@@ -167,6 +195,8 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         }
 
         const renderTimeMs = String(Date.now() - start);
+        res.set('X-Max-Output-Width', String(tierLimits.maxOutputWidth));
+        res.set('X-Max-Scale', String(tierLimits.maxScale));
 
         // Base64 response
         if (responseType === 'base64') {
@@ -300,6 +330,10 @@ export function screenshotRoutes({ authenticate, applyRateLimit, billingGuard, r
         // ── Step 4: Build shared render options ──
         const watermark = tier === 'free';
         const options = { ...buildRenderOptions(renderParams), watermark };
+
+        const tierLimits = clampResolution(options, tier);
+        res.set('X-Max-Output-Width', String(tierLimits.maxOutputWidth));
+        res.set('X-Max-Scale', String(tierLimits.maxScale));
 
         // ── Step 5: Process batch with concurrency control ──
         const results = await processBatch(urls, options, responseType, config);

@@ -19,6 +19,8 @@
   var radiusSlider = document.getElementById('demo-radius');
   var radiusVal = document.getElementById('demo-radius-val');
 
+  var apiCodeEl = document.getElementById('demo-api-code');
+  var copyPreviewBtn = document.getElementById('demo-copy-preview');
   var currentBlobUrl = null;
   var loadingTextEl = document.getElementById('demo-loading-text');
   var loadingTimer = null;
@@ -281,4 +283,58 @@
   generateBtn.addEventListener('click', generate);
   urlInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') generate(); });
   copyApiBtn.addEventListener('click', copyApiCall);
+
+  // --- Live API call preview ---
+
+  function updateApiPreview() {
+    var input = urlInput.value.trim();
+    var tweetPart = input ? encodeURIComponent(input) : '{tweet-url-or-id}';
+    var qs = buildQueryString();
+    var format = getSelectedValue('demo-format') || 'png';
+    var ext = format === 'svg' ? 'svg' : 'png';
+    var fullUrl = window.location.origin + '/screenshot/' + tweetPart + (qs ? '?' + qs : '');
+
+    // Build with DOM nodes for safe rendering (no innerHTML with user input)
+    while (apiCodeEl.firstChild) apiCodeEl.removeChild(apiCodeEl.firstChild);
+
+    var kw = function(t) { var s = document.createElement('span'); s.className = 'ak'; s.textContent = t; return s; };
+    var str = function(t) { var s = document.createElement('span'); s.className = 'as'; s.textContent = t; return s; };
+    var flag = function(t) { var s = document.createElement('span'); s.className = 'af'; s.textContent = t; return s; };
+    var txt = function(t) { return document.createTextNode(t); };
+
+    apiCodeEl.appendChild(kw('curl'));
+    apiCodeEl.appendChild(txt(' '));
+    apiCodeEl.appendChild(str('"' + fullUrl + '"'));
+    apiCodeEl.appendChild(txt(' \\\n  '));
+    apiCodeEl.appendChild(flag('-H'));
+    apiCodeEl.appendChild(txt(' '));
+    apiCodeEl.appendChild(str('"X-API-KEY: your-api-key"'));
+    apiCodeEl.appendChild(txt(' \\\n  '));
+    apiCodeEl.appendChild(flag('-o'));
+    apiCodeEl.appendChild(txt(' tweet.' + ext));
+  }
+
+  // Update on any control change (event delegation)
+  var controlsEl = document.querySelector('.demo-controls');
+  controlsEl.addEventListener('input', updateApiPreview);
+  controlsEl.addEventListener('change', updateApiPreview);
+  controlsEl.addEventListener('click', function(e) {
+    if (e.target.closest('.demo-chip') || e.target.closest('.demo-switch') || e.target.closest('.demo-color-reset')) {
+      setTimeout(updateApiPreview, 0);
+    }
+  });
+  urlInput.addEventListener('input', updateApiPreview);
+
+  // Copy preview button
+  copyPreviewBtn.addEventListener('click', function() {
+    var text = apiCodeEl.textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var original = copyPreviewBtn.textContent;
+      copyPreviewBtn.textContent = 'Copied!';
+      setTimeout(function() { copyPreviewBtn.textContent = original; }, 2000);
+    });
+  });
+
+  // Initialize preview on load
+  updateApiPreview();
 })();

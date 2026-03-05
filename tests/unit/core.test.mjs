@@ -40,6 +40,8 @@ vi.mock('sharp', () => {
     sharpen: vi.fn().mockReturnThis(),
     trim: vi.fn().mockReturnThis(),
     png: vi.fn().mockReturnThis(),
+    jpeg: vi.fn().mockReturnThis(),
+    webp: vi.fn().mockReturnThis(),
     toBuffer: vi.fn(async () => Buffer.from('ssaa-png-data')),
   };
   const sharpFn = vi.fn(() => sharpInstance);
@@ -135,6 +137,7 @@ const {
   GRADIENTS,
   SSAA_MULTIPLIER,
   SSAA_MAX_INTERNAL_WIDTH,
+  FORMAT_CONTENT_TYPES,
 } = await import('../../core.mjs');
 
 const { AppError } = await import('../../src/errors.mjs');
@@ -1281,6 +1284,99 @@ describe('renderTweetToImage', () => {
     });
   });
 
+  // ─── JPEG/WebP format support ─────────────────────────────────────────────
+
+  describe('JPEG/WebP format output', () => {
+    beforeEach(() => {
+      sharpFn.mockClear();
+      sharpFn._instance.resize.mockClear();
+      sharpFn._instance.sharpen.mockClear();
+      sharpFn._instance.trim.mockClear();
+      sharpFn._instance.png.mockClear();
+      sharpFn._instance.jpeg.mockClear();
+      sharpFn._instance.webp.mockClear();
+      sharpFn._instance.toBuffer.mockClear();
+    });
+
+    it('returns format=jpeg and contentType=image/jpeg for JPEG output', async () => {
+      const tweet = cloneTweet();
+      const result = await renderTweetToImage(tweet, { format: 'jpeg' });
+      expect(result.format).toBe('jpeg');
+      expect(result.contentType).toBe('image/jpeg');
+      expect(Buffer.isBuffer(result.data)).toBe(true);
+    });
+
+    it('returns format=webp and contentType=image/webp for WebP output', async () => {
+      const tweet = cloneTweet();
+      const result = await renderTweetToImage(tweet, { format: 'webp' });
+      expect(result.format).toBe('webp');
+      expect(result.contentType).toBe('image/webp');
+      expect(Buffer.isBuffer(result.data)).toBe(true);
+    });
+
+    it('calls sharp.jpeg() with quality 90 for JPEG format', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { format: 'jpeg' });
+      expect(sharpFn._instance.jpeg).toHaveBeenCalledWith({ quality: 90 });
+      expect(sharpFn._instance.png).not.toHaveBeenCalled();
+      expect(sharpFn._instance.webp).not.toHaveBeenCalled();
+    });
+
+    it('calls sharp.webp() with quality 85 for WebP format', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { format: 'webp' });
+      expect(sharpFn._instance.webp).toHaveBeenCalledWith({ quality: 85 });
+      expect(sharpFn._instance.png).not.toHaveBeenCalled();
+      expect(sharpFn._instance.jpeg).not.toHaveBeenCalled();
+    });
+
+    it('calls sharp.png() for default PNG format (no jpeg/webp)', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { format: 'png' });
+      expect(sharpFn._instance.png).toHaveBeenCalled();
+      expect(sharpFn._instance.jpeg).not.toHaveBeenCalled();
+      expect(sharpFn._instance.webp).not.toHaveBeenCalled();
+    });
+
+    it('still applies SSAA (resize + sharpen) for JPEG format', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { format: 'jpeg', scale: 2, width: 550 });
+      expect(sharpFn._instance.resize).toHaveBeenCalledWith(
+        1100, null, { kernel: 'lanczos3' }
+      );
+      expect(sharpFn._instance.sharpen).toHaveBeenCalledWith({ sigma: 0.5 });
+    });
+
+    it('still applies SSAA (resize + sharpen) for WebP format', async () => {
+      const tweet = cloneTweet();
+      await renderTweetToImage(tweet, { format: 'webp', scale: 2, width: 550 });
+      expect(sharpFn._instance.resize).toHaveBeenCalledWith(
+        1100, null, { kernel: 'lanczos3' }
+      );
+      expect(sharpFn._instance.sharpen).toHaveBeenCalledWith({ sigma: 0.5 });
+    });
+
+    it('pipes through sharp for JPEG even when SSAA is skipped (skip-SSAA path)', async () => {
+      const tweet = cloneTweet();
+      // outputWidth=5000 → internal 15000 > 8000 → skips SSAA
+      await renderTweetToImage(tweet, { format: 'jpeg', outputWidth: 5000 });
+      expect(sharpFn._instance.jpeg).toHaveBeenCalledWith({ quality: 90 });
+      // SSAA resize/sharpen should be skipped
+      expect(sharpFn._instance.resize).not.toHaveBeenCalled();
+      expect(sharpFn._instance.sharpen).not.toHaveBeenCalled();
+    });
+
+    it('pipes through sharp for WebP even when SSAA is skipped (skip-SSAA path)', async () => {
+      const tweet = cloneTweet();
+      // outputWidth=5000 → internal 15000 > 8000 → skips SSAA
+      await renderTweetToImage(tweet, { format: 'webp', outputWidth: 5000 });
+      expect(sharpFn._instance.webp).toHaveBeenCalledWith({ quality: 85 });
+      // SSAA resize/sharpen should be skipped
+      expect(sharpFn._instance.resize).not.toHaveBeenCalled();
+      expect(sharpFn._instance.sharpen).not.toHaveBeenCalled();
+    });
+  });
+
   it('passes loadAdditionalAsset that handles emoji and language codes', async () => {
     const tweet = cloneTweet();
     await renderTweetToImage(tweet);
@@ -1489,5 +1585,21 @@ describe('exported constants', () => {
       expect(theme).toHaveProperty('border');
       expect(theme).toHaveProperty('link');
     }
+  });
+
+  it('FORMAT_CONTENT_TYPES maps all supported formats', () => {
+    expect(FORMAT_CONTENT_TYPES).toEqual({
+      png: 'image/png',
+      svg: 'image/svg+xml',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+    });
+  });
+
+  it('FORMAT_CONTENT_TYPES has correct MIME type for each format', () => {
+    expect(FORMAT_CONTENT_TYPES.png).toBe('image/png');
+    expect(FORMAT_CONTENT_TYPES.svg).toBe('image/svg+xml');
+    expect(FORMAT_CONTENT_TYPES.jpeg).toBe('image/jpeg');
+    expect(FORMAT_CONTENT_TYPES.webp).toBe('image/webp');
   });
 });

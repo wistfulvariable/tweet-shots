@@ -20,6 +20,10 @@ const GRADIENT_VALUES = [
 ];
 const LOGO_POSITION_VALUES = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 const FRAME_VALUES = ['phone'];
+const SHADOW_STYLE_VALUES = ['none', 'spread', 'hug'];
+const SHADOW_INTENSITY_VALUES = ['low', 'medium', 'high'];
+const SHADOW_DIRECTION_VALUES = ['center','top','top-right','right','bottom-right','bottom','bottom-left','left','top-left'];
+const PATTERN_VALUES = ['dots', 'grid', 'stripes', 'waves', 'diagonal'];
 
 // Boolean string transform for query params ("true"/"false" → boolean)
 // default(false) uses the post-transform type — default('false') would bypass the transform
@@ -31,7 +35,7 @@ const boolString = z.enum(['true', 'false']).transform(v => v === 'true').defaul
 export const screenshotQuerySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
-  format: z.enum(['png', 'svg']).default('png'),
+  format: z.enum(['png', 'svg', 'jpeg', 'webp']).default('png'),
   scale: z.coerce.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   bgColor: hexColor,
@@ -63,6 +67,16 @@ export const screenshotQuerySchema = z.object({
   thread: boolString,
   // Output width override (final PNG pixel width, bypasses scale)
   outputWidth: z.coerce.number().int().min(50).max(5000).optional(),
+  // Shadow presets
+  shadowStyle: z.enum(SHADOW_STYLE_VALUES).optional(),
+  shadowIntensity: z.enum(SHADOW_INTENSITY_VALUES).optional(),
+  shadowDirection: z.enum(SHADOW_DIRECTION_VALUES).optional(),
+  // Background image URL (composited via sharp, not CSS)
+  bgImage: z.string().url().optional(),
+  // Background pattern overlay
+  pattern: z.enum(PATTERN_VALUES).optional(),
+  patternColor: hexColor,
+  patternSpacing: z.coerce.number().int().min(10).max(100).optional(),
 });
 
 /**
@@ -74,7 +88,7 @@ export const screenshotBodySchema = z.object({
   response: z.enum(['image', 'base64', 'url']).default('image'),
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
-  format: z.enum(['png', 'svg']).default('png'),
+  format: z.enum(['png', 'svg', 'jpeg', 'webp']).default('png'),
   scale: z.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   backgroundGradient: z.enum(GRADIENT_VALUES).optional(),
@@ -110,6 +124,17 @@ export const screenshotBodySchema = z.object({
   thread: z.boolean().default(false),
   // Output width override (final PNG pixel width, bypasses scale)
   outputWidth: z.number().int().min(50).max(5000).optional(),
+  // Shadow presets
+  shadowStyle: z.enum(SHADOW_STYLE_VALUES).optional(),
+  shadowIntensity: z.enum(SHADOW_INTENSITY_VALUES).optional(),
+  shadowDirection: z.enum(SHADOW_DIRECTION_VALUES).optional(),
+  // Background image URL (composited via sharp, not CSS)
+  bgImage: z.string().url().optional(),
+  backgroundImage: z.string().url().optional(),
+  // Background pattern overlay
+  pattern: z.enum(PATTERN_VALUES).optional(),
+  patternColor: hexColor,
+  patternSpacing: z.number().int().min(10).max(100).optional(),
 }).refine(data => data.tweetId || data.tweetUrl, {
   message: 'Either tweetId or tweetUrl is required',
 });
@@ -153,7 +178,7 @@ export const portalSchema = z.object({
 const batchRenderOptions = {
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
-  format: z.enum(['png', 'svg']).default('png'),
+  format: z.enum(['png', 'svg', 'jpeg', 'webp']).default('png'),
   scale: z.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   backgroundGradient: z.enum(GRADIENT_VALUES).optional(),
@@ -189,6 +214,17 @@ const batchRenderOptions = {
   thread: z.boolean().default(false),
   // Output width override (final PNG pixel width, bypasses scale)
   outputWidth: z.number().int().min(50).max(5000).optional(),
+  // Shadow presets
+  shadowStyle: z.enum(SHADOW_STYLE_VALUES).optional(),
+  shadowIntensity: z.enum(SHADOW_INTENSITY_VALUES).optional(),
+  shadowDirection: z.enum(SHADOW_DIRECTION_VALUES).optional(),
+  // Background image URL (composited via sharp, not CSS)
+  bgImage: z.string().url().optional(),
+  backgroundImage: z.string().url().optional(),
+  // Background pattern overlay
+  pattern: z.enum(PATTERN_VALUES).optional(),
+  patternColor: hexColor,
+  patternSpacing: z.number().int().min(10).max(100).optional(),
 };
 
 /**
@@ -218,7 +254,7 @@ export const batchMultipartOptionsSchema = z.object({
 export const demoQuerySchema = z.object({
   theme: z.enum(THEME_VALUES).default('dark'),
   dimension: z.enum(DIMENSION_VALUES).default('auto'),
-  format: z.enum(['png', 'svg']).default('png'),
+  format: z.enum(['png', 'svg', 'jpeg', 'webp']).default('png'),
   scale: z.coerce.number().int().min(1).max(3).default(2),
   gradient: z.enum(GRADIENT_VALUES).optional(),
   bgColor: hexColor,
@@ -243,4 +279,12 @@ export const demoQuerySchema = z.object({
   thread: boolString,
   // Output width override (final PNG pixel width, bypasses scale)
   outputWidth: z.coerce.number().int().min(50).max(5000).optional(),
+  // Shadow presets
+  shadowStyle: z.enum(SHADOW_STYLE_VALUES).optional(),
+  shadowIntensity: z.enum(SHADOW_INTENSITY_VALUES).optional(),
+  shadowDirection: z.enum(SHADOW_DIRECTION_VALUES).optional(),
+  // Background pattern overlay (safe — no SSRF risk, pure enum/hex/number)
+  pattern: z.enum(PATTERN_VALUES).optional(),
+  patternColor: hexColor,
+  patternSpacing: z.coerce.number().int().min(10).max(100).optional(),
 });

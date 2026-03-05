@@ -17,6 +17,7 @@ import {
   generateTweetHtml,
   generateThreadHtml,
   getHighResProfileUrl,
+  generatePatternSvg,
   GRADIENT_FRAME_PADDING,
   PHONE_CHROME,
   HEIGHT_WATERMARK,
@@ -132,6 +133,68 @@ export async function fetchImageAsBase64(url) {
     logger.error({ url: url.substring(0, 80), reason }, 'Image pre-fetch error');
     return null;
   }
+}
+
+/**
+ * Fetch a remote image and return as raw Buffer.
+ * Used for background images that are composited via sharp (not Satori).
+ * @param {string} url - Image URL to fetch
+ * @returns {Promise<Buffer|null>} Raw image buffer or null on failure
+ */
+export async function fetchImageAsBuffer(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) {
+      logger.error({ status: response.status, url: url.substring(0, 80) }, 'Background image fetch failed');
+      return null;
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      logger.error({ contentType, url: url.substring(0, 80) }, 'Background image URL returned non-image content');
+      return null;
+    }
+    return Buffer.from(await response.arrayBuffer());
+  } catch (e) {
+    const reason = e.name === 'AbortError' ? 'timed out' : e.message;
+    logger.error({ url: url.substring(0, 80), reason }, 'Background image fetch error');
+    return null;
+  }
+}
+
+/**
+ * Composite a rendered card buffer onto a background image.
+ * Background is resized to cover the card dimensions, card is centered on top.
+ * @param {Buffer} cardBuffer - The rendered tweet card PNG/JPEG/WebP buffer
+ * @param {Buffer} bgBuffer - The background image buffer
+ * @param {string} [format='png'] - Output format
+ * @returns {Promise<Buffer>} Composited image buffer
+ */
+async function compositeOnBackground(cardBuffer, bgBuffer, format = 'png') {
+  const cardMeta = await sharp(cardBuffer).metadata();
+  const pipeline = sharp(bgBuffer)
+    .resize(cardMeta.width, cardMeta.height, { fit: 'cover', position: 'center' })
+    .composite([{ input: cardBuffer, gravity: 'center' }]);
+  return formatOutput(pipeline, format);
+}
+
+/**
+ * Render a pattern SVG to a PNG buffer using Resvg.
+ * @param {string} type - Pattern type (dots, grid, stripes, waves, diagonal)
+ * @param {number} width - Image width in pixels
+ * @param {number} height - Image height in pixels
+ * @param {object} [opts]
+ * @param {string} [opts.patternColor] - Pattern element color
+ * @param {number} [opts.patternSpacing] - Spacing between pattern elements
+ * @returns {Promise<Buffer|null>} PNG buffer or null for unknown type
+ */
+async function renderPatternBuffer(type, width, height, { patternColor, patternSpacing } = {}) {
+  const svg = generatePatternSvg(type, width, height, { color: patternColor, spacing: patternSpacing });
+  if (!svg) return null;
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: width } });
+  return Buffer.from(resvg.render().asPng());
 }
 
 /**
@@ -427,24 +490,53 @@ export const SSAA_MAX_INTERNAL_WIDTH = 8000;
 // so trim must be told explicitly to remove transparent edges.
 const TRIM_TRANSPARENT = { background: { r: 0, g: 0, b: 0, alpha: 0 } };
 
+/** Content-type map for all supported output formats. */
+export const FORMAT_CONTENT_TYPES = {
+  png: 'image/png',
+  svg: 'image/svg+xml',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+
 /**
- * Convert an SVG string to a sharp PNG buffer using Resvg + SSAA.
+ * Apply the final format conversion step to a sharp pipeline.
+ * @param {import('sharp').Sharp} pipeline - sharp pipeline
+ * @param {string} format - 'png' | 'jpeg' | 'webp'
+ * @returns {Promise<Buffer>}
+ */
+function formatOutput(pipeline, format) {
+  switch (format) {
+    case 'jpeg': return pipeline.jpeg({ quality: 90 }).toBuffer();
+    case 'webp': return pipeline.webp({ quality: 85 }).toBuffer();
+    case 'png':  return pipeline.png().toBuffer();
+    default:     throw new Error(`formatOutput: unsupported format "${format}"`);
+  }
+}
+
+/**
+ * Convert an SVG string to a raster buffer (PNG/JPEG/WebP) using Resvg + SSAA.
  * Renders at 3x target width, then downscales with Lanczos3 + sharpening.
  * Skips SSAA when internal width would exceed the safety cap.
  * @param {string} svg - SVG string from Satori
- * @param {number} targetWidth - Desired final PNG width in pixels
+ * @param {number} targetWidth - Desired final raster width in pixels
  * @param {object} [options]
  * @param {boolean} [options.trim=false] - Trim transparent edges (for auto-sized renders)
- * @returns {Promise<Buffer>} PNG buffer
+ * @param {'png'|'jpeg'|'webp'} [options.format='png'] - Output format
+ * @returns {Promise<Buffer>} Raster image buffer
  */
-async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
+async function resvgToRaster(svg, targetWidth, { trim: shouldTrim = false, format = 'png' } = {}) {
   const internalWidth = targetWidth * SSAA_MULTIPLIER;
 
   if (internalWidth > SSAA_MAX_INTERNAL_WIDTH) {
     // Skip SSAA — already very high resolution, bilinear artifacts invisible
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: targetWidth } });
     const png = Buffer.from(resvg.render().asPng());
-    if (shouldTrim) return sharp(png).trim(TRIM_TRANSPARENT).png().toBuffer();
+    // Must pipe through sharp when format !== 'png' or trimming is needed
+    if (format !== 'png' || shouldTrim) {
+      let pipeline = sharp(png);
+      if (shouldTrim) pipeline = pipeline.trim(TRIM_TRANSPARENT);
+      return formatOutput(pipeline, format);
+    }
     return png;
   }
 
@@ -459,7 +551,7 @@ async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
 
   if (shouldTrim) pipeline = pipeline.trim(TRIM_TRANSPARENT);
 
-  return pipeline.png().toBuffer();
+  return formatOutput(pipeline, format);
 }
 
 // ============================================================================
@@ -467,7 +559,7 @@ async function resvgToPng(svg, targetWidth, { trim: shouldTrim = false } = {}) {
 // ============================================================================
 
 /**
- * Render a tweet to a PNG or SVG image.
+ * Render a tweet to a raster (PNG/JPEG/WebP) or SVG image.
  * Pre-fetches all remote images to base64, generates HTML with short URLs,
  * parses through satori-html, then injects base64 into the VDOM tree.
  * Does not mutate the tweet object.
@@ -487,6 +579,9 @@ export async function renderTweetToImage(tweet, options = {}) {
     hideDate = false,
     hideQuoteTweet = false,
     hideShadow = false,
+    shadowStyle = null,
+    shadowIntensity = null,
+    shadowDirection = null,
     backgroundColor = null,
     backgroundGradient = null,
     backgroundImage = null,
@@ -516,11 +611,20 @@ export async function renderTweetToImage(tweet, options = {}) {
     outputWidth = null,
     // Internal watermark flag (injected server-side, not user-facing)
     watermark = false,
+    // Background image URL — composited via sharp after Satori render (not CSS)
+    bgImage = null,
+    // Background pattern overlay (composited on top of gradient/canvas renders)
+    pattern = null,
+    patternColor = null,
+    patternSpacing = null,
   } = options;
 
-  // Pre-fetch all remote images in parallel, using optimally-sized Twitter CDN variants.
+  // Fetch background image and tweet images in parallel
   const imageSize = pickImageSize(width, scale);
-  const imageMap = await preFetchAllImages(tweet, { imageSize });
+  const [bgImageBuffer, imageMap] = await Promise.all([
+    bgImage ? fetchImageAsBuffer(bgImage) : Promise.resolve(null),
+    preFetchAllImages(tweet, { imageSize }),
+  ]);
 
   // Pre-fetch logo — add to imageMap so the VDOM walker injects it
   if (logo) {
@@ -530,7 +634,7 @@ export async function renderTweetToImage(tweet, options = {}) {
 
   // Resolve whether a gradient (named or custom) is active
   const hasCustomGradient = !!(gradientFrom && gradientTo);
-  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient);
+  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient || bgImageBuffer);
   const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
   const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
 
@@ -567,6 +671,9 @@ export async function renderTweetToImage(tweet, options = {}) {
     hideDate,
     hideQuoteTweet,
     hideShadow,
+    shadowStyle,
+    shadowIntensity,
+    shadowDirection,
     showUrl,
     tweetId,
     backgroundColor,
@@ -611,16 +718,32 @@ export async function renderTweetToImage(tweet, options = {}) {
     return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
   }
 
-  // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
+  // Convert to raster with Resvg + SSAA (3x supersample then Lanczos3 downscale)
   // Trim transparent edges for auto-sized renders (not gradients or dimension presets)
   const rasterWidth = outputWidth || canvasWidth * scale;
-  const pngBuffer = await resvgToPng(svg, rasterWidth, { trim: !needsWrapper });
+  let rasterBuffer = await resvgToRaster(svg, rasterWidth, { trim: !needsWrapper, format });
 
-  return { data: pngBuffer, format: 'png', contentType: 'image/png' };
+  // Composite pattern overlay (only on gradient/canvas renders, not standalone)
+  if (pattern && needsWrapper && !bgImageBuffer) {
+    const meta = await sharp(rasterBuffer).metadata();
+    const patternBuf = await renderPatternBuffer(pattern, meta.width, meta.height, { patternColor, patternSpacing });
+    if (patternBuf) {
+      rasterBuffer = await sharp(rasterBuffer)
+        .composite([{ input: patternBuf, blend: 'over' }])
+        .toBuffer();
+    }
+  }
+
+  // Composite card onto background image (if provided)
+  if (bgImageBuffer) {
+    rasterBuffer = await compositeOnBackground(rasterBuffer, bgImageBuffer, format);
+  }
+
+  return { data: rasterBuffer, format, contentType: FORMAT_CONTENT_TYPES[format] };
 }
 
 /**
- * Render a thread of tweets (from fetchThread()) as a single image.
+ * Render a thread of tweets (from fetchThread()) as a single raster (PNG/JPEG/WebP) or SVG image.
  * Pre-fetches all images from all tweets, renders them stacked with connector lines.
  * @param {object[]} tweets - Tweet array from fetchThread(), oldest first
  * @param {object} [options] - Same render options as renderTweetToImage
@@ -643,6 +766,9 @@ export async function renderThreadToImage(tweets, options = {}) {
     padding = 20,
     borderRadius = 16,
     hideShadow = false,
+    shadowStyle = null,
+    shadowIntensity = null,
+    shadowDirection = null,
     fontFamily = null,
     fontUrl = null,
     fontBoldUrl = null,
@@ -653,23 +779,30 @@ export async function renderThreadToImage(tweets, options = {}) {
     gradientAngle = 135,
     outputWidth = null,
     watermark = false,
+    // Background image URL — composited via sharp after Satori render (not CSS)
+    bgImage = null,
+    // Background pattern overlay (composited on top of gradient/canvas renders)
+    pattern = null,
+    patternColor = null,
+    patternSpacing = null,
   } = options;
 
-  // Use 'small' images for threads — many tweets means many images, avoid timeouts
-  const imageSize = 'small';
-
-  // Pre-fetch images from all tweets in the thread
-  const imageMap = new Map();
-  await Promise.all(
-    tweets.map(tweet =>
-      preFetchAllImages(tweet, { imageSize }).then(map => {
-        for (const [url, b64] of map) imageMap.set(url, b64);
-      })
-    )
-  );
+  // Fetch background image and thread tweet images in parallel
+  const threadImageMap = new Map();
+  const [bgImageBuffer] = await Promise.all([
+    bgImage ? fetchImageAsBuffer(bgImage) : Promise.resolve(null),
+    Promise.all(
+      tweets.map(tweet =>
+        preFetchAllImages(tweet, { imageSize: 'small' }).then(map => {
+          for (const [url, b64] of map) threadImageMap.set(url, b64);
+        })
+      )
+    ),
+  ]);
+  const imageMap = threadImageMap;
 
   const hasCustomGradient = !!(gradientFrom && gradientTo);
-  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient);
+  const hasGradient = !!(backgroundGradient || backgroundImage || hasCustomGradient || bgImageBuffer);
   const hasFixedDimensions = !!(canvasWidthOverride && canvasHeightOverride);
   const gradientPad = hasGradient ? GRADIENT_FRAME_PADDING : 0;
 
@@ -703,6 +836,9 @@ export async function renderThreadToImage(tweets, options = {}) {
     linkColor,
     borderRadius,
     hideShadow,
+    shadowStyle,
+    shadowIntensity,
+    shadowDirection,
     fontFamily,
     gradientFrom,
     gradientTo,
@@ -731,8 +867,25 @@ export async function renderThreadToImage(tweets, options = {}) {
     return { data: Buffer.from(svg), format: 'svg', contentType: 'image/svg+xml' };
   }
 
-  // Convert to PNG with Resvg + SSAA (2x supersample then Lanczos3 downscale)
+  // Convert to raster with Resvg + SSAA (3x supersample then Lanczos3 downscale)
   const rasterWidth = outputWidth || canvasWidth * scale;
-  const pngBuffer = await resvgToPng(svg, rasterWidth, { trim: !needsWrapper });
-  return { data: pngBuffer, format: 'png', contentType: 'image/png' };
+  let rasterBuffer = await resvgToRaster(svg, rasterWidth, { trim: !needsWrapper, format });
+
+  // Composite pattern overlay (only on gradient/canvas renders, not standalone)
+  if (pattern && needsWrapper && !bgImageBuffer) {
+    const meta = await sharp(rasterBuffer).metadata();
+    const patternBuf = await renderPatternBuffer(pattern, meta.width, meta.height, { patternColor, patternSpacing });
+    if (patternBuf) {
+      rasterBuffer = await sharp(rasterBuffer)
+        .composite([{ input: patternBuf, blend: 'over' }])
+        .toBuffer();
+    }
+  }
+
+  // Composite card onto background image (if provided)
+  if (bgImageBuffer) {
+    rasterBuffer = await compositeOnBackground(rasterBuffer, bgImageBuffer, format);
+  }
+
+  return { data: rasterBuffer, format, contentType: FORMAT_CONTENT_TYPES[format] };
 }

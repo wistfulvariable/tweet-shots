@@ -48,7 +48,7 @@ vi.mock('../../tweet-render.mjs', async (importOriginal) => {
       return {
         data: Buffer.from(`fake-${format}-data`),
         format,
-        contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+        contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
       };
     }),
   };
@@ -109,7 +109,7 @@ beforeEach(() => {
     return {
       data: Buffer.from(`fake-${format}-data`),
       format,
-      contentType: format === 'svg' ? 'image/svg+xml' : 'image/png',
+      contentType: { svg: 'image/svg+xml', jpeg: 'image/jpeg', webp: 'image/webp' }[format] || 'image/png',
     };
   });
   upload.mockImplementation(async (bucket, filename) =>

@@ -3,7 +3,7 @@ tweet-shots API Reference
 
 Base URL: https://tweet-shots-api-1084185199991.us-central1.run.app
 
-Converts tweet URLs or IDs into pixel-perfect PNG/SVG screenshots. No browser automation — uses Twitter's syndication API + Satori rendering.
+Converts tweet URLs or IDs into pixel-perfect PNG/JPEG/WebP/SVG screenshots. No browser automation — uses Twitter's syndication API + Satori rendering.
 
 AUTHENTICATION
 --------------
@@ -18,12 +18,12 @@ ENDPOINTS
 ---------
 
 ### GET /screenshot/:tweetIdOrUrl
-Auth: Required | Credits: 1 | Returns: image (PNG or SVG)
+Auth: Required | Credits: 1 | Returns: image (PNG, JPEG, WebP, or SVG)
 
 URL param: tweetIdOrUrl — Tweet ID or full URL (URL-encoded if URL)
 All render parameters accepted as query strings. Booleans must be exact strings "true" or "false".
 
-Response headers: Content-Type, X-Tweet-ID, X-Tweet-Author, X-Render-Time-Ms, X-Credits-Limit, X-Credits-Remaining
+Response headers: Content-Type, X-Tweet-ID, X-Tweet-Author, X-Render-Time-Ms, X-Credits-Limit, X-Credits-Remaining, X-Max-Output-Width, X-Max-Scale
 
 Example:
   curl "https://tweet-shots-api-1084185199991.us-central1.run.app/screenshot/1617979122625712128?theme=dark&gradient=ocean" \
@@ -92,9 +92,9 @@ Response:
 
 
 ### GET /demo/screenshot/:tweetIdOrUrl
-Auth: None (public) | Rate limit: 5 req/min per IP | Returns: PNG only
+Auth: None (public) | Rate limit: 5 req/min per IP | Returns: image
 
-Same render params as GET /screenshot except: no fontUrl, fontBoldUrl, fontFamily, logo (SSRF prevention).
+Same render params as GET /screenshot except: no fontUrl, fontBoldUrl, fontFamily, logo, bgImage (SSRF prevention).
 Responses cached for 5 minutes. Good for testing before getting an API key.
 
 
@@ -137,9 +137,9 @@ Name            Type      Default   Values                                      
 theme           string    dark      dark, light, dim, black                                         Card color theme
 dimension       string    auto      auto, instagramFeed, instagramStory, instagramVertical,         Canvas size preset
                                     tiktok, linkedin, twitter, facebook, youtube
-format          string    png       png, svg                                                        Output format
-scale           number    2         1, 2, 3                                                         Resolution multiplier
-outputWidth     number    —         50–5000                                                         Final PNG pixel width (overrides scale)
+format          string    png       png, svg, jpeg, webp                                            Output format (JPEG q90 no alpha, WebP q85)
+scale           number    2         1, 2, 3                                                         Resolution multiplier (clamped: free max 2, pro/business max 3)
+outputWidth     number    —         50–5000                                                         Final PNG pixel width (overrides scale, clamped: free 1080, pro 4000, business 5000)
 gradient        string    —         sunset, ocean, forest, fire, midnight, sky, candy, peach         Background gradient preset
 bgColor         string    —         #rrggbb                                                         Custom background color
 textColor       string    —         #rrggbb                                                         Custom text color
@@ -149,6 +149,10 @@ hideMedia       boolean   false     true, false                                 
 hideDate        boolean   false     true, false                                                     Hide tweet timestamp
 hideVerified    boolean   false     true, false                                                     Hide verification badge
 hideShadow      boolean   false     true, false                                                     Remove card drop shadow
+shadowStyle     string    spread    none, spread, hug                                               Shadow spread style (only with gradients/dimension presets)
+shadowIntensity string    medium    low, medium, high                                               Shadow opacity level (only with gradients/dimension presets)
+shadowDirection string    bottom    center, top, top-right, right, bottom-right, bottom,             Shadow direction (only with gradients/dimension presets)
+                                    bottom-left, left, top-left
 hideQuoteTweet  boolean   false     true, false                                                     Hide quoted tweet
 padding         number    20        0–100                                                           Padding around card (px)
 radius          number    16        0–100                                                           Card border radius (px)
@@ -162,6 +166,10 @@ frame           string    —         phone                                     
 gradientFrom    string    —         #rrggbb                                                         Custom gradient start color
 gradientTo      string    —         #rrggbb                                                         Custom gradient end color
 gradientAngle   number    —         0–360                                                           Custom gradient angle (degrees)
+bgImage         URL       —         valid URL                                                       Background image URL (requires gradient/dimension, not on demo, POST alias: backgroundImage)
+pattern         string    —         dots, grid, stripes, waves, diagonal                            Pattern overlay on gradient/canvas (ignored when bgImage set)
+patternColor    string    —         #rrggbb                                                         Pattern overlay color (default: semi-transparent white)
+patternSpacing  number    30        10–100                                                          Spacing between pattern elements (px)
 thread          boolean   false     true, false                                                     Render entire tweet thread
 response        string    image     image, base64, url                                              Response format (POST only)
 
@@ -171,13 +179,14 @@ Note: GET query params require boolean values as exact strings "true"/"false". P
 TIERS & RATE LIMITS
 -------------------
 
-Tier       Price    Rate Limit     Monthly Credits   Max Batch
-free       $0/mo    10 req/min     50                10 URLs
-pro        $9/mo    100 req/min    1,000             100 URLs
-business   $49/mo   1,000 req/min  10,000            500 URLs
+Tier       Price    Rate Limit     Monthly Credits   Max Batch   Max Scale   Max Output Width
+free       $0/mo    10 req/min     50                10 URLs     2           1080px
+pro        $9/mo    100 req/min    1,000             100 URLs    3           4000px
+business   $49/mo   1,000 req/min  10,000            500 URLs    3           5000px
 
 All tiers support custom fonts, branding/logo, all themes, all gradients, and all dimension presets.
 Credits reset monthly on UTC day boundary. Billing guard fails open (Firestore outage = requests proceed).
+Scale and outputWidth values exceeding tier limits are silently clamped (no error). Response headers X-Max-Scale and X-Max-Output-Width indicate tier limits.
 
 
 ERROR RESPONSE FORMAT
@@ -223,7 +232,9 @@ X-Tweet-Author       Screenshot endpoints    Author's screen name
 X-Render-Time-Ms     Screenshot endpoints    Render duration in milliseconds
 X-Credits-Limit      Authenticated requests  Monthly credit limit for tier
 X-Credits-Remaining  Authenticated requests  Credits remaining this month
-Content-Type         All requests            image/png, image/svg+xml, or application/json
+X-Max-Output-Width   Authenticated requests  Maximum outputWidth for tier
+X-Max-Scale          Authenticated requests  Maximum scale for tier
+Content-Type         All requests            image/png, image/jpeg, image/webp, image/svg+xml, or application/json
 Retry-After          429 responses           Seconds to wait before retrying
 
 
