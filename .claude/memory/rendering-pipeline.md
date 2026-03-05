@@ -3,8 +3,10 @@
 ## Core Flow
 
 ```
-fetchTweet(id) → pre-fetch images to base64 → generateTweetHtml() → html() → satori() → Resvg → PNG/SVG
+fetchTweet(id) → pre-fetch images to base64 → generateTweetHtml() → html() → satori() → resvgToPng() → PNG/SVG
 ```
+
+`generateTweetHtml` calls `processTweetText` which: trims `display_text_range` (hides reply-to @mentions) → strips media URLs → HTML-escapes → colorizes entities (URLs, mentions, hashtags).
 
 Modules: `tweet-fetch.mjs` (fetch/extract), `tweet-html.mjs` (HTML template), `tweet-render.mjs` (pipeline), `tweet-emoji.mjs` (Twemoji CDN), `tweet-fonts.mjs` (Noto Sans lazy), `tweet-utils.mjs` (CLI-only).
 

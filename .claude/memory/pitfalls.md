@@ -43,6 +43,12 @@ Phone frame adds `PHONE_CHROME.notch (40) + PHONE_CHROME.homeBar (28) + PHONE_CH
 
 `/landing.js` is served with `Cache-Control: public, max-age=86400`. Changes to `landing.js` won't be visible to returning users for up to 24 hours. `landing.html` (inline CSS) has no such cache and updates immediately on deploy. If you need JS changes to propagate instantly, add a cache-busting query param to the `<script src>` tag in `landing.html`.
 
+## Reply-to Mention Prefix and Entity Deduplication
+
+Reply tweets include hidden `@mention` prefixes in `text` (e.g. `@user See @user in action`). The `display_text_range` field trims them — `processTweetText` calls `text.substring(range[0])`. Without this, reply-to mentions render visibly and duplicate the inline mention.
+
+The same `screen_name` can appear multiple times in `entities.user_mentions` (once for the reply-to, once inline). `colorizeEntities` uses a global regex (`gi` flag), so a single pass colors ALL occurrences. The `seen` Set deduplication prevents a second pass from double-wrapping already-colored spans (the regex would match `@user` inside the existing `<span>@user</span>`).
+
 ## Custom Font Not Cached
 
 `fontUrl` fonts are fetched fresh on every request (10s timeout). High-traffic endpoints or slow font CDNs will add latency proportional to font file size. Fallback to Inter is silent — no error surfaced to caller.

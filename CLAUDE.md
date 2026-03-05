@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG screenshots — no browser automation. Dual interface: a Node.js CLI script and an Express REST API with Firestore-backed auth, tiered rate limiting, Stripe billing, and worker thread rendering. Core rendering pipeline: Twitter syndication API → HTML string → Satori (SVG) → Resvg (PNG).
+tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/JPEG/WebP/SVG screenshots — no browser automation. Dual interface: a Node.js CLI script and an Express REST API with Firestore-backed auth, tiered rate limiting, Stripe billing, and worker thread rendering. Core rendering pipeline: Twitter syndication API → HTML string → Satori (SVG) → Resvg (raster) → sharp (SSAA + format conversion + compositing).
 
 ---
 
@@ -13,8 +13,8 @@ tweet-shots converts Twitter/X tweet URLs or IDs into pixel-perfect PNG/SVG scre
 | Node.js | 20+ | Runtime (ES Modules — `"type": "module"`) |
 | Express | 5.2 | REST API server |
 | Satori | 0.24 | HTML/CSS → SVG rendering |
-| @resvg/resvg-js | 2.6 | SVG → PNG conversion |
-| sharp | 0.33 | SSAA downscale (Lanczos3) + sharpening |
+| @resvg/resvg-js | 2.6 | SVG → raster conversion |
+| sharp | 0.33 | SSAA downscale (Lanczos3), format conversion (JPEG/WebP), bg-image + pattern compositing |
 | satori-html | 0.3 | HTML string → Satori VDOM |
 | Firebase Admin | 13.4 | Server-side ID token verification (dashboard) |
 | Firestore | 8.3 | API keys, usage, customer data |
@@ -98,7 +98,7 @@ tweet-shots/
 ├── audit-reports/               # Test coverage + security audit reports
 ├── tests/
 │   ├── smoke/                   # App-alive smoke tests (9 tests)
-│   ├── unit/                    # Per-service unit tests (21 files)
+│   ├── unit/                    # Per-service unit tests (23 files)
 │   ├── integration/             # API endpoint tests (10 files)
 │   └── helpers/                 # Firestore mock, test fixtures
 ├── Dockerfile                   # Cloud Run container
@@ -113,7 +113,7 @@ tweet-shots/
 ## Architectural Rules
 
 **DO:**
-- All PNG output uses SSAA (Super-Sample Anti-Aliasing) — `resvgToPng()` renders at 3x target width via Resvg, then downscales with `sharp` Lanczos3 + `sharpen({ sigma: 0.5 })`. Skips SSAA when internal width > `SSAA_MAX_INTERNAL_WIDTH` (8000px). Always-on for PNG, skipped for SVG. Both `renderTweetToImage` and `renderThreadToImage` use this shared helper. For auto-sized renders (no gradient/dimension preset), `resvgToPng()` also trims transparent edges via `sharp.trim({ background: transparent })` — must specify transparent background explicitly because `sharp.trim()` defaults to using the top-left pixel (card bg) as reference, which won't match transparent rows.
+- All raster output uses SSAA (Super-Sample Anti-Aliasing) — `resvgToRaster()` renders at 3x target width via Resvg, then downscales with `sharp` Lanczos3 + `sharpen({ sigma: 0.5 })`. Skips SSAA when internal width > `SSAA_MAX_INTERNAL_WIDTH` (8000px). Always-on for raster formats (PNG/JPEG/WebP), skipped for SVG. `formatOutput()` handles the final format conversion: png, jpeg (quality 90), webp (quality 85) — throws on unknown format. `FORMAT_CONTENT_TYPES` exported for MIME type mapping. For auto-sized renders (no gradient/dimension preset), `resvgToRaster()` also trims transparent edges via `sharp.trim({ background: transparent })` — must specify transparent background explicitly because `sharp.trim()` defaults to using the top-left pixel (card bg) as reference, which won't match transparent rows.
 - Satori uses Yoga layout (border-box): `width: 550px` with `padding: 20px` means total width is 550px (content = 510px). Canvas width must equal `width`, NOT `width + padding * 2`. Standalone cards are wrapped in a transparent outer div so the card sizes to content height naturally (excess `calculateHeight()` overestimation becomes transparent, then trimmed).
 - Standalone cards (no gradient/dimension preset) have NO `border-radius` and NO `box-shadow` — both create semi-transparent fringe pixels when on a transparent background that are visible when composited on any surface. Shadow and border-radius are only applied to cards inside gradient/canvas wrappers where they look correct against a solid background.
 - Pre-fetch all remote images to base64 before calling Satori — Satori cannot fetch URLs at render time. `preFetchAllImages()` returns a `Map<url, base64>` (does NOT mutate the tweet object). After `satori-html` parses the small HTML, `injectImageSources()` walks the VDOM tree to replace URL `src` values with base64. This avoids satori-html's O(n²) parsing on large base64 strings. Uses `twitterImageUrl()` to request optimally-sized Twitter CDN variants (`?name=small|medium`)
@@ -133,6 +133,10 @@ tweet-shots/
 - Update CSP directives in `server.mjs` helmet config when adding new external resources to HTML pages — currently allows `gstatic.com` (Firebase SDK), `lh3.googleusercontent.com` (avatars), `identitytoolkit.googleapis.com` + `securetoken.googleapis.com` (Firebase Auth API)
 - When adding or changing API endpoints/parameters, update `docs.html` and `llm-docs.txt` — these are static files that must be manually kept in sync with the actual API
 - The `watermark` option is an **internal boolean** injected by route handlers — it is NOT in any Zod schema and must never be exposed as a user-facing API parameter. Route handlers set `watermark: req.keyData.tier === 'free'` (screenshot routes) or `watermark: true` (demo route). `WATERMARK_COLORS` and `HEIGHT_WATERMARK` are exported from `tweet-html.mjs`. The watermark renders inside the card as a centered "tweet-shots.com" text row at the bottom, after the logo (if any)
+- Shadow presets use `buildShadowCss()` in `tweet-html.mjs` — three axes: `shadowStyle` (none/spread/hug), `shadowIntensity` (low/medium/high), `shadowDirection` (9 compass points). Default `spread/medium/bottom` produces CSS equivalent to old hardcoded shadow. Always pass through to `generateTweetHtml`/`generateThreadHtml`
+- Background images are composited via sharp (NOT Satori CSS) — `fetchImageAsBuffer()` fetches URL, `compositeOnBackground()` composites card on top. Fetched in parallel with tweet image pre-fetch via `Promise.all`. Forces `needsWrapper=true` for shadow/border-radius
+- Background patterns use `generatePatternSvg()` in `tweet-html.mjs` + `renderPatternBuffer()` in `tweet-render.mjs` — composited ON TOP of final raster via sharp `blend: 'over'`. Only applied when `pattern && needsWrapper && !bgImageBuffer` (bgImage takes priority)
+- Resolution is gated per tier — `clampResolution(options, tier)` helper in `screenshot.mjs` clamps `scale` and `outputWidth` in GET/POST/batch handlers. Demo route hardcodes free-tier limits. Response includes `X-Max-Output-Width` and `X-Max-Scale` headers
 
 **DO NOT:**
 - Use block-level CSS (`display: block`, `position: absolute`, `grid`) — Satori rejects them
@@ -147,6 +151,7 @@ tweet-shots/
 - Interpolate untrusted strings into `new RegExp()` without escaping — use `escapeRegExp()` in `tweet-html.mjs`
 - Forward raw `err.message` from Stripe or external APIs to clients — use generic error messages, log the real error server-side
 - Throw `new AppError(message)` without an explicit `statusCode` when the error isn't a 400 — always specify the correct HTTP status (e.g. `404` for not-found)
+- Expose URL-accepting params (`bgImage`, `fontUrl`, `fontBoldUrl`, `logo`) on the demo route — SSRF risk on public unauthenticated endpoint. Pattern/shadow params (enums, hex, numbers) are safe for demo
 - Use inline `<script>` tags in HTML pages — helmet CSP (`script-src 'self'`) blocks them. Extract to external `.js` files served with `res.sendFile()` + `Cache-Control: public, max-age=86400`. Pass dynamic config via `<meta>` tags (see `dashboard.js` pattern)
 
 ---
@@ -191,11 +196,11 @@ Usage tracking uses `FieldValue.increment()` for atomic concurrent writes.
 
 **Tiers (defined in `src/config.mjs`):**
 
-| Tier | Rate Limit | Monthly Credits | Price |
-|---|---|---|---|
-| free | 10 req/min | 50 | $0 |
-| pro | 100 req/min | 1,000 | $9 |
-| business | 1,000 req/min | 10,000 | $49 |
+| Tier | Rate Limit | Monthly Credits | Max Output Width | Max Scale | Price |
+|---|---|---|---|---|---|
+| free | 10 req/min | 50 | 1080px | 2x | $0 |
+| pro | 100 req/min | 1,000 | 4000px | 3x | $9 |
+| business | 1,000 req/min | 10,000 | 5000px | 3x | $49 |
 
 **Billing guard fails open:** If Firestore is unavailable, requests proceed (usage not tracked). This prevents infrastructure outages from blocking all rendering.
 

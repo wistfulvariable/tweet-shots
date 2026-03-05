@@ -16,6 +16,8 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 {
   "text": "Tweet text with t.co URLs",
   "created_at": "ISO timestamp",
+  "display_text_range": [0, 140],
+  "in_reply_to_screen_name": "username",
   "user": {
     "name": "Display Name",
     "screen_name": "handle",
@@ -24,9 +26,9 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
     "verified": false
   },
   "entities": {
-    "urls": [{ "url": "https://t.co/xxx", "display_url": "...", "expanded_url": "..." }],
-    "user_mentions": [{ "screen_name": "username" }],
-    "hashtags": [{ "text": "hashtag" }],
+    "urls": [{ "url": "https://t.co/xxx", "display_url": "...", "expanded_url": "...", "indices": [0, 23] }],
+    "user_mentions": [{ "screen_name": "username", "indices": [0, 9] }],
+    "hashtags": [{ "text": "hashtag", "indices": [10, 18] }],
     "media": [{ "url": "https://t.co/xxx" }]
   },
   "mediaDetails": [{ "media_url_https": "https://pbs.twimg.com/...", "type": "photo|video" }],
@@ -44,6 +46,9 @@ GET https://cdn.syndication.twimg.com/tweet-result?id=<tweetId>&token=<random>
 ## Field Notes
 
 - `text` contains raw t.co short URLs — strip `entities.media` URLs before rendering
+- `display_text_range: [start, end]` — indicates the visible portion of `text`. Reply tweets prepend hidden `@mention ` prefixes (e.g. `@user See @user in action` with range `[6, ...]`). `processTweetText` and `buildQuoteTweetHtml` must `text.substring(range[0])` when `range[0] > 0` to trim these. Present on most tweets; `[0, N]` means nothing is hidden
+- `in_reply_to_screen_name` — present on replies, identifies the parent tweet's author
+- Entity `indices` arrays reference positions in the original `text` (before display_text_range trim). Our code uses regex pattern matching (not index-based splicing), so trimming the text doesn't require index adjustment
 - Profile image: replace `_normal` with `_400x400` for high-res
 - `is_blue_verified` = Twitter Blue; `verified` = legacy checkmark
 - `mediaDetails` is primary media source; `photos` is fallback
